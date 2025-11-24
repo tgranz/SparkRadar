@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+
+    <!--HTML Title-->
+    <title>Spark Radar | Track the weather like a pro for free.</title>
+    <link rel="icon" type="image/png" href="asstes/logo-rounded.png"/>
+
+    <!-- 100% privacy-first analytics
+    <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script> -->
+
+    <!--Metadata-->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="og:title" content="Spark Radar | Track the weather like a pro for free." />
+    <meta name="og:description" content="Because everyone experiences weather. Knowing what's coming shouldn't be a mystery." />
+    <meta name="og:image" content="https://sparkradar.app/asstes/logo-small.png" />
+    <meta name="description" content="Because everyone experiences weather. Knowing what's coming shouldn't be a mystery." />
+
+    <!--CSS Libraries-->
+        <!--MapLibre CSS-->
+        <link href="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.css" rel="stylesheet" />
+        <!--Spark Radar CSS-->
+        <link href="style.css" rel="stylesheet" />
+        <!--Font set - Onest-->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Onest:wght@100..900&display=swap" rel="stylesheet">
+        <!--Tabler Icons-->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+</head>
+
+<body>
+    <!--Map-->
+    <div id="map"></div>
+    
+
+    <!--Info Box-->
+    <div class="mapelement" id="info">
+        <div style="width: 100%; display: flex; align-items: flex-start; justify-content: space-between;">
+            <button id="menuBtn" title="Menu"> <i class="ti ti-menu-2"></i></button>
+            <div style="display: flex; flex-direction: column;">
+                <span id="radarTitle" style="text-align: center; font-size: large; width: 100%; font-weight: 600;">CONUS MOSAIC</span>
+                <span onclick="openProductChooser(true);" style="text-align: center; cursor: pointer; font-size: medium; color: #27beff; width: 100%; font-weight: 600;">Base Reflectivity</span>
+            </div>
+            <button id="expandinfo" title="Expand"> <i class="ti ti-chevron-down"></i></button>
+        </div>
+
+        <div class="info-content" id="productChooser" style="display: flex; flex-direction: column; align-items: center;">
+            <div style="width: 90%; padding: 10px; border: 1px solid gray; border-radius: 20px; background: rgb(20, 20, 20); margin-top: 5px; display: flex; flex-direction: column; align-items: center;">
+                <div style="width: 100%; margin-bottom: 10px; display: flex; flex-direction: row; align-items: center; justify-content: center;">
+                    <button onclick="closeProductChooser();" title="Cancel"> <i class="ti ti-chevron-up"></i></button>
+                    <div style="margin-left: 10px; display: flex; flex-direction: row; justify-content: flex-end; width: 100%;">
+                        <button class="radartypebtn radartypebtn-selected" id="mos" onclick="radarMode = 'mos'; openProductChooser()" style="border-radius: 20px 0px 0px 20px;" title="Mosaic">MOSAICS</button>
+                        <button class="radartypebtn" id="usnexrad" onclick="radarMode = 'usnexrad'; openProductChooser()" style="border-radius: 0px;" title="CONUS Mosaic">US NEXRAD</button>
+                        <button class="radartypebtn" id="sat" onclick="radarMode = 'sat'; openProductChooser()" style="border-radius: 0px 20px 20px 0px;" title="Satellite">SATELLITE</button>
+                    </div>
+                </div>
+                <div id="products" style="color: #27beff; width: 100%; display: flex; flex-direction: column"></div>
+            </div>
+        </div>
+
+        <div class="info-content" id="infodetails" style="display: flex; flex-direction: column; align-items: center;">
+            <!--Animation controls-->
+            <div style="margin-top: 5px; width: 95%; display: flex; flex-direction: row; align-items: center; justify-content: space-between;">
+                <button id="animationplaypause" title="Play/Pause the animation loop"> <i class="ti ti-player-play-filled"></i></button>
+                <input type="range" id="animationSlider" min="0" max="11" step="1" style="width: 100%; margin: 0 10px;" />
+                <p id="animationtime" style="text-align: center; white-space: nowrap;">00:00</p>
+                
+            </div>
+            <!--Color pallette viewers-->
+            <div class="palette" id="palette_bref"></div>
+        </div>
+    </div>
+
+
+    <!--Toolbar-->
+    <div class="mapelement" id="toolbar">
+        <button id="searchBtn" title="Finder"> <i class="ti ti-search"></i></button>
+        <button class="toolbar-btn" id="measureBtn" title="Measure"> <i class="ti ti-ruler-2"></i></button>
+        <button class="toolbar-btn" id="drawBtn" title="Draw"> <i class="ti ti-pencil"></i></button>
+        <button class="toolbar-btn" id="refreshBtn" title="Refresh"> <i class="ti ti-reload"></i></button>
+        <button class="toolbar-btn" id="geolocate" onclick="toggleLocation();" title="Geolocate"> <i class="ti ti-location"></i></button>
+        <input id="searchBox" type="text" placeholder="Search..."/>
+    </div>
+
+
+    <!--Attribution-->
+    <button class="mapelement" style="bottom: 10px;" id="attribution">
+        <p style="display: flex; font-size: small; margin-right: 10px;" id="attributionText">&copy;<a href="https://www.maptiler.com/copyright" target="_blank"> MapTiler</a> and <a href="https://www.openstreetmap.org/copyright" target="_blank"> Openstreetmap</a></p>
+        <i class="ti ti-info-circle"></i>
+    </button>
+
+
+    <!--Menu-->
+    <div class="mapelement" id="menu">
+        <div style="width: 100%; display: flex; align-items: center; justify-content: space-between;">
+            <button id="menucolser" title="Close"> <i style="font-size: 24px; color: red;" class="ti ti-chevron-left"></i></button>
+            <div id="menutitlebar">
+                <img src="assets/logo-rounded.png" style="height: 28px; width: 28px; vertical-align: bottom; margin-right: -4px;"><span id="menutitle">SparkRadar.app</span>
+            </div>
+        </div>
+
+
+        <div id="menu-menu" style="display: flex; flex-direction: column; margin-top: 10px; width: 100%; height: calc(100% - 40px); overflow-y: auto;">
+            <button class="menubutton" style="border-radius: 20px 20px 5px 5px;" onclick="openMenuItem('menu-settings')">
+                <i class="ti ti-settings-2" style="font-size: 24px; margin-right: 10px;"></i>
+                Settings
+            </button>
+            <button class="menubutton" style="border-radius: 5px 5px 5px 5px;" onclick="openMenuItem('menu-about')">
+                <i class="ti ti-info-circle" style="font-size: 24px; margin-right: 10px;"></i>
+                About
+            </button>
+            <button class="menubutton" style="border-radius: 5px 5px 20px 20px;" onclick="openMenuItem('menu-about')">
+                <i class="ti ti-mail" style="font-size: 24px; margin-right: 10px;"></i>
+                Contact
+            </button>
+        </div>
+
+
+        <div id="menu-about" style="display: none; flex-direction: column; margin-top: 10px; width: 100%; height: calc(100% - 40px); overflow-y: auto;">
+            
+            <div class="feature-item">
+                <i class="ti ti-square-check-filled" style="color: #00af00; font-size: 24px; margin-right: 10px;"></i>
+                <b style="font-size: medium">99.8% uptime</b>
+            </div>
+            <div class="feature-item">
+                <i class="ti ti-cash-banknote" style="color: lightgreen; font-size: 24px; margin-right: 10px;"></i>
+                <b style="font-size: medium">100% free forever</b>
+            </div>
+            <div class="feature-item">
+                <i class="ti ti-bolt-filled" style="color: #ffcc00; font-size: 24px; margin-right: 10px;"></i>
+                <b style="font-size: medium">Fast and reliable</b>
+            </div>
+            <div class="feature-item">
+                <i class="ti ti-lock-filled" style="color: rgb(212, 119, 255); font-size: 24px; margin-right: 10px;"></i>
+                <b style="font-size: medium">Secure and private</b>
+            </div>
+            <div class="feature-item">
+                <i class="ti ti-circle-dashed-check" style="color: #27beff; font-size: 24px; margin-right: 10px;"></i>
+                <b style="font-size: medium">Beginner-friendly</b>
+            </div>
+
+            <a href="mailto:nimbusapps@proton.me?subject=SparkRadar%20bug%20report" target="_blank">Report bug</a>
+            <a style="margin-bottom: 10px;" href="mailto:nimbusapps@proton.me?subject=SparkRadar%20feature%20request" target="_blank">Feature Request</a>
+
+            <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" data-name="bmc-button" data-slug="nimbusapps" data-color="#27beff" data-emoji="☕" 
+                data-font="Cookie" data-text="Buy me a coffee" data-outline-color="#000000" data-font-color="#000000" data-coffee-color="#FFDD00" ></script>
+
+            <br><br>
+            <div style="position: absolute; display: flex; flex-direction: column; bottom: 10px; width: calc(100% - 20px); text-align: center; font-size: small; color: lightgray;">
+                <div style="margin-top: 10px; display: flex; flex-direction: row; align-items: center; justify-content: center;">
+                    <a href="https://dashboard.simpleanalytics.com/sparkradar.app?utm_source=sparkradar.app&utm_content=badge" referrerpolicy="origin" target="_blank">
+                        <img src="https://simpleanalyticsbadges.com/sparkradar.app?radius=10">
+                    </a>
+                    <div id="privacy-badge" style="background-color: #d3ffd3; color: #00a00d; margin-left: 10px; width: 100%; font-size: 14px; padding: 4px; border-radius: 10px;">
+                        <p style="margin-bottom: 0px; font-weight: bold;">0 Intrusive Trackers</p>
+                        <p style="margin: 0px; font-size: 18px; font-weight: bolder;">100% Ad-free</p>
+                    </div>
+                </div>
+                <div style="margin-top: 10px; display: flex; flex-direction: row; align-items: center; justify-content: center;">
+                    <a href="https://stats.uptimerobot.com/84gEmzuSa2/801172185" target="_blank" style="width: 100%; text-decoration: none;">
+                        <div id="uptime-badge" style="background-color: #023050; color: #3BD771; font-size: 14px; padding: 10px; border-radius: 10px;">
+                            <p style="margin-bottom: 5px; font-weight: bold;">Uptime monitored with</p>
+                            <img src="https://cdn.brandfetch.io/id9LgS6jeo/w/820/h/118/theme/light/logo.png?c=1bxid64Mup7aczewSAYMX&t=1758511887056" alt="UptimeRobot" style="height: 25px; vertical-align: middle;">
+                        </div>
+                    </a><br>
+                    <a href="https://www.cloudflare.com" target="_blank" style="width: 100%; text-decoration: none; margin-left: 10px;">
+                        <div id="cloudflare-badge" style="background-color: #fff5ec; color: #F6821F; font-size: 14px; padding: 4px; border-radius: 10px;">
+                            <p style="margin-bottom: 0px; font-weight: bold;">Secured by</p>
+                            <img src="https://cdn.brandfetch.io/idJ3Cg8ymG/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&t=1667589504295" alt="Cloudflare" style="height: 45px; vertical-align: middle;">
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="menu-settings" style="display: none; flex-direction: column; margin-top: 10px; width: 100%; height: calc(100% - 40px); overflow-y: auto;">
+            <p style="font-size: large; font-weight: bold; margin: 10px;">Notifications</p>
+            <div style="border-radius: 20px 20px 5px 5px;" onclick="toggleNotifications()" class="setting-checkbox">
+                <div class="styledcheckbox" id="set-notifications"></div>
+                <p>Notifications for my location</p>
+            </div>
+            <div style="border-radius: 5px 5px 20px 20px;" onclick="sendNotification()" class="setting-checkbox">
+                <p style="color: #27beff;">Send test notification</p>
+            </div>
+
+            <p style="font-size: large; font-weight: bold; margin: 10px; padding-top: 10px;">Experimental features</p>
+            <div style="border-radius: 20px 20px 5px 5px;" onclick="toggleLivealerts()" class="setting-checkbox">
+                <div class="styledcheckbox" id="set-livealerts"></div>
+                <p>LiveAlerts</p>
+                <div style="color: white; background: #ff2121; border-radius: 100px; margin-left: 10px; padding: 5px 10px; font-weight: bold;">NEW!</div>
+            </div>
+            <div style="border-radius: 5px 5px 20px 20px;" class="setting-checkbox">
+                <p style="color: #27beff;">LiveAlerts adds alerts within seconds of being issued. Experimental feature, subject to changes.</p>
+            </div>
+        </div>
+        
+    </div>
+
+
+    <!--Displaybox-->
+    <div id="displaybox">
+    <div style="padding: 1em;">
+        <div id="displayboxheader" style="width: 100%; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span id="displayboxtitle" style="border: 1px solid gray; border-radius: 20px; padding: 5px; width: 100%; text-align: center; font-weight: 600; font-size: large;">Display Title</span>
+            <button id="displayboxcloser" style="margin-left: 10px; font-size: 20px;" onclick="closeDisplaybox()" title="Close"> <i class="ti ti-chevron-down"></i></button>
+            <div id="displayboxtip" style="display: none;">^ Drag down to close ^</div>
+        </div>
+        <div id="displayboxbody" style="overflow-y: auto; width: calc(100% - 20px); height: 100%; padding: 10px;">
+            Loading...
+        </div>
+    </div>
+    </div>
+
+    <!--Popup-->
+    <div id="customPopup" class="popup hidden">
+    <div class="popup-tip"></div>
+    <div class="popup-content">
+        <div class="popup-body" style="height: 100%;">Hello from radar!</div>
+    </div>
+    </div>
+
+
+
+</body>
+
+<!--JS Libraries-->
+    <!--MapLibre JS-->
+    <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
+    <!--Turf.js-->
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+    <!--Spark Radar JS-->
+    <script src="js/alerts.js" async></script>
+    <script src="js/core.js" async></script>
+    <script src="js/popup.js" async></script>
+    <script src="js/radar.js" async></script>
+    <script src="js/tools.js" async></script>
+    <script src="js/menu.js" async></script>
+</html>

@@ -1,0 +1,52 @@
+All radar site names and locations:
+https://api.weather.gov/radar/stations?stationType=WSR-88D,TDWR
+
+
+Single station extra info:
+https://api.weather.gov/radar/stations/KSJT
+
+
+Per-station velocity radar tile generator server:
+https://opengeo.ncep.noaa.gov/geoserver/kiwx/kiwx_sr_bvel/ows?REQUEST=GetMap&SERVICE=WMS&VERSION=1.1.1&FORMAT=image%2Fpng&TRANSPARENT=true&TILES=true&LAYERS=kiwx_sr_bvel&TIME=2024-09-28T15%3A33%3A59.000Z&WIDTH=512&HEIGHT=512&SRS=EPSG%3A3857&BBOX=-9549125.069610499%2C5009377.085697312%2C-9392582.035682458%2C5165920.119625353
+
+
+Per-station reflectivity radar tile generator server:
+https://opengeo.ncep.noaa.gov/geoserver/kiwx/kiwx_sr_bref/ows?REQUEST=GetMap&SERVICE=WMS&VERSION=1.1.1&FORMAT=image%2Fpng&TRANSPARENT=true&TILES=true&LAYERS=kiwx_sr_bref&TIME=2024-09-28T15%3A33%3A59.000Z&WIDTH=512&HEIGHT=512&SRS=EPSG%3A3857&BBOX=-9549125.069610499%2C5009377.085697312%2C-9392582.035682458%2C5165920.119625353
+
+
+Per-station JS radar URL generator:
+```
+function constructURL(baseURL, params) {
+    const url = new URL(baseURL);
+    Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+    return url.toString();
+}
+
+function getCurrentISOTime() {
+    const now = new Date();
+    return now.toISOString();
+}
+
+const baseURL = "https://opengeo.ncep.noaa.gov/geoserver/conus/conus_bref_qcd/ows";
+const params = {
+    REQUEST: "GetMap",
+    SERVICE: "WMS",
+    VERSION: "1.1.1",
+    FORMAT: "image/png",
+    TRANSPARENT: "true",
+    TILES: "true",
+    LAYERS: "conus_bref_qcd",
+    TIME: getCurrentISOTime(), // Automatically add the current time
+    WIDTH: "512",
+    HEIGHT: "512",
+    SRS: "EPSG:3857",
+    BBOX: "-9470853.552646477,4696291.017841229,-9392582.035682457,4774562.534805249"
+};
+
+const dynamicURL = constructURL(baseURL, params);
+console.log(dynamicURL);
+```
+
+
+Additional documentation:
+https://www.weather.gov/documentation/services-web-api#/default/radar_stations

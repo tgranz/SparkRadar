@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<body>
+    <canvas id="myCanvas" width="500" height="500" style="border: 1px solid black;"></canvas>
+
+</body>
+
+<script>
+
+// Get the canvas and its context
+const canvas = document.getElementById('myCanvas');
+const ctx = canvas.getContext('2d');
+
+// Create an image object
+const img = new Image();
+img.src = 'trndo4.gif'; // Provide the URL or path to your image
+
+
+// Once the image is loaded, draw it on the canvas
+img.onload = () => {
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+};
+
+
+function detectColors(canvas, centerX, centerY, radius, redThreshold, greenThreshold) {
+    const ctx = canvas.getContext('2d');
+
+    // Get pixel data for the region
+    const imageData = ctx.getImageData(
+        centerX - radius, 
+        centerY - radius, 
+        radius * 2, 
+        radius * 2
+    );
+    const data = imageData.data;
+
+    let redFound = false;
+    let greenFound = false;
+
+    // Iterate through the pixel data
+    for (let y = 0; y < radius * 2; y++) {
+        for (let x = 0; x < radius * 2; x++) {
+            const dx = x - radius;
+            const dy = y - radius;
+
+            // Check if the pixel is within the circular area
+            if (dx * dx + dy * dy <= radius * radius) {
+                const index = (y * imageData.width + x) * 4; // RGBA values
+                const [r, g, b] = data.slice(index, index + 3);
+
+                // Check for red and green shades
+                if (r > redThreshold && g < 100 && b < 100) redFound = true;
+                if (g > greenThreshold && r < 100 && b < 100) greenFound = true;
+
+                // Stop if both colors are detected
+                if (redFound && greenFound) return true;
+            }
+        }
+    }
+    return redFound && greenFound;
+}
+
+
+// Add an event listener for mouse movement
+canvas.addEventListener('mousemove', (event) => {
+    // Get the canvas's bounding rectangle
+    const rect = canvas.getBoundingClientRect();
+    
+    // Calculate the mouse's x and y coordinates relative to the canvas
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Call a custom function with the coordinates
+    handleMouseMove(x, y);
+});
+
+// Function to draw a circle (no fill)
+function drawCircle(x, y, radius) {
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = "black"; // Circle outline color
+    ctx.stroke();
+    ctx.closePath();
+}
+
+// Function to clear the circle by redrawing its region
+function eraseCircle(x, y, radius) {
+    ctx.clearRect(x - radius - 1, y - radius - 1, radius * 2 + 2, radius * 2 + 2); // Add a small margin to fully erase
+}
+
+// Function to handle mouse movement
+function handleMouseMove(x, y) {
+    console.log(`Mouse is at (${x}, ${y})`);
+    console.log(detectColors(canvas, x, y, 10, 5, 5));
+    eraseCircle(x, y, 10);
+    drawCircle(x, y, 10);
+}
+</script>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Leaflet Map with Custom Tiles</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+    <style>
+        #map {
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([0, 0], 2); // Set to a global view
+
+        // Add a base tile layer (optional)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add the custom WMS tile layer
+        const wmsLayer = L.tileLayer.wms(
+            'https://opengeo.ncep.noaa.gov/geoserver/kcae/kcae_sr_bref/ows', {
+                layers: 'kcae_sr_bref',
+                format: 'image/png',
+                transparent: true,
+                version: '1.1.1',
+                time: '2025-03-31T19:42:23.000Z',
+                crs: L.CRS.EPSG3857
+            }
+        );
+
+        // Add the WMS layer to the map
+        wmsLayer.addTo(map);
+    </script>
+</body>
+</html>
