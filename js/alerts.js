@@ -1,6 +1,22 @@
 var alertIds = [];
 var alerts = [];
 
+// Load the FIPS county geometry data at the start of the script
+var fipsCountyGeometry = null;
+
+fetch('https://raw.githubusercontent.com/tgranz/SparkRadar/main/data/fips_county_geometry.json')
+    .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch FIPS GeoJSON: ' + response.status);
+        return response.json();
+    })
+    .then(json => {
+        fipsCountyGeometry = json;
+        console.log('FIPS GeoJSON loaded.');
+    })
+    .catch(err => {
+        console.error('Error loading FIPS GeoJSON:', err);
+    });
+
 // Function to determine alert color based on event type
 function findAlertColor(eventType) {
     var color = "#FFFFFF";
@@ -17,9 +33,11 @@ function findAlertColor(eventType) {
     else if (eventType == "Dust Storm Warning") { color = "#776b00ff"; }
     else if (eventType == "Tropical Storm Watch") { color = "#3f0072ff"; }
     else if (eventType == "Flood Watch") { color = "#ffffffff"; }
+    else if (eventType == "Snow Squall Warning") { color = "#0096aaff"; }
 
     return color;
 }
+
 
 // Fetches and displays active weather alerts from the NWS API
 function loadAlerts() {
@@ -39,11 +57,12 @@ function loadAlerts() {
                 "Flood Advisory": 3,
                 "Flood Warning": 4,
                 "Tropical Storm Watch": 5,
-                "Flash Flood Warning": 6,
-                "Marine Weather Statement": 7,
-                "Special Weather Statement": 8,
-                "Severe Thunderstorm Warning": 9,
-                "Tornado Warning": 10
+                "Snow Squall Warning": 6,
+                "Flash Flood Warning": 7,
+                "Marine Weather Statement": 8,
+                "Special Weather Statement": 9,
+                "Severe Thunderstorm Warning": 10,
+                "Tornado Warning": 11
             };
             const aPriority = priority[a.properties.event] ?? 99;
             const bPriority = priority[b.properties.event] ?? 99;
@@ -74,13 +93,10 @@ function loadAlerts() {
         const newAlerts = [];
         const newIds = [];
 
-        data.features.forEach(alert => {
-            // Ensure the alert has geometry
-            if (alert.geometry == null) { return; }
-
+        for (var alert of data.features) {
             // Only add if not already present
-            if (alertIds.includes(alert.id)) { return; }
-
+            if (alertIds.includes(alert.id)) { continue; }
+            
             // Store the alert ID and data
             newIds.push(alert.id);
             newAlerts.push(alert);
@@ -88,61 +104,164 @@ function loadAlerts() {
             // Find the color for each alert
             color = findAlertColor(alert.properties.event);
 
-            // Add the alert polygon and outlines to the map
-            // Swap lon/lat pairs at any nesting level (handles Polygon / MultiPolygon / rings)
-            function swapCoords(coord) {
-                if (!Array.isArray(coord)) return coord;
-                if (typeof coord[0] === 'number' && typeof coord[1] === 'number') {
-                    return [coord[1], coord[0]].concat(coord.slice(2));
+            // If the alert has no geometry, follow FIPS codes:
+            if (alert.geometry == null) {
+                // THIS CODE DOES NOT WORK, SEE https://github.com/tgranz/SparkRadar/issues/4
+                continue;
+
+                /*
+                // Add the alert polygon and outlines to the map
+                // Swap lon/lat pairs at any nesting level (handles Polygon / MultiPolygon / rings)
+                function swapCoords(coord) {
+                    if (!Array.isArray(coord)) return coord;
+                    if (typeof coord[0] === 'number' && typeof coord[1] === 'number') {
+                        return [coord[1], coord[0]].concat(coord.slice(2));
+                    }
+                    return coord.map(swapCoords);
                 }
-                return coord.map(swapCoords);
+
+                var fipsCoords = null;
+
+                for (var i of alert.properties.geocode.SAME) {
+                    var fips = i.substring(1); // Removes leading character to convert SAME to FIPS
+
+                    var thisFips = fipsCountyGeometry[fips];
+                    if (thisFips) {
+                        console.log('Found FIPS geometry for code:', fips);
+                        console.debug(thisFips);
+                        fipsCoords = thisFips.geometry;
+                        break;
+                    } else {
+                        console.warn('FIPS code not found in GeoJSON:', fips);
+                        continue;
+                    }
+                };
+
+                if (!fipsCoords) {
+                    // Nothing to draw for this alert
+                    console.warn('No FIPS coordinates found for alert', alert.id);
+                    continue;
+                }
+
+                var coordinates = fipsCoords;
+                console.log(coordinates);
+
+                // Often, there are more than one polygon in the FIPS geometry
+                // Need to draw each one separately
+                // No need to swap coords, already in correct order
+                for (var c = 0; c < coordinates.length; c++) {
+
+                    var alertid = alert.id + '_part' + c;
+                    var coordsPart = coordinates[c];
+                    console.log("Original coords", coordinates)
+                    console.log('Coords part:', coordsPart);
+                    coordinates = [coordsPart];
+
+                    map.addSource(`alert_${alertid}`, {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'geometry': {
+                                'type': 'Polygon',
+                                'coordinates': coordinates
+                            }
+                        }
+                    });
+
+                    map.addLayer({
+                        'id': `alert_${alertid}`,
+                        'type': 'fill',
+                        'source': `alert_${alertid}`,
+                        'layout': {},
+                        'paint': {
+                            'fill-color': color,
+                            'fill-opacity': 0.5
+                        }
+                    }, 'Ferry line');
+
+                    map.addLayer({
+                        id: `alert_${alertid}_outline`,
+                        type: 'line',
+                        source: `alert_${alertid}`,
+                        paint: {
+                            'line-color': color,
+                            'line-width': 2
+                        }
+                    }, 'Pier road');
+
+                    map.addLayer({
+                        id: `alert_${alertid}_outlineborder`,
+                        type: 'line',
+                        source: `alert_${alertid}`,
+                        paint: {
+                            'line-color': '#000',
+                            'line-width': 6
+                        }
+                    }, `alert_${alertid}_outline`);
+
+                    console.log('Added alert with FIPS geometry:', alertid);
+                }
+                    */
+
+            } else {
+
+                // Add the alert polygon and outlines to the map
+                // Swap lon/lat pairs at any nesting level (handles Polygon / MultiPolygon / rings)
+                function swapCoords(coord) {
+                    if (!Array.isArray(coord)) return coord;
+                    if (typeof coord[0] === 'number' && typeof coord[1] === 'number') {
+                        return [coord[1], coord[0]].concat(coord.slice(2));
+                    }
+                    return coord.map(swapCoords);
+                }
+
+                var coordinates = alert.geometry.coordinates;
+
+                map.addSource(`alert_${alert.id}`, {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'Feature',
+                        'geometry': {
+                            'type': 'Polygon',
+                            'coordinates': coordinates
+                        }
+                    }
+                });
+
+                map.addLayer({
+                    'id': `alert_${alert.id}`,
+                    'type': 'fill',
+                    'source': `alert_${alert.id}`,
+                    'layout': {},
+                    'paint': {
+                        'fill-color': color,
+                        'fill-opacity': 0.5
+                    }
+                }, 'Ferry line');
+
+                map.addLayer({
+                    id: `alert_${alert.id}_outline`,
+                    type: 'line',
+                    source: `alert_${alert.id}`,
+                    paint: {
+                        'line-color': color,
+                        'line-width': 2
+                    }
+                }, 'Pier road');
+
+                map.addLayer({
+                    id: `alert_${alert.id}_outlineborder`,
+                    type: 'line',
+                    source: `alert_${alert.id}`,
+                    paint: {
+                        'line-color': '#000',
+                        'line-width': 6
+                    }
+                }, `alert_${alert.id}_outline`);
+
             }
 
-            var coordinates = swapCoords(alert.geometry.coordinates);
-
-            map.addSource(`alert_${alert.id}`, {
-                'type': 'geojson',
-                'data': {
-                    'type': 'Feature',
-                    'geometry': {
-                        'type': 'Polygon',
-                        'coordinates': coordinates
-                    }
-                }
-            });
-
-            map.addLayer({
-                'id': `alert_${alert.id}`,
-                'type': 'fill',
-                'source': `alert_${alert.id}`,
-                'layout': {},
-                'paint': {
-                    'fill-color': color,
-                    'fill-opacity': 0.5
-                }
-            }, 'Ferry line');
-
-            map.addLayer({
-                id: `alert_${alert.id}_outline`,
-                type: 'line',
-                source: `alert_${alert.id}`,
-                paint: {
-                    'line-color': color,
-                    'line-width': 2
-                }
-            }, 'Pier road');
-
-            map.addLayer({
-                id: `alert_${alert.id}_outlineborder`,
-                type: 'line',
-                source: `alert_${alert.id}`,
-                paint: {
-                    'line-color': '#000',
-                    'line-width': 6
-                }
-            }, `alert_${alert.id}_outline`);
-
-        });
+        };
 
         // Update global arrays
         alertIds = alertIds.filter(id => newAlertIds.includes(id)).concat(newIds);
@@ -151,10 +270,6 @@ function loadAlerts() {
         data.features.forEach(alert => {
             // DEBUGGING
             console.debug(alert)
-
-            // Ensure the alert has geometry
-            // If it doesn't, its a large alert such as a watch, these are handled elsewhere
-            if (alert.geometry == null) { return; }
 
             // Verify there are no duplicate alerts
             if (alertIds.includes(alert.id)) { return; }
