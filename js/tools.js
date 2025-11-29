@@ -289,3 +289,148 @@ measureBtn.addEventListener('click', () => {
         map.on('click', onClick);
     }
 });
+
+
+// Drawing tool
+const drawBtn = document.getElementById('drawBtn');
+var drawing = false;
+var drawColor = '#27beff';
+
+// Canvas drawing functionality
+const drawCanvas = document.createElement('canvas');
+drawCanvas.id = 'drawCanvas';
+drawCanvas.style.position = 'absolute';
+drawCanvas.style.top = '0';
+drawCanvas.style.left = '0';
+drawCanvas.style.cursor = 'crosshair';
+drawCanvas.style.display = 'none';
+drawCanvas.style.zIndex = '10';
+
+document.body.appendChild(drawCanvas);
+
+const ctx = drawCanvas.getContext('2d');
+let isDrawing = false;
+let lastX = 0;
+let lastY = 0;
+let lastMidX = 0;
+let lastMidY = 0;
+
+function resizeCanvas() {
+    drawCanvas.width = window.innerWidth;
+    drawCanvas.height = window.innerHeight;
+}
+
+function startDrawing(e) {
+    isDrawing = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    lastMidX = lastX;
+    lastMidY = lastY;
+}
+
+function draw(e) {
+    if (!isDrawing) return;
+
+    const currentX = e.clientX;
+    const currentY = e.clientY;
+    const midX = (lastX + currentX) / 2;
+    const midY = (lastY + currentY) / 2;
+
+    ctx.strokeStyle = drawColor;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(lastMidX, lastMidY);
+    ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+    ctx.stroke();
+
+    lastX = currentX;
+    lastY = currentY;
+    lastMidX = midX;
+    lastMidY = midY;
+}
+
+function stopDrawing() {
+    isDrawing = false;
+}
+
+function clearCanvas() {
+    ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+}
+
+drawCanvas.addEventListener('mousedown', startDrawing);
+drawCanvas.addEventListener('mousemove', draw);
+drawCanvas.addEventListener('mouseup', stopDrawing);
+drawCanvas.addEventListener('mouseleave', stopDrawing);
+window.addEventListener('resize', resizeCanvas);
+
+const drawClick = () => {
+    if (!drawing) return;
+    resizeCanvas();
+    drawCanvas.style.display = 'block';
+};
+
+// Update drawBtn listener to show/hide canvas
+drawBtn.addEventListener('click', () => {
+    const drawingToolbar = document.getElementById('drawingtoolbar');
+    const infoBox = document.getElementById('info');
+    const toolbar = document.getElementById('toolbar');
+    
+    if (drawBtn.classList.contains('toolbtn-active')) {
+        drawBtn.classList.remove("toolbtn-active");
+        drawing = false;
+        drawCanvas.style.display = 'none';
+        clearCanvas();
+        map.getCanvas().style.cursor = '';
+        
+        // Slide out animations
+        drawingToolbar.classList.remove('slide-in');
+        drawingToolbar.classList.add('slide-out');
+        infoBox.classList.remove('slide-out');
+        infoBox.classList.add('slide-in');
+        toolbar.classList.remove('slide-out');
+        toolbar.classList.add('slide-in');
+        return;
+    }
+
+    drawBtn.classList.add('toolbtn-active');
+    drawing = true;
+    resizeCanvas();
+    drawCanvas.style.display = 'block';
+    
+    // Slide in animations
+    drawingToolbar.classList.remove('slide-out');
+    drawingToolbar.classList.add('slide-in');
+    infoBox.classList.remove('slide-in');
+    infoBox.classList.add('slide-out');
+    toolbar.classList.remove('slide-in');
+    toolbar.classList.add('slide-out');
+});
+
+function updatePreviewDrawingColor() {
+    const picker = document.getElementById('draw-color-picker');
+    if (!picker) return;
+    picker.style.backgroundColor = drawColor;
+    picker.style.color = readableTextColor(drawColor);
+}
+
+updatePreviewDrawingColor();
+
+document.getElementById('draw-color-picker').addEventListener('click', () => {
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.value = drawColor;
+    colorInput.style.position = 'absolute';
+    colorInput.style.left = '-9999px'; // Offscreen
+    document.body.appendChild(colorInput);
+
+    colorInput.addEventListener('input', (e) => {
+        drawColor = e.target.value;
+        updatePreviewDrawingColor();
+    });
+
+    colorInput.click();
+    document.body.removeChild(colorInput);
+});

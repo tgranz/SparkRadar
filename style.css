@@ -489,6 +489,20 @@ a {
   background: rgb(20,20,20) !important;
 }
 
+.drawingtoolbtn {
+  background-color: rgb(20,20,20);
+  border: 1px solid gray;
+  color: white;
+  padding: 10px;
+  font-size: large;
+}
+
+.drawingtoolbtn:hover {
+  background-color: #2a7fff;
+  color: white;
+}
+
+
 /* attention animation: briefly change background color and text color
    Uses CSS variables set on the element: --notif-color, --notif-bg, --notif-foreground */
 .attention {
@@ -528,4 +542,76 @@ a {
     transform: scale(2.2);
     opacity: 0;
   }
+}
+
+/* Slide in from top animation */
+@keyframes slide-in-top {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Slide out to top animation */
+@keyframes slide-out-top {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+/* Slide in from bottom animation */
+@keyframes slide-in-bottom {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Slide out to bottom animation */
+@keyframes slide-out-bottom {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+#drawingtoolbar.slide-in {
+  animation: slide-in-top 0.3s ease-out forwards;
+}
+
+#drawingtoolbar.slide-out {
+  animation: slide-out-top 0.3s ease-in forwards;
+}
+
+#info.slide-out {
+  animation: slide-out-top 0.3s ease-in forwards;
+}
+
+#info.slide-in {
+  animation: slide-in-top 0.3s ease-out forwards;
+}
+
+#toolbar.slide-out {
+  animation: slide-out-bottom 0.3s ease-in forwards;
+}
+
+#toolbar.slide-in {
+  animation: slide-in-bottom 0.3s ease-out forwards;
 }

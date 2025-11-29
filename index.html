@@ -73,10 +73,17 @@
         </div>
     </div>
 
+    <!--Measurement Info-->
     <div class="mapelement" id="measureinfo">
         <span style="margin: 20px; font-weight: bold;" id="measurelength">Distance: 0mi.</span>
     </div>
 
+    <!--Drawing Toolbar-->
+    <div style="z-index: 11; transform: translateY(-100%); opacity: 0; display: none; top: 10px; display: flex; right: 10px; padding: 10px; flex-direction: row;" class="mapelement" id="drawingtoolbar">
+        <button style="margin-right: 10px;" class="drawingtoolbtn" id="draw-stop" onclick="document.getElementById('drawBtn').click();" title="Exit"> <i class="ti ti-x"></i></button>
+        <button style="margin-right: 10px;" class="drawingtoolbtn" id="draw-clear" onclick="clearCanvas();" title="Clear the canvas"> <i class="ti ti-trash"></i></button>
+        <button class="drawingtoolbtn" id="draw-color-picker"> <i class="ti ti-palette"></i></button>
+    </div>
 
     <!--Toolbar-->
     <div class="mapelement" id="toolbar">
