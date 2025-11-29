@@ -322,8 +322,9 @@ function resizeCanvas() {
 
 function startDrawing(e) {
     isDrawing = true;
-    lastX = e.clientX;
-    lastY = e.clientY;
+    const pos = e.touches ? e.touches[0] : e;
+    lastX = pos.clientX;
+    lastY = pos.clientY;
     lastMidX = lastX;
     lastMidY = lastY;
 }
@@ -331,8 +332,9 @@ function startDrawing(e) {
 function draw(e) {
     if (!isDrawing) return;
 
-    const currentX = e.clientX;
-    const currentY = e.clientY;
+    const pos = e.touches ? e.touches[0] : e;
+    const currentX = pos.clientX;
+    const currentY = pos.clientY;
     const midX = (lastX + currentX) / 2;
     const midY = (lastY + currentY) / 2;
 
@@ -364,6 +366,10 @@ drawCanvas.addEventListener('mousedown', startDrawing);
 drawCanvas.addEventListener('mousemove', draw);
 drawCanvas.addEventListener('mouseup', stopDrawing);
 drawCanvas.addEventListener('mouseleave', stopDrawing);
+drawCanvas.addEventListener('touchstart', startDrawing);
+drawCanvas.addEventListener('touchmove', draw);
+drawCanvas.addEventListener('touchend', stopDrawing);
+drawCanvas.addEventListener('touchcancel', stopDrawing);
 window.addEventListener('resize', resizeCanvas);
 
 const drawClick = () => {
