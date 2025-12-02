@@ -13,6 +13,7 @@ THANK YOU!
 */
 
 var first = localStorage.getItem('sparkradar_firsttime') === null;
+var newUser = first;
 localStorage.setItem('sparkradar_firsttime', 'false');
 
 // Set up the map
@@ -36,7 +37,7 @@ map.on('load', () => {
 
 
 // Welcome dialog for first-time users
-if (true) {
+if (first) {
     setTimeout(() => {
         document.body.appendChild(document.createElement('div')).innerHTML = `
             <div id="welcomedialog" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;">
@@ -53,6 +54,7 @@ if (true) {
             </div>
         `;
     }, 100);
+    first = false;
 }
 
 // Function to guess if the user is on mobile
@@ -212,7 +214,6 @@ document.getElementById('expandinfo').addEventListener('click', (event) => {
 
 // Displaybox
 function openDisplaybox(title, color) {
-    var newUser = first;
     if (newUser && document.getElementById('displayboxcloser').style.display == 'none') {
         document.getElementById('displayboxtip').style.display = 'flex';
         setTimeout(() => { document.getElementById('displayboxtip').style.display = 'none'; }, 5000);
