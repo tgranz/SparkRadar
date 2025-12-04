@@ -16,6 +16,7 @@ function openMenuItem(id) {
     document.getElementById("menu-menu").style.display = 'none';
     document.getElementById("menu-about").style.display = 'none';
     document.getElementById("menu-settings").style.display = 'none';
+    document.getElementById("menu-contact").style.display = 'none';
 
     document.getElementById(id).style.display = 'flex';
 
@@ -25,6 +26,8 @@ function openMenuItem(id) {
         document.getElementById("menutitlebar").innerHTML = '<span style="font-size: 20px; font-weight: bolder; margin: 10px;">About</span>';
     } else if (id == 'menu-settings') {
         document.getElementById("menutitlebar").innerHTML = '<span style="font-size: 20px; font-weight: bolder; margin: 10px;">Settings</span>';
+    } else if (id == 'menu-contact') {
+        document.getElementById("menutitlebar").innerHTML = '<span style="font-size: 20px; font-weight: bolder; margin: 10px;">Contact</span>';
     }
 }
 
