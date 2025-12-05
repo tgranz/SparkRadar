@@ -620,6 +620,7 @@ a {
 /* Settings submenu expand/collapse animations */
 .setting-submenu {
   max-height: 0;
+  min-height: 0;
   overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.77, 0, 0.29, 0.96);
   width: 100%;
@@ -627,7 +628,8 @@ a {
 
 .setting-submenu.expanded {
   max-height: 70vh;
-  overflow-y: auto;
+  overflow-y: scroll !important;
+  pointer-events: all;
 }
 
 .setting-submenu-toggle i {
