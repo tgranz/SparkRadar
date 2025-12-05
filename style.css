@@ -628,7 +628,7 @@ a {
 
 .setting-submenu.expanded {
   max-height: 70vh;
-  overflow-y: scroll !important;
+  overflow-y: auto !important;
   pointer-events: all;
 }
 
