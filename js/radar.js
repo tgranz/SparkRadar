@@ -262,7 +262,7 @@ function loadRadar(station = radarStation, isAnim = false, force = false) {
                 return;
             }
 
-            let times, latestframe;
+            var times, latestframe;
             if (station === "CANMOS") {
                 const layerData = stationFrames.find(l => l.name === "RADAR_1KM_RRAI") || stationFrames[2];
                 times = layerData?.times || [];
@@ -281,9 +281,13 @@ function loadRadar(station = radarStation, isAnim = false, force = false) {
             document.getElementById("animationSlider").max = maxIdx;
             document.getElementById("animationSlider").min = minIdx;
 
+            frameidx = parseInt(document.getElementById("animationSlider").value);
+
             if (firstopen && document.getElementById("animationSlider").value == maxIdx) firstopen = false;
 
             latestframe = times[frameidx];
+
+            console.log("Times:", times)
 
             if (!force && latestframe === prevLatestframe) {
                 console.log("Radar time unchanged, skipping update.");
