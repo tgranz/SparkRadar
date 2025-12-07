@@ -100,9 +100,8 @@ function loadRadarStations(onlyremove=false) {
 
                 map.flyTo({ center: coords });
 
-                radarStation = props.id.slice(-4);
                 radarMode = "station";
-                loadRadar(radarStation, false, true);
+                loadRadar(props.id.slice(-4), false, true);
             });
         })
         .catch(error => {
@@ -225,7 +224,7 @@ function loadRadar(station = radarStation, isAnim = false, force = false) {
     station = station.toUpperCase();
 
     // === NEW: If station actually changed, reset double buffer state ===
-    if (station !== radarStation) {
+    if (station != radarStation) {
         // Clean both buffers completely
         _bufferSources.forEach((srcId, i) => {
             const lyrId = _bufferLayers[i];
@@ -236,6 +235,7 @@ function loadRadar(station = radarStation, isAnim = false, force = false) {
         _bufferIndex = 0;
     }
 
+    // Now update the global station variable
     radarStation = station;
 
     getRadarFrameTimes(station)
@@ -293,9 +293,9 @@ function loadRadar(station = radarStation, isAnim = false, force = false) {
 
             latestframe = times[frameidx];
 
-            console.log("Times:", times)
+            console.debug("Times:", times)
 
-            if (!force && latestframe === prevLatestframe) {
+            if (!force || latestframe === prevLatestframe) {
                 console.log("Radar time unchanged, skipping update.");
                 return;
             }

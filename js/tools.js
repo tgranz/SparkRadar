@@ -122,7 +122,7 @@ function refresh() {
     
     if (sparkalertsEnabled) setTimeout(() => loadSparkAlerts(), 1000); // Temporary impleementation
     loadAlerts();
-    loadRadar();
+    loadRadar(radarStation, false, true);
     console.log('Data refresh called.');
 
     refreshCooldown = true;

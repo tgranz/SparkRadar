@@ -1,8 +1,8 @@
 // Popups
 let popupLngLat = null;
 
-document.on('DOMContentLoaded', () => {
-
+// Occasionally, map.on('click') throws an error on page load, which makes no sense
+try {
     map.on('click', (e) => {
         // If we are trying to measure something, do not open a popup
         if (measureBtn.classList.contains('toolbtn-active')) { return }
@@ -98,7 +98,7 @@ document.on('DOMContentLoaded', () => {
 
         document.querySelector('.popup-body').innerHTML = content;
     });
-});
+} catch {}
 
 // Keep popup geolocked on every frame, but skip if map was just clicked
 let skipNextRender = false;

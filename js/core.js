@@ -386,8 +386,8 @@ function openProductChooser(closeIfAlreadyOpen=false) {
     if (radarMode == "mos"){
         document.getElementById("mos").classList.add('radartypebtn-selected');
         document.getElementById("products").innerHTML  = `
-            <div class="product-item" onclick="radarMode = 'mos'; loadRadar('CONUS');">US Composite Reflectivity</div>
-            <div class="product-item" onclick="radarMode = 'mos'; loadRadar('CANMOS');">CANADA Reflectivity Mosaic</div>
+            <div class="product-item" onclick="radarMode = 'mos'; loadRadar('CONUS', false, true);">US Composite Reflectivity</div>
+            <div class="product-item" onclick="radarMode = 'mos'; loadRadar('CANMOS', false, true);">CANADA Reflectivity Mosaic</div>
         `/*    <div class="product-item">Base Reflectivity</div>
             <div class="product-item">Precipitation Classification</div>
             <div class="product-item">Echo Tops</div>

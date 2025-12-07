@@ -300,11 +300,11 @@
     <script src="https://unpkg.com/maplibre-gl@3.3.1/dist/maplibre-gl.js"></script>
     <!--Turf.js-->
     <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-    <!--Spark Radar JS-->
-    <script src="js/alerts.js" async></script>
-    <script src="js/core.js" async></script>
-    <script src="js/popup.js" async></script>
-    <script src="js/radar.js" async></script>
-    <script src="js/tools.js" async></script>
-    <script src="js/menu.js" async></script>
+    <!--Spark Radar JS - Load core first, then others can be async-->
+    <script src="js/core.js"></script>
+    <script src="js/alerts.js" defer></script>
+    <script src="js/radar.js" defer></script>
+    <script src="js/tools.js" defer></script>
+    <script src="js/menu.js" defer></script>
+    <script src="js/popup.js" defer></script>
 </html>

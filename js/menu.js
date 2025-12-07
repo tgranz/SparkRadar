@@ -168,6 +168,8 @@ function refreshAlertSettings() {
         localStorage.setItem('sparkradar_alerts', JSON.stringify(alertsToPopulate));
     }
 
+    document.getElementById('sett-alerts').innerHTML = '';
+
     var iterations = 0;
     var lastDiv = null;
 
