@@ -6,6 +6,45 @@ var alertIntervals = {};
 // Load the FIPS county geometry data at the start of the script
 var fipsCountyGeometry = null;
 
+const defaultAlerts = {
+    "Air Quality Alert":
+        { enabled: true, color: "#768b00", border: "#768b00", flash: null },
+    "Avalanche Warning":
+        { enabled: true, color: "#ff00ff", border: "#ff00ff", flash: null },
+    "Dust Advisory":
+        { enabled: true, color: "#706e00", border: "#706e00", flash: null },
+    "Dust Storm Warning":
+        { enabled: true, color: "#776b00", border: "#776b00", flash: null },
+    "Flash Flood Emergency":
+        { enabled: true, color: "#00ff00", border: "#00ff00", flash: "#00b600" },
+    "Flash Flood Warning":
+        { enabled: true, color: "#00ff00", border: "#00ff00", flash: null },
+    "Flood Advisory":
+        { enabled: true, color: "#00538b", border: "#00538b", flash: null },
+    "Flood Warning":
+        { enabled: true, color: "#1E90FF", border: "#1E90FF", flash: null },
+    "Flood Watch":
+        { enabled: true, color: "#60fd82", border: "#60fd82", flash: null },
+    "Marine Weather Statement":
+        { enabled: true, color: "#690083", border: "#690083", flash: null },
+    "PDS Tornado Warning":
+        { enabled: true, color: "#e900dd", border: "#e900dd", flash: "#e90000" },
+    "Severe Thunderstorm Warning":
+        { enabled: true, color: "#f1a500", border: "#f1a500", flash: null },
+    "Snow Squall Warning":
+        { enabled: true, color: "#0096aa", border: "#0096aa", flash: null },
+    "Special Marine Warning":
+        { enabled: true, color: "#8b3300", border: "#8b3300", flash: null },
+    "Special Weather Statement":
+        { enabled: true, color: "#eeff00", border: "#eeff00", flash: null },
+    "Tornado Emergency":
+        { enabled: true, color: "#9f00e9", border: "#9f00e9", flash: "#e900dd" },
+    "Tornado Warning":
+        { enabled: true, color: "#e90000", border: "#e90000", flash: null },
+    "Tropical Storm Watch":
+        { enabled: true, color: "#3f0072", border: "#3f0072", flash: null },
+};
+
 fetch('https://raw.githubusercontent.com/tgranz/SparkRadar/main/data/fips_county_geometry.json')
     .then(response => {
         if (!response.ok) throw new Error('Failed to fetch FIPS GeoJSON: ' + response.status);
@@ -44,42 +83,7 @@ function findAlertProperty(eventType, property) {
     if (alerts) {
         alerts = JSON.parse(alerts);
     } else {
-        alerts = {
-            "Air Quality Alert":
-                { enabled: true, color: "#768b00", border: "#768b00", flash: null },
-            "Dust Advisory":
-                { enabled: true, color: "#706e00", border: "#706e00", flash: null },
-            "Dust Storm Warning":
-                { enabled: true, color: "#776b00", border: "#776b00", flash: null },
-            "Flash Flood Emergency":
-                { enabled: true, color: "#00ff00", border: "#00ff00", flash: "#00b600" },
-            "Flash Flood Warning":
-                { enabled: true, color: "#00ff00", border: "#00ff00", flash: null },
-            "Flood Advisory":
-                { enabled: true, color: "#00538b", border: "#00538b", flash: null },
-            "Flood Warning":
-                { enabled: true, color: "#1E90FF", border: "#1E90FF", flash: null },
-            "Flood Watch":
-                { enabled: true, color: "#60fd82", border: "#60fd82", flash: null },
-            "Marine Weather Statement":
-                { enabled: true, color: "#690083", border: "#690083", flash: null },
-            "PDS Tornado Warning":
-                { enabled: true, color: "#e900dd", border: "#e900dd", flash: "#e90000" },
-            "Severe Thunderstorm Warning":
-                { enabled: true, color: "#f1a500", border: "#f1a500", flash: null },
-            "Snow Squall Warning":
-                { enabled: true, color: "#0096aa", border: "#0096aa", flash: null },
-            "Special Marine Warning":
-                { enabled: true, color: "#8b3300", border: "#8b3300", flash: null },
-            "Special Weather Statement":
-                { enabled: true, color: "#eeff00", border: "#eeff00", flash: null },
-            "Tornado Emergency":
-                { enabled: true, color: "#9f00e9", border: "#9f00e9", flash: "#e900dd" },
-            "Tornado Warning":
-                { enabled: true, color: "#e90000", border: "#e90000", flash: null },
-            "Tropical Storm Watch":
-                { enabled: true, color: "#3f0072", border: "#3f0072", flash: null },
-        }
+        alerts = defaultAlerts
     }
 
     var propValue = null; // Default for unknown alerts
@@ -97,42 +101,7 @@ function findAlertColor(eventType) {
     if (alerts) {
         alerts = JSON.parse(alerts);
     } else {
-        alerts = {
-            "Air Quality Alert":
-                { enabled: true, color: "#768b00", border: "#768b00", flash: null },
-            "Dust Advisory":
-                { enabled: true, color: "#706e00", border: "#706e00", flash: null },
-            "Dust Storm Warning":
-                { enabled: true, color: "#776b00", border: "#776b00", flash: null },
-            "Flash Flood Emergency":
-                { enabled: true, color: "#00ff00", border: "#00ff00", flash: "#00b600" },
-            "Flash Flood Warning":
-                { enabled: true, color: "#00ff00", border: "#00ff00", flash: null },
-            "Flood Advisory":
-                { enabled: true, color: "#00538b", border: "#00538b", flash: null },
-            "Flood Warning":
-                { enabled: true, color: "#1E90FF", border: "#1E90FF", flash: null },
-            "Flood Watch":
-                { enabled: true, color: "#60fd82", border: "#60fd82", flash: null },
-            "Marine Weather Statement":
-                { enabled: true, color: "#690083", border: "#690083", flash: null },
-            "PDS Tornado Warning":
-                { enabled: true, color: "#e900dd", border: "#e900dd", flash: "#e90000" },
-            "Severe Thunderstorm Warning":
-                { enabled: true, color: "#f1a500", border: "#f1a500", flash: null },
-            "Snow Squall Warning":
-                { enabled: true, color: "#0096aa", border: "#0096aa", flash: null },
-            "Special Marine Warning":
-                { enabled: true, color: "#8b3300", border: "#8b3300", flash: null },
-            "Special Weather Statement":
-                { enabled: true, color: "#eeff00", border: "#eeff00", flash: null },
-            "Tornado Emergency":
-                { enabled: true, color: "#9f00e9", border: "#9f00e9", flash: "#e900dd" },
-            "Tornado Warning":
-                { enabled: true, color: "#e90000", border: "#e90000", flash: null },
-            "Tropical Storm Watch":
-                { enabled: true, color: "#3f0072", border: "#3f0072", flash: null },
-        }
+        alerts = defaultAlerts
     }
 
     var color = "#ffffff"; // Default for unknown alerts

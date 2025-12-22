@@ -125,6 +125,8 @@ function refreshAlertSettings() {
     const defaultAlerts = {
         "Air Quality Alert":
             { enabled: true, color: "#768b00", border: "#768b00", flash: null },
+        "Avalanche Warning":
+            { enabled: true, color: "#ff00ff", border: "#ff00ff", flash: null },
         "Dust Advisory":
             { enabled: true, color: "#706e00", border: "#706e00", flash: null },
         "Dust Storm Warning":
@@ -157,7 +159,7 @@ function refreshAlertSettings() {
             { enabled: true, color: "#e90000", border: "#e90000", flash: null },
         "Tropical Storm Watch":
             { enabled: true, color: "#3f0072", border: "#3f0072", flash: null },
-    }
+    };
 
 
     if (localStorage.getItem('sparkradar_alerts')) {
