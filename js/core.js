@@ -135,10 +135,11 @@ function evaluateDispBoxCloser() {
         alwaysshowdispboxcloser = false;
     }
 
-    if (isMobile() || alwaysshowdispboxcloser) {
-        document.getElementById('displayboxcloser').style.display = 'none';
-    } else {
+    // Show the closer on desktop always. On mobile, show only if the user enabled "always show".
+    if (!isMobile()) {
         document.getElementById('displayboxcloser').style.display = 'block';
+    } else {
+        document.getElementById('displayboxcloser').style.display = alwaysshowdispboxcloser ? 'block' : 'none';
     }
 }
 
