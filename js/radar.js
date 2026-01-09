@@ -111,6 +111,9 @@ function loadRadarStations(onlyremove=false) {
                 // Refresh the product list
                 openProductChooser(false)
                 // Load radar for clicked station
+                setTimeout(() => {
+                    document.getElementById("animationSlider").value = document.getElementById("animationSlider").max;
+                }, 1000);
                 loadRadar(props.id.slice(-4), false, true);
             });
         })
