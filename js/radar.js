@@ -107,7 +107,10 @@ function loadRadarStations(onlyremove=false) {
                 map.flyTo({ center: coords });
 
                 radarMode = "station";
-                radarProduct = "SR_BREF"; // Reset to default product when switching stations
+                radarProduct = "SR_BREF";
+                // Refresh the product list
+                openProductChooser(false)
+                // Load radar for clicked station
                 loadRadar(props.id.slice(-4), false, true);
             });
         })
@@ -264,7 +267,7 @@ function loadRadar(station = radarStation, isAnim = false, force = false) {
                 stationTitle = station;
             }
 
-            document.getElementById("radarTitle").innerHTML = `${stationTitle} - ${latestFrameTime}`;
+            document.getElementById("radarTitle").innerHTML = `${stationTitle} · ${latestFrameTime}`;
 
 
             if (!stationFrames || stationFrames.length === 0) {
@@ -374,7 +377,27 @@ function loadRadar(station = radarStation, isAnim = false, force = false) {
                 }
 
                 latestFrameTime = new Date(latestframe).toLocaleString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
-                document.getElementById("radarTitle").innerHTML = `${stationTitle} - ${latestFrameTime}`;
+                document.getElementById("radarTitle").innerHTML = `${stationTitle} · ${latestFrameTime}`;
+                
+                switch (radarProduct) {
+                    case "SR_BREF":
+                        document.getElementById("radarProductTitle").innerHTML = "Base Reflectivity";
+                        break;
+                    case "SR_BVEL":
+                        document.getElementById("radarProductTitle").innerHTML = "Base Velocity";
+                        break;
+                    case "BOHA":
+                        document.getElementById("radarProductTitle").innerHTML = "1-hr Accumulated Precipitation";
+                        break;
+                    case "BDSA":
+                        document.getElementById("radarProductTitle").innerHTML = "Storm Total Accumulation";
+                        break;
+                    case "BDHC":
+                        document.getElementById("radarProductTitle").innerHTML = "Precipitation Classification";
+                        break;
+                    default:
+                        document.getElementById("radarProductTitle").innerHTML = radarProduct;
+                }
 
                 // === SAFELY CLEAN UP OLD BUFFER ONLY IF IT EXISTS ===
                 if (_activeBuffer !== -1) {
