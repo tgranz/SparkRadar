@@ -10,5 +10,11 @@
   },
   "devDependencies": {
     "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "buffer": "^6.0.3",
+    "earcut": "^3.0.2",
+    "seek-bzip": "^2.0.0",
+    "vite-plugin-node-polyfills": "^0.25.0"
   }
 }
