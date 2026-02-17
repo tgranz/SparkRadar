@@ -7,12 +7,15 @@ This module handles the menu component.
 See LICENSE for more.
 */
 
+import about from '../components/about.js';
+
 class Menu {
     // Constructor function
-    constructor() {
+    constructor(callbacks = {}) {
+        this.callbacks = callbacks;
         this.menu = document.createElement('div');
         this.menu.id = 'menu';
-        this.menu.classList.add('hidden');
+        this.menu.classList.add('menu-hidden');
 
         // Create menu header with close button
         const header = document.createElement('div');
@@ -20,14 +23,19 @@ class Menu {
         header.style.justifyContent = 'space-between';
         header.style.alignItems = 'center';
 
+        const logo = document.createElement('img');
+        logo.src = 'https://sparkradar.app/assets/logo-rounded.webp';
+
         const title = document.createElement('h2');
-        title.textContent = 'Menu';
+        title.innerHTML = 'SparkRadar.app';
+        title.id = 'menu-title';
 
         const closeBtn = document.createElement('button');
         closeBtn.id = 'menu-close-btn';
         closeBtn.innerHTML = '<i class="ti ti-x"></i>';
         closeBtn.addEventListener('click', () => this.close());
 
+        header.appendChild(logo);
         header.appendChild(title);
         header.appendChild(closeBtn);
         this.menu.appendChild(header);
@@ -35,20 +43,20 @@ class Menu {
         // Create menu items
         const menuList = document.createElement('ul');
         const menuItems = [
-            { label: 'Home', href: '#' },
-            { label: 'Settings', href: '#' },
-            { label: 'Weather Data', href: '#' },
-            { label: 'Alerts', href: '#' },
-            { label: 'About', href: '#' },
-            { label: 'Help', href: '#' },
+            { label: 'Settings', icon: 'settings', onClick: () => { if (this.callbacks.onSettings) this.callbacks.onSettings(); } },
+            { label: 'About', icon: 'info-circle', onClick: () => { this.close(); setTimeout(() => { about(); }, 250); } },
+            { label: 'Buy Me a Coffee', icon: 'cup', onClick: () => { window.location = 'https://www.buymeacoffee.com/tgranz'; } },
         ];
+
 
         menuItems.forEach(item => {
             const li = document.createElement('li');
-            const a = document.createElement('a');
-            a.href = item.href;
-            a.textContent = item.label;
-            li.appendChild(a);
+            const div = document.createElement('div');
+            div.innerHTML = `<i class="ti ti-${item.icon}"></i> ${item.label}`;
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.addEventListener('click', item.onClick);
+            li.appendChild(div);
             menuList.appendChild(li);
         });
 
@@ -57,15 +65,24 @@ class Menu {
     }
 
     open() {
-        this.menu.classList.remove('hidden');
+        this.menu.classList.remove('menu-hidden');
+
+        // Remove the dialog if esc is pressed
+        this.escListener = (event) => {
+            if (event.key === 'Escape') {
+                this.close();
+            }
+        };
+        document.addEventListener('keydown', this.escListener);
     }
 
     close() {
-        this.menu.classList.add('hidden');
+        this.menu.classList.add('menu-hidden');
+        document.removeEventListener('keydown', this.escListener);
     }
 
     toggle() {
-        this.menu.classList.toggle('hidden');
+        this.menu.classList.toggle('menu-hidden');
     }
 }
 

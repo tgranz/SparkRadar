@@ -32,14 +32,14 @@ import { hideLoadingAnimation, showLoadingAnimation } from "./js/loader.js";
 
 // Function to store the current radars
 var mainRadar = {
-    station: 'KMSX',
+    station: 'KTLX',
     product: 'N0B',
   level: 'L3',
     options: { gate_limit: -30 }
 }
 
 var splitRadar = {
-    station: 'KMSX',
+    station: 'KTLX',
     product: 'N0G',
   level: 'L3',
     options: { gate_limit: -30 }
@@ -60,25 +60,54 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     if (mainOrSplit === 'main') {
         if (!station) station = mainRadar.station;
         if (!product) product = mainRadar.product;
-    const level = inferLevelFromProduct(product);
+        const level = inferLevelFromProduct(product);
         mainRadar = { station, product, level, options };
     } else if (mainOrSplit === 'split') {
-      if (!station) station = splitRadar.station;
+        if (!station) station = splitRadar.station;
         if (!product) product = splitRadar.product;
-    const level = inferLevelFromProduct(product);
+        const level = inferLevelFromProduct(product);
         splitRadar = { station, product, level, options };
     } else {
         console.error(`Invalid mainOrSplit value: ${mainOrSplit}`);
         return;
     }
     try {
-        showLoadingAnimation();
-    const radarGeoJson = await radar.getRadarLayer(station, product, options);
-        map.addWebGlRadarLayer(radarGeoJson, mainOrSplit, product);
+      showLoadingAnimation();
+      const picker = mainOrSplit === 'split' ? map.splitRadarPicker : map.radarPicker;
+      const radarGeoJson = await radar.getRadarLayer(station, product, {
+        ...options,
+        onMetadata: ({ timeString, timeIso, tilt, vcp }) => {
+          if (picker && typeof picker.setTimeAndTilt === 'function') {
+            picker.setTimeAndTilt(timeString, `${tilt.toFixed(1)}°`, timeIso);
+          }
+          if (mainOrSplit === 'main') {
+            const vcpElement = document.getElementById('toolbar-vcp');
+            if (vcpElement) {
+              if (Number.isFinite(vcp)) {
+                if (vcp == 31 || vcp == 34 || vcp == 35) {
+                  vcpElement.textContent = `VCP ${vcp}: Clean air mode`;
+                } else if (vcp == 215) {
+                  vcpElement.textContent = `VCP ${vcp}: General precip mode`;
+                } else {
+                  vcpElement.textContent = `VCP ${vcp}: Convective precip mode`;
+                }
+              } else {
+                vcpElement.textContent = '';
+              }
+            }
+
+            const stationElement = document.getElementById('toolbar-station');
+            if (stationElement) {
+              stationElement.textContent = station || mainRadar.station || '';
+            }
+          }
+        }
+      });
+      map.addWebGlRadarLayer(radarGeoJson, mainOrSplit, product);
       if (mainOrSplit === 'main' && map.currentGeojson) {
         map.inspectBounds = map._computeBounds(map.currentGeojson);
       }
-        hideLoadingAnimation();
+      hideLoadingAnimation();
     } catch (error) {
         console.error(`Error updating radar layer for product ${product}:`, error);
         hideLoadingAnimation();
@@ -89,9 +118,9 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
 const map = new Map({
     container: "map",
     style: 'https://api.maptiler.com/maps/01991750-e542-745a-bb74-f8f5646a978c/style.json?key=UMONrX6MjViuKZoR882u',
-    center: [-74.5, 40],
-    zoom: 9,
-    minZoom: 4,
+    center: [-97.1, 35.4],
+    zoom: 5,
+    minZoom: 3,
     maxZoom: 18,
     projection: 'mercator',
     attributionControl: false,
@@ -149,18 +178,22 @@ map.map.on('load', async () => {
 // Add the main toolbar
 const toolbar = createToolbar(
   () => { 
-    // Update splitRadar state to match what we're opening
-    const newProduct = inferLevelFromProduct(mainRadar.product) === 'L3' ? 'N0G' : 'VEL';
-    splitRadar = { 
-      station: mainRadar.station, 
-      product: newProduct, 
-      level: inferLevelFromProduct(newProduct), 
-      options: { gate_limit: -30 } 
-    };
-    // Set debounce before opening split map to prevent immediate update checks
-    lastStationChangeTime.split = Date.now();
-    lastCheckedRadar.split = null;
-    map.splitMap('horizontal', { station: mainRadar.station, product: newProduct }); 
+    if (map.isSplit()) {
+      map.stopSplit();
+    } else {
+      // Update splitRadar state to match what we're opening
+      const newProduct = inferLevelFromProduct(mainRadar.product) === 'L3' ? 'N0G' : 'VEL';
+      splitRadar = { 
+        station: mainRadar.station, 
+        product: newProduct, 
+        level: inferLevelFromProduct(newProduct), 
+        options: { gate_limit: -30 } 
+      };
+      // Set debounce before opening split map to prevent immediate update checks
+      lastStationChangeTime.split = Date.now();
+      lastCheckedRadar.split = null;
+      map.splitMap('horizontal', { station: mainRadar.station, product: newProduct });
+    } 
   },
   () => { menu.open(); }
 );
@@ -259,7 +292,7 @@ setInterval(async () => {
 
     // Update radar stations
     if (updateTimes == 6) {
-      await map.updateRadarStations();
+      map.updateRadarStations();
       updateTimes = 0;
     }
 

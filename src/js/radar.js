@@ -48,7 +48,11 @@ class Radar {
             ? productDescription.elevationAngle
             : null;
 
-        return { timeIso, elevationAngle };
+        const vcp = Number.isFinite(productDescription.vcp)
+            ? productDescription.vcp
+            : null;
+
+        return { timeIso, elevationAngle, vcp };
     }
 
     _isLevel3Layer(layer) {
@@ -372,8 +376,10 @@ class Radar {
             let metadata = null;
 
             if (this.workerSupported) {
+                const workerOptions = { ...options };
+                delete workerOptions.onMetadata;
                 const arrayBuffer = rawData.buffer.slice(rawData.byteOffset, rawData.byteOffset + rawData.byteLength);
-                const result = await this._processRadarDataInWorker(arrayBuffer, layer, { ...options, station: radarStation });
+                const result = await this._processRadarDataInWorker(arrayBuffer, layer, { ...workerOptions, station: radarStation });
                 geojson = result.geojson;
                 metadata = result.metadata;
             } else {
@@ -392,16 +398,26 @@ class Radar {
                     metadata = {
                         timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds).toISOString(),
                         elevationAngle: header.elevation_angle,
+                        vcp: Number.isFinite(header.vcp) ? header.vcp : null
                     };
                 }
             }
 
-            if (metadata) {
-                if (metadata.timeIso && Number.isFinite(metadata.elevationAngle)) {
-                    const date = new Date(metadata.timeIso);
-                    const timeString = date.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    document.getElementById('toolbar-radar-info').innerHTML = 
-                        `<p>${timeString}</p><p>${metadata.elevationAngle.toFixed(1)}°</p>`;
+            if (metadata?.timeIso && Number.isFinite(metadata.elevationAngle)) {
+                const date = new Date(metadata.timeIso);
+                const timeString = date.toLocaleTimeString('en-US', {
+                    hour12: true,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                if (typeof options.onMetadata === 'function') {
+                    options.onMetadata({
+                        timeString,
+                        timeIso: metadata.timeIso,
+                        tilt: metadata.elevationAngle,
+                        vcp: metadata.vcp ?? null
+                    });
                 }
             }
 

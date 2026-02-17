@@ -7,6 +7,19 @@ body {
   overflow: hidden;
 }
 
+p, h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+}
+
+a {
+  color: #27beff;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: white;
+}
+
 #app {
   position: fixed;
   top: 0;
@@ -70,37 +83,31 @@ button:hover {
 
 #toolbar {
   position: fixed;
-  width: calc(100% - 10px);
+  width: calc(100% - 20px);
   bottom: 0px;
   left: 0px;
   z-index: 1000;
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(20px);
   border-top: 1px solid gray;
-  padding: 5px;
+  padding: 5px 10px;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 10px;
 }
 
+#toolbar-vcp {
+  color: white;
+  font-weight: 600;
+  min-width: 80px;
+  text-align: right;
+}
+
 .toolbar-spacer {
   flex: 1;
 }
 
-#toolbar-radar-info {
-  color: white;
-  display: flex;
-  justify-content: right;
-  align-items: center;
-  flex-direction: column;
-}
-
-#toolbar-radar-info p {
-  margin: 0;
-  width: 100%;
-  text-align: right;
-}
 
 #menu {
   position: fixed;
@@ -149,35 +156,42 @@ button:hover {
   position: fixed;
   top: 50%;
   left: 50%;
-  width: 500px;
-  max-height: 80vh;
-  background: rgba(255, 255, 255, 0.98);
-  border-radius: 12px;
+  max-width: 500px;
+  width: calc(100% - 70px);
+  max-height: calc(100% - 70px);
+  height: auto;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  border: 1px solid gray;
+  backdrop-filter: blur(20px);
+  border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  padding: 30px;
+  padding: 20px;
   z-index: 10000;
   overflow-y: auto;
-  transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out, visibility 0.2s ease-out;
 }
 
-/* Hidden state: faded out and down */
-#menu.hidden {
+#menu img {
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+}
+
+/* Hidden state: faded out and slides up */
+#menu.menu-hidden {
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -50%) translateY(20px);
+  transform: translate(-50%, -50%) translateY(-40px);
+  visibility: hidden;
 }
 
-/* Visible state: faded in and up */
-#menu:not(.hidden) {
+/* Visible state: faded in and slides down */
+#menu:not(.menu-hidden) {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, -50%) translateY(0);
-}
-
-#menu h2 {
-  margin-top: 0;
-  font-size: 1.5em;
-  color: #333;
+  visibility: visible;
 }
 
 #menu ul {
@@ -188,30 +202,26 @@ button:hover {
 
 #menu li {
   padding: 12px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: margin-left 0.2s ease, color 0.2s ease;
 }
 
-#menu li:last-child {
-  border-bottom: none;
+#menu li:hover {
+  margin-left: 10px;
+  color: #27beff;
 }
 
-#menu a {
-  color: #333;
-  text-decoration: none;
-  font-size: 1em;
-  transition: color 0.2s ease;
-}
-
-#menu a:hover {
-  color: #0066cc;
+#menu li i {
+  font-size: 2em;
+  margin-right: 10px;
 }
 
 #menu-close-btn {
-  background: rgba(0, 0, 0, 0.3);
+  background: #ff2121;
   border: none;
   font-size: 1.5em;
   cursor: pointer;
-  color: #333;
+  color: black;
   padding: 0;
   float: right;
   transition: transform 0.2s ease;
@@ -219,7 +229,6 @@ button:hover {
 
 #menu-close-btn:hover {
   transform: scale(1.2);
-  color: #0066cc;
 }
 
 .radar-picker {
@@ -234,7 +243,7 @@ button:hover {
   border-radius: 10px;
   color: white;
   width: calc(100% - 40px);
-  max-width: 400px;
+  max-width: 350px;
 }
 
 .radar-products-list {
@@ -248,21 +257,83 @@ button:hover {
   overflow-x: hidden;
   scrollbar-width: none;
   border-radius: 10px;
+  transition: margin-top 0.2s ease, max-height 0.2s ease, opacity 0.2s ease, transform 0.2s ease;
+  transform-origin: top;
+}
+
+.radar-products-collapsed {
+  margin-top: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
 }
 
 .radar-products-list div {
-  border-radius: 10px;
-  padding: 5px;
   font-size: 0.9em;
   background: rgba(0, 0, 0);
   padding: 10px 15px;
   border-radius: 0px;
   border-bottom: 1px solid gray;
   cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.radar-product-category {
+  font-size: 0.95em;
+  font-weight: bold;
+  background: rgba(0, 0, 0);
+  padding: 15px 20px;
+  border-bottom: 0px solid black !important;
+  color: #27beff;
+  cursor: default !important;
+}
+
+.radar-products-list div:hover:not(.radar-product-category) {
+  background: #2a7fff;
 }
 
 .radar-picker-current-product {
   text-align: center;
   color: #27beff;
   font-weight: bold;
+  cursor: pointer;
+}
+
+.radar-picker-time-tilt {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+.timeAndTiltSub {
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  justify-content: center;
+  align-items: center;
+}
+
+#toolbar-station-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+
+#toolbar-station {
+  font-weight: bold;
+  color: #27beff;
+  text-align: right;
+}
+
+#menu-title {
+  font-size: 22px;
+  font-weight: bolder;
+  margin: 10px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  background-image: linear-gradient(100deg, rgba(39, 190, 255, 1) 20%, rgba(42, 127, 255, 1) 73%, rgba(255, 204, 0, 1) 74%);
 }

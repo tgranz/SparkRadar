@@ -143,7 +143,7 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
             if (value == null) {
                 continue;
             }
-            if (gateLimit && value < gateLimit) {
+            if (value !== 'rf' && gateLimit && value < gateLimit) {
                 continue;
             }
 
@@ -154,7 +154,7 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
 
             features.push({
                 type: 'Feature',
-                properties: { val: value },
+                properties: { val: value === 'rf' ? 'rf' : value },
                 geometry: {
                     type: 'Polygon',
                     coordinates: [coords]
@@ -171,7 +171,7 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
 
 const getLevel3Metadata = (radar) => {
     const productDescription = radar?.productDescription;
-    if (!productDescription) return { timeIso: null, elevationAngle: null };
+    if (!productDescription) return { timeIso: null, elevationAngle: null, vcp: null };
 
     const dateValue = Number(productDescription.volumeScanDate ?? productDescription.productDate);
     const timeValue = Number(productDescription.volumeScanTime ?? productDescription.productTime);
@@ -185,7 +185,11 @@ const getLevel3Metadata = (radar) => {
         ? productDescription.elevationAngle
         : null;
 
-    return { timeIso, elevationAngle };
+    const vcp = Number.isFinite(productDescription.vcp)
+        ? productDescription.vcp
+        : null;
+
+    return { timeIso, elevationAngle, vcp };
 };
 
 self.onmessage = (event) => {
@@ -209,12 +213,13 @@ self.onmessage = (event) => {
             }
             const radarLocation = [radarLat, radarLon];
             const geojson = processLevel3Data(radar, radarLocation, options);
-            const { timeIso, elevationAngle } = getLevel3Metadata(radar);
+            const { timeIso, elevationAngle, vcp } = getLevel3Metadata(radar);
             const metadata = {
                 station: options?.station || null,
                 product: layer,
                 timeIso,
-                elevationAngle
+                elevationAngle,
+                vcp
             };
 
             self.postMessage({ type: 'result', geojson, metadata });
@@ -236,7 +241,8 @@ self.onmessage = (event) => {
             const metadata = {
                 timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds).toISOString(),
                 elevationAngle: header.elevation_angle,
-                station: options?.station || null
+                station: options?.station || null,
+                vcp: Number.isFinite(header.vcp) ? header.vcp : null
             };
 
             self.postMessage({ type: 'result', geojson, metadata });

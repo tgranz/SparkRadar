@@ -62,7 +62,14 @@ const parser = (raf, productDescription) => {
 		const radialRaw = { ...radial, bins: [] };
 		for (let i = 0; i < result.numberBins; i += 1) {
 			const value = raf.readByte();
-			radial.bins.push(scaled[value]);
+			// per documentation 0 = below threshold, 1 = range folding
+			if (value === 0) {
+				radial.bins.push(null); // below threshold
+			} else if (value === 1) {
+				radial.bins.push('rf'); // range folding
+			} else {
+				radial.bins.push(scaled[value]);
+			}
 			radialRaw.bins.push(value);
 		}
 		radials.push(radial);

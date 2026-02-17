@@ -115,7 +115,14 @@ class Map {
             // Load velocity on dual map if radar instance is available
             if (this.radar && options.station) {
                 const product = options.product || 'N0G';
-                const radarGeoJson = await this.radar.getRadarLayer(options.station, product, options);
+                const radarGeoJson = await this.radar.getRadarLayer(options.station, product, {
+                    ...options,
+                    onMetadata: ({ timeString, timeIso, tilt }) => {
+                        if (this.splitRadarPicker && typeof this.splitRadarPicker.setTimeAndTilt === 'function') {
+                            this.splitRadarPicker.setTimeAndTilt(timeString, `${tilt.toFixed(1)}°`, timeIso);
+                        }
+                    }
+                });
                 this.addWebGlRadarLayer(radarGeoJson, 'split', product);
             }
 
@@ -858,7 +865,6 @@ class Map {
                     const icao = properties.id;
                     const isOperational = station.properties?.rda?.properties?.status === 'Operate';
                     const popupText = `${properties.name} (${icao}) - Status: ${properties.status}`;
-                    const popup = new maplibregl.Popup({ offset: 25 }).setText(popupText);
 
                     // Add to main map
                     const mainMarkerElement = this._createStationMarkerElement(icao, isOperational);
@@ -869,7 +875,6 @@ class Map {
                     });
                     const mainMarker = new maplibregl.Marker({ element: mainMarkerElement })
                         .setLngLat(coords)
-                        .setPopup(popup)
                         .addTo(mainMap);
                     markers.main.push(mainMarker);
 
@@ -884,7 +889,6 @@ class Map {
                         const dualMarkerPopup = new maplibregl.Popup({ offset: 25 }).setText(popupText);
                         const dualMarker = new maplibregl.Marker({ element: dualMarkerElement })
                             .setLngLat(coords)
-                            .setPopup(dualMarkerPopup)
                             .addTo(dualMap);
                         markers.dual.push(dualMarker);
                     }
