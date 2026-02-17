@@ -3,6 +3,8 @@ body {
   width: 100vw;
   height: 100vh;
   margin: 0;
+  font-family: 'Onest', sans-serif;
+  overflow: hidden;
 }
 
 #app {
@@ -34,7 +36,7 @@ body {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1000;
-  background: none;
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(20px);
   border: 1px solid gray;
   padding: 5px;
@@ -44,6 +46,7 @@ body {
 }
 
 button {
+  -webkit-tap-highlight-color: transparent;
   border: none;
   font-size: 1.2em;
   margin: 0;
@@ -71,7 +74,7 @@ button:hover {
   bottom: 0px;
   left: 0px;
   z-index: 1000;
-  background: none;
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(20px);
   border-top: 1px solid gray;
   padding: 5px;
@@ -81,12 +84,30 @@ button:hover {
   gap: 10px;
 }
 
+.toolbar-spacer {
+  flex: 1;
+}
+
+#toolbar-radar-info {
+  color: white;
+  display: flex;
+  justify-content: right;
+  align-items: center;
+  flex-direction: column;
+}
+
+#toolbar-radar-info p {
+  margin: 0;
+  width: 100%;
+  text-align: right;
+}
+
 #menu {
   position: fixed;
   top: 10px;
   left: 10px;
   z-index: 1000;
-  background: none;
+  background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(20px);
   border: 1px solid gray;
   padding: 5px;
@@ -94,7 +115,7 @@ button:hover {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 /* Loader animation */
@@ -122,4 +143,126 @@ button:hover {
 }
 @keyframes l15{ 
   100%{transform: rotate(1turn)}
+}
+
+#menu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 500px;
+  max-height: 80vh;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 30px;
+  z-index: 10000;
+  overflow-y: auto;
+  transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+}
+
+/* Hidden state: faded out and down */
+#menu.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) translateY(20px);
+}
+
+/* Visible state: faded in and up */
+#menu:not(.hidden) {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) translateY(0);
+}
+
+#menu h2 {
+  margin-top: 0;
+  font-size: 1.5em;
+  color: #333;
+}
+
+#menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0 0;
+}
+
+#menu li {
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+#menu li:last-child {
+  border-bottom: none;
+}
+
+#menu a {
+  color: #333;
+  text-decoration: none;
+  font-size: 1em;
+  transition: color 0.2s ease;
+}
+
+#menu a:hover {
+  color: #0066cc;
+}
+
+#menu-close-btn {
+  background: rgba(0, 0, 0, 0.3);
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: #333;
+  padding: 0;
+  float: right;
+  transition: transform 0.2s ease;
+}
+
+#menu-close-btn:hover {
+  transform: scale(1.2);
+  color: #0066cc;
+}
+
+.radar-picker {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  border: 1px solid gray;
+  padding: 10px;
+  border-radius: 10px;
+  color: white;
+  width: calc(100% - 40px);
+  max-width: 400px;
+}
+
+.radar-products-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  height: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  border-radius: 10px;
+}
+
+.radar-products-list div {
+  border-radius: 10px;
+  padding: 5px;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0);
+  padding: 10px 15px;
+  border-radius: 0px;
+  border-bottom: 1px solid gray;
+  cursor: pointer;
+}
+
+.radar-picker-current-product {
+  text-align: center;
+  color: #27beff;
+  font-weight: bold;
 }

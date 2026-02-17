@@ -14,7 +14,8 @@ See LICENSE for more.
 const defaultPalettes = {
     // Reflectivity: Ben's BR (https://www.wxtools.org/reflectivity/bens-br)
     "REF": 
-        `10 106  90 205
+        `0 0 0 0
+        10 106  90 205
         12  72  61 139
         14  70 130 180
         16  95 158 160
@@ -81,6 +82,49 @@ const defaultPalettes = {
         120 97 6 2
         140 60 0 0
         200 45 0 0`,
+    // Correlation Coefficient: AWIPS RHO (https://www.wxtools.org/correlation-coefficient/awips-rho-cc)
+    "CC":
+        `0.00   15   15  140
+        0.45    15   15  140
+        0.60    10   10  190
+        0.75   120  120  255
+        0.80    95  245  100
+        0.85   135  215   10
+        0.90   255  255    0
+        0.95   255  140    0
+        0.97   225    3    0
+        0.99   139   30   77
+        1.00  255  180  215
+        1.05  164   54  150`,
+    // Specific Differential Phase: custom based on radarscope
+    "KDP":
+        `-2 0 0 0
+        -1 200 200 200
+        -0.5 255 100 100
+        0.5 255 0 0
+        2.3 255 0 255
+        3.5 0 255 0
+        5.8 255 255 0
+        10 255 255 255
+        `,
+    // Digital Hydrometeor Classification: custom
+    "DHC": 
+        `0 0 0 0 0
+        10 200 200 200
+        20 100 100 100
+        30 255 100 100
+        40 100 100 255
+        50 0 0 255
+        60 0 100 0
+        70 0 255 0
+        80 255 50 50
+        90 255 100 0
+        100 255 0 0
+        110 200 0 0
+        120 255 255 0
+        130 255 0 255
+        140 0 255 255
+        150 255 255 255`,
 };
 
 class Palettes {

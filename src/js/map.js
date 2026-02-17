@@ -11,20 +11,27 @@ import earcut from 'earcut';
 import { createSplitToolbar } from "../components/split_toolbar.js";
 import Palettes from "./palettes.js";
 import { showLoadingAnimation, hideLoadingAnimation } from "./loader.js";
+import RadarPicker from "./radar_picker.js";
 
 class Map {
     // Constructor function
-    constructor(params) {
+    constructor(params, callbacks = {}) {
         this.params = params;
+        this.callbacks = callbacks;
         this.map = new maplibregl.Map(params);
         this.isSyncing = false;
+        this.tilt = 0;
 
         // WebGL radar layer tracking
         this.currentRadarLayer = null;
         this.currentGeojson = null;
         this.radar = null; // Store reference to radar instance
         this.palettes = new Palettes(); // Store palettes instance
-
+        this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product) => {
+            if (typeof this.callbacks.onChangeProduct === 'function') {
+                this.callbacks.onChangeProduct(product.replace('_', this.tilt));
+            }
+        });
         // Color table for radar values (default to REF)
         this.currentPalette = 'REF';
         this.colorTable = this.palettes.getPalette('REF');
@@ -42,6 +49,8 @@ class Map {
         this.applyProjection(this.map, params.projection);
         // Store move listeners so we can clean them up later
         this.moveListeners = { main: null, dual: null };
+        // Store radar station markers for cleanup
+        this.radarMarkers = { main: [], dual: [] };
     }
 
     // Function to apply projection to a map instance
@@ -104,10 +113,13 @@ class Map {
             this.dualMap.setZoom(this.map.getZoom());
             
             // Load velocity on dual map if radar instance is available
-            if (this.radar && options.loadVelocity !== false) {
-                await this.loadRadarOnDualMap('VEL', options.station || 'KGRK');
-                hideLoadingAnimation();
+            if (this.radar && options.station) {
+                const product = options.product || 'N0G';
+                const radarGeoJson = await this.radar.getRadarLayer(options.station, product, options);
+                this.addWebGlRadarLayer(radarGeoJson, 'split', product);
             }
+
+            hideLoadingAnimation();
         });
 
         // Move main map > also move second map
@@ -133,6 +145,93 @@ class Map {
             this.isSyncing = false;
         };
         this.dualMap.on('move', this.moveListeners.dual);
+
+        // Move cursor on main map > also move cursor on second map
+        let mainMapCursorMarker = null;
+        let splitMapCursorMarker = null;
+        let mainMapMouseMoveHandler = null;
+        let splitMapMouseMoveHandler = null;
+        let mainMapMouseLeaveHandler = null;
+        let splitMapMouseLeaveHandler = null;
+
+        // Create cursor marker element
+        const createCursorMarker = () => {
+            const el = document.createElement('div');
+            el.style.width = '12px';
+            el.style.height = '12px';
+            el.style.backgroundColor = '#27beff';
+            el.style.boxShadow = '0 0 4px 2px #27beff88';
+            el.style.borderRadius = '50%';
+            el.style.border = '2px solid black';
+            return el;
+        };
+
+        // Handle main map cursor movement
+        mainMapMouseMoveHandler = (e) => {
+            const lngLat = e.lngLat;
+            
+            // Update or create split map marker
+            if (!splitMapCursorMarker) {
+                splitMapCursorMarker = new maplibregl.Marker({ element: createCursorMarker() })
+                    .setLngLat(lngLat)
+                    .addTo(this.dualMap);
+            } else {
+                splitMapCursorMarker.setLngLat(lngLat);
+                splitMapCursorMarker.getElement().style.display = 'block';
+            }
+            
+            // Hide main map marker
+            if (mainMapCursorMarker) {
+                mainMapCursorMarker.getElement().style.display = 'none';
+            }
+        };
+
+        // Handle split map cursor movement
+        splitMapMouseMoveHandler = (e) => {
+            const lngLat = e.lngLat;
+            
+            // Update or create main map marker
+            if (!mainMapCursorMarker) {
+                mainMapCursorMarker = new maplibregl.Marker({ element: createCursorMarker() })
+                    .setLngLat(lngLat)
+                    .addTo(this.map);
+            } else {
+                mainMapCursorMarker.setLngLat(lngLat);
+                mainMapCursorMarker.getElement().style.display = 'block';
+            }
+            
+            // Hide split map marker
+            if (splitMapCursorMarker) {
+                splitMapCursorMarker.getElement().style.display = 'none';
+            }
+        };
+
+        // Handle main map mouse leave
+        mainMapMouseLeaveHandler = () => {
+            if (splitMapCursorMarker) {
+                splitMapCursorMarker.getElement().style.display = 'none';
+            }
+        };
+
+        // Handle split map mouse leave
+        splitMapMouseLeaveHandler = () => {
+            if (mainMapCursorMarker) {
+                mainMapCursorMarker.getElement().style.display = 'none';
+            }
+        };
+
+        // Add mousemove and mouseleave handlers
+        this.map.on('mousemove', mainMapMouseMoveHandler);
+        this.map.on('mouseleave', mainMapMouseLeaveHandler);
+        this.dualMap.on('mousemove', splitMapMouseMoveHandler);
+        this.dualMap.on('mouseleave', splitMapMouseLeaveHandler);
+
+        // Store handlers and markers for cleanup
+        this.cursorMarkers = { mainMapCursorMarker, splitMapCursorMarker };
+        this.cursorHandlers = { mainMapMouseMoveHandler, splitMapMouseMoveHandler, mainMapMouseLeaveHandler, splitMapMouseLeaveHandler };
+
+        // Add radar stations to the split map
+        this.updateRadarStations();
     }
 
     setSplitLayout(layout = null) {
@@ -143,10 +242,42 @@ class Map {
         const parent = this.map.getContainer().parentElement;
         if (!parent) return;
 
+        if (layout == 'vertical') {
+            try { this.radarPicker.destroy(); } catch {}
+            try { this.splitRadarPicker.destroy(); } catch {}
+            this.splitRadarPicker = new RadarPicker('N0G', ['10px', '10px', null, null], (product) => {
+                if (typeof this.callbacks.onChangeProduct === 'function') {
+                    this.callbacks.onChangeProductSplit(product.replace('_', this.tilt));
+                }
+            });
+            this.radarPicker = new RadarPicker('N0B', ['10px', 'calc(50% + 10px)', null, null], (product) => {
+                if (typeof this.callbacks.onChangeProduct === 'function') {
+                    this.callbacks.onChangeProduct(product.replace('_', this.tilt));
+                }
+            });
+        } else {
+            try { this.radarPicker.destroy(); } catch {}
+            try { this.splitRadarPicker.destroy(); } catch {}
+            this.splitRadarPicker = new RadarPicker('N0G', ['calc(50% + 10px)', '10px', null, null], (product) => {
+                if (typeof this.callbacks.onChangeProduct === 'function') {
+                    this.callbacks.onChangeProductSplit(product.replace('_', this.tilt));
+                }
+            });
+            this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product) => {
+                if (typeof this.callbacks.onChangeProduct === 'function') {
+                    this.callbacks.onChangeProduct(product.replace('_', this.tilt));
+                }
+            });
+        }
+
         parent.style.setProperty('grid-template-columns', layout === 'vertical' ? '1fr 1fr' : '1fr');
         parent.style.setProperty('grid-template-rows', layout === 'horizontal' ? '1fr 1fr' : '1fr');
 
         this.currentLayout = layout;
+    }
+
+    isSplit() {
+        return !!this.dualMap;
     }
 
     stopSplit() {
@@ -164,6 +295,34 @@ class Map {
             this.moveListeners.dual = null;
         }
 
+        // Clean up cursor handlers
+        if (this.cursorHandlers && this.dualMap) {
+            if (this.cursorHandlers.mainMapMouseMoveHandler) {
+                this.map.off('mousemove', this.cursorHandlers.mainMapMouseMoveHandler);
+            }
+            if (this.cursorHandlers.splitMapMouseMoveHandler) {
+                this.dualMap.off('mousemove', this.cursorHandlers.splitMapMouseMoveHandler);
+            }
+            if (this.cursorHandlers.mainMapMouseLeaveHandler) {
+                this.map.off('mouseleave', this.cursorHandlers.mainMapMouseLeaveHandler);
+            }
+            if (this.cursorHandlers.splitMapMouseLeaveHandler) {
+                this.dualMap.off('mouseleave', this.cursorHandlers.splitMapMouseLeaveHandler);
+            }
+        }
+
+        // Clean up cursor markers
+        if (this.cursorMarkers) {
+            if (this.cursorMarkers.mainMapCursorMarker) {
+                this.cursorMarkers.mainMapCursorMarker.remove();
+            }
+            if (this.cursorMarkers.splitMapCursorMarker) {
+                this.cursorMarkers.splitMapCursorMarker.remove();
+            }
+            this.cursorMarkers = null;
+        }
+        this.cursorHandlers = null;
+
         parent.classList.remove('split');
         parent.style.removeProperty('grid-template-columns');
         parent.style.removeProperty('grid-template-rows');
@@ -172,6 +331,20 @@ class Map {
             this.dualMap.remove();
             this.dualMap = null;
         }
+
+        // Clean up radar markers from split/dual map
+        this.radarMarkers.dual.forEach(marker => marker.remove());
+        this.radarMarkers.dual = [];
+
+        // Destroy the split map's radar picker if it exists and rebuild the main radar picker to reset its position
+        try { this.splitRadarPicker.destroy(); } catch {}
+        try { this.radarPicker.destroy(); } catch {}
+        this.splitRadarPicker = null;
+        this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product) => {
+                if (typeof this.callbacks.onChangeProduct === 'function') {
+                    this.callbacks.onChangeProduct(product.replace('_', this.tilt));
+                }
+            });
 
         const dualContainer = document.getElementById('map-dual');
         if (dualContainer) {
@@ -189,44 +362,43 @@ class Map {
         this.radar = radar;
     }
 
+    // Method to map product codes to palette names
+    _getPaletteForProduct(product) {
+        if (!product) return 'REF'; // Default to reflectivity
+        
+        const lastChar = product.charAt(product.length - 1);
+        
+        switch (lastChar) {
+            case 'G':
+            case 'U': // N2U, N3U, etc. end in U and are velocity
+                return 'VEL';
+            case 'B':
+                return 'REF';
+            case 'C':
+                return 'CC';
+            case 'K':
+                return 'KDP';
+            case 'H':
+                return 'DHC';
+            default:
+                return product.toUpperCase();
+        }
+    }
+
     // Method to update color palette
     _updatePalette(layer) {
+        if (this.currentPalette === layer) return; // Skip if already set
+        
         this.currentPalette = layer;
         this.colorTable = this.palettes.getPalette(layer);
         this.colorStops = [];
+        
+        // Pre-parse all RGB values to avoid repeated regex matching
         for (let i = 0; i < this.colorTable.length; i += 2) {
             this.colorStops.push({
                 value: Number(this.colorTable[i]),
                 color: this._parseRgb(this.colorTable[i + 1])
             });
-        }
-    }
-
-    // Method to load radar on dual map
-    async loadRadarOnDualMap(layer = 'VEL', station = 'KGRK') {
-        showLoadingAnimation();
-        if (!this.dualMap || !this.radar) {
-            console.warn('Dual map or radar not available');
-            return;
-        }
-
-        try {
-            // Temporarily update color palette for the dual map layer
-            const originalPalette = this.currentPalette;
-            this._updatePalette(layer);
-
-            // Get the radar data
-            const radarGeoJson = await this.radar.getRadarLayer(station, layer);
-            if (radarGeoJson) {
-                this.addWebGlRadarLayer(radarGeoJson, this.dualMap);
-                hideLoadingAnimation();
-            }
-
-            // Restore original palette for main map
-            this._updatePalette(originalPalette);
-        } catch (error) {
-            console.error('Error loading radar on dual map:', error);
-            hideLoadingAnimation();
         }
     }
 
@@ -253,38 +425,45 @@ class Map {
     }
 
     _colorForValue(value) {
-        if (value <= this.colorStops[0].value) {
-            return this.colorStops[0].color;
+        // Special handling for range-folded gates
+        if (value === 'rf') {
+            return [0.5, 0.0, 0.5]; // Purple for range folding
         }
-        for (let i = 0; i < this.colorStops.length - 1; i += 1) {
-            const left = this.colorStops[i];
-            const right = this.colorStops[i + 1];
-            if (value <= right.value) {
-                const span = right.value - left.value;
-                const t = span > 0 ? (value - left.value) / span : 0;
-                return this._lerpColor(left.color, right.color, t);
+        
+        const stops = this.colorStops;
+        if (value <= stops[0].value) {
+            return stops[0].color;
+        }
+        
+        // Linear search is faster for small arrays (typical: 16-32 stops)
+        for (let i = 0; i < stops.length - 1; i++) {
+            if (value <= stops[i + 1].value) {
+                const leftStop = stops[i];
+                const rightStop = stops[i + 1];
+                const span = rightStop.value - leftStop.value;
+                const t = span > 0 ? (value - leftStop.value) / span : 0;
+                return this._lerpColor(leftStop.color, rightStop.color, t);
             }
         }
-        return this.colorStops[this.colorStops.length - 1].color;
+        return stops[stops.length - 1].color;
     }
 
     _flattenPolygon(rings) {
         const vertices = [];
         const holeIndices = [];
-        let vertexCount = 0;
 
-        rings.forEach((ring, index) => {
-            if (index > 0) {
-                holeIndices.push(vertexCount);
+        for (let ringIdx = 0; ringIdx < rings.length; ringIdx++) {
+            const ring = rings[ringIdx];
+            if (ringIdx > 0) {
+                holeIndices.push(vertices.length >> 1);
             }
-            ring.forEach((coord) => {
-                const lng = Number(coord[0]);
-                const lat = Number(coord[1]);
-                const mercator = maplibregl.MercatorCoordinate.fromLngLat({ lng, lat });
+            
+            for (let i = 0; i < ring.length; i++) {
+                const coord = ring[i];
+                const mercator = maplibregl.MercatorCoordinate.fromLngLat({ lng: coord[0], lat: coord[1] });
                 vertices.push(mercator.x, mercator.y);
-                vertexCount += 1;
-            });
-        });
+            }
+        }
 
         return { vertices, holeIndices };
     }
@@ -292,10 +471,11 @@ class Map {
     _buildVertexData(geojson) {
         const data = [];
         const features = geojson.features || [];
-        const alpha = 0.85;
+        const alpha = this.currentPalette === 'VEL' ? 1.0 : 0.85;
 
         for (const feature of features) {
-            const value = Number(feature.properties?.val ?? 0);
+            const rawValue = feature.properties?.val;
+            const value = rawValue === 'rf' ? 'rf' : Number(rawValue ?? 0);
             const color = this._colorForValue(value);
             const geometry = feature.geometry;
             if (!geometry) continue;
@@ -434,7 +614,9 @@ class Map {
                     : [];
             for (const rings of polygons) {
                 if (this._pointInPolygon(point, rings)) {
-                    const value = Number(feature.properties?.val);
+                    const rawValue = feature.properties?.val;
+                    if (rawValue === 'rf') return 'rf';
+                    const value = Number(rawValue);
                     return Number.isFinite(value) ? value : null;
                 }
             }
@@ -442,36 +624,63 @@ class Map {
         return null;
     }
 
-    addWebGlRadarLayer(radarGeoJson, targetMap = null) {
-        // Use provided map or default to main map
-        const map = targetMap || this.map;
-        const layerId = targetMap ? 'radar-webgl-dual' : 'radar-webgl';
+    addWebGlRadarLayer(radarGeoJson, targetMap = null, product = null) {
+        // Accept a map instance or string identifiers for convenience.
+        let map = this.map;
+        let layerId = 'radar-webgl';
+        let isMainLayer = true;
+
+        if (targetMap) {
+            if (targetMap === 'main') {
+                map = this.map;
+                layerId = 'radar-webgl';
+            } else if (targetMap === 'dual' || targetMap === 'split') {
+                map = this.dualMap;
+                layerId = 'radar-webgl-dual';
+                isMainLayer = false;
+            } else {
+                map = targetMap;
+                layerId = 'radar-webgl-dual';
+                isMainLayer = false;
+            }
+        }
+
+        if (!map) {
+            console.warn('Target map is not available yet.');
+            return;
+        }
         
         if (!radarGeoJson || !radarGeoJson.features) {
             console.error('Invalid GeoJSON data provided to addWebGlRadarLayer');
             return;
         }
+        
+        // Automatically select palette based on product type
+        if (product) {
+            const paletteForProduct = this._getPaletteForProduct(product);
+            this._updatePalette(paletteForProduct);
+        }
 
-        // Compute bounding boxes for all features
-        for (const feature of radarGeoJson.features) {
-            feature.__bbox = this._computeFeatureBBox(feature);
+        // Compute bounding boxes for all features in one pass (avoid double iteration)
+        const features = radarGeoJson.features;
+        for (let i = 0; i < features.length; i++) {
+            features[i].__bbox = this._computeFeatureBBox(features[i]);
         }
         
-        if (!targetMap) {
+        if (isMainLayer) {
             this.currentGeojson = radarGeoJson;
         }
 
         // Prepare the vertex data
         const vertexData = this._buildVertexData(radarGeoJson);
         const vertexCount = vertexData.length / 6;
-        const geoBounds = this._computeBounds(radarGeoJson);
 
         // Remove old radar layer if it exists
         if (map.getLayer(layerId)) {
             map.removeLayer(layerId);
         }
         
-        if (!targetMap) {
+        if (isMainLayer) {
             this.currentRadarLayer = null;
         }
 
@@ -583,18 +792,107 @@ class Map {
             }
         };
 
+        // Remove old radar layer if it exists
+        if (map.getLayer(layerId)) {
+            map.removeLayer(layerId);
+        }
+
         // Add the WebGL content layer to the map
-        map.addLayer(highlightLayer);
+        map.addLayer(highlightLayer, 'Pier');
         
-        if (!targetMap) {
+        if (isMainLayer) {
             this.currentRadarLayer = highlightLayer;
         }
 
-        if (geoBounds && !targetMap) {
-            map.fitBounds(geoBounds, { padding: 40, maxZoom: 10 });
-        }
-
         console.log('WebGL radar layer added successfully');
+    }
+
+    _createStationMarkerElement(icao, isOperational) {
+        const el = document.createElement('div');
+        const styles = el.style;
+        styles.backgroundColor = isOperational ? '#27beff' : '#ff2121';
+        styles.border = '2px solid #1f2937';
+        styles.borderRadius = '10px';
+        styles.display = 'flex';
+        styles.alignItems = 'center';
+        styles.justifyContent = 'center';
+        styles.color = 'black';
+        styles.fontWeight = 'bold';
+        styles.fontSize = '1em';
+        styles.padding = '1px 8px';
+        styles.cursor = 'pointer';
+        styles.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        el.textContent = icao;
+        return el;
+    }
+
+    updateRadarStations() {
+        // Fetch the radar stations and their statuses from the NWS API
+        fetch('https://api.weather.gov/radar/stations', { signal: AbortSignal.timeout(5000) })
+            .then(response => response.json())
+            .then(data => {
+                // Batch remove existing markers from both maps
+                const markers = this.radarMarkers;
+                markers.main.forEach(m => m.remove());
+                markers.main.length = 0; // Clear array in place (faster than reassign)
+                
+                if (this.isSplit()) {
+                    markers.dual.forEach(m => m.remove());
+                    markers.dual.length = 0;
+                }
+
+                const features = data.features;
+                const isSplit = this.isSplit();
+                const callbacks = this.callbacks;
+                const mainMap = this.map;
+                const dualMap = this.dualMap;
+                
+                for (let i = 0; i < features.length; i++) {
+                    const station = features[i];
+                    const properties = station.properties;
+                    
+                    // Filter early - skip TDWR stations
+                    if (properties.stationType !== 'WSR-88D') continue;
+
+                    const coords = station.geometry.coordinates;
+                    const icao = properties.id;
+                    const isOperational = station.properties?.rda?.properties?.status === 'Operate';
+                    const popupText = `${properties.name} (${icao}) - Status: ${properties.status}`;
+                    const popup = new maplibregl.Popup({ offset: 25 }).setText(popupText);
+
+                    // Add to main map
+                    const mainMarkerElement = this._createStationMarkerElement(icao, isOperational);
+                    mainMarkerElement.addEventListener('click', () => {
+                        if (typeof callbacks.onSelectStation === 'function') {
+                            callbacks.onSelectStation(icao);
+                        }
+                    });
+                    const mainMarker = new maplibregl.Marker({ element: mainMarkerElement })
+                        .setLngLat(coords)
+                        .setPopup(popup)
+                        .addTo(mainMap);
+                    markers.main.push(mainMarker);
+
+                    // Add to split map if active
+                    if (isSplit) {
+                        const dualMarkerElement = this._createStationMarkerElement(icao, isOperational);
+                        dualMarkerElement.addEventListener('click', () => {
+                            if (typeof callbacks.onSelectStationSplit === 'function') {
+                                callbacks.onSelectStationSplit(icao);
+                            }
+                        });
+                        const dualMarkerPopup = new maplibregl.Popup({ offset: 25 }).setText(popupText);
+                        const dualMarker = new maplibregl.Marker({ element: dualMarkerElement })
+                            .setLngLat(coords)
+                            .setPopup(dualMarkerPopup)
+                            .addTo(dualMap);
+                        markers.dual.push(dualMarker);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching radar stations:', error);
+            });
     }
 }
 

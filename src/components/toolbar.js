@@ -20,8 +20,8 @@ export function createToolbar(onSplitLayout, onOpenMenu) {
         }
     });
 
-    toolbar.appendChild(startSplitLayoutButton);
     toolbar.appendChild(openMenuButton);
+    toolbar.appendChild(startSplitLayoutButton);
     const spacer = document.createElement('div');
     spacer.className = 'toolbar-spacer';
     toolbar.appendChild(spacer); // push buttons to the left
@@ -29,5 +29,8 @@ export function createToolbar(onSplitLayout, onOpenMenu) {
     loader.className = 'loader';
     loader.id = 'toolbar-loader';
     toolbar.appendChild(loader); // loading animation
+    const radarInfo = document.createElement('div');
+    radarInfo.id = 'toolbar-radar-info';
+    toolbar.appendChild(radarInfo); // radar information
     return toolbar;
 }

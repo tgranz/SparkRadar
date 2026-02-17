@@ -14,7 +14,7 @@ const BUCKET_URL = "https://unidata-nexrad-level2.s3.amazonaws.com";
 let STATION = "";
 
 async function fetchUrl(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: 'no-store' });
     if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
     }
@@ -22,7 +22,7 @@ async function fetchUrl(url) {
 }
 
 async function downloadFile(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, { cache: 'no-store' });
     if (!response.ok) {
         throw new Error(`Download failed: ${response.status}`);
     }
@@ -79,17 +79,23 @@ async function listKeysForPrefix(prefix, bucketUrl = BUCKET_URL) {
 async function getLatestFileUrl(level, product = null) {
     if (level == 2) {
         const now = new Date();
+        const allLevel2Files = [];
         for (let i = 0; i < 5; i++) {
             const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
             date.setUTCDate(date.getUTCDate() - i);
             const prefix = getDatePrefix(date);
             const keys = await listKeysForPrefix(prefix);
             const level2 = keys.filter((k) => k.endsWith('_V06'));
-            if (level2.length > 0) {
-                level2.sort();
-                const latestKey = level2[level2.length - 1];
-                return `${BUCKET_URL}/${latestKey}`;
-            }
+            console.log(`[getLatestFileUrl] Date ${date.toISOString()}: Found ${level2.length} V06 files:`, level2.slice(-3));
+            allLevel2Files.push(...level2);
+        }
+        if (allLevel2Files.length > 0) {
+            allLevel2Files.sort();
+            console.log(`[getLatestFileUrl] Total files collected: ${allLevel2Files.length}`);
+            console.log(`[getLatestFileUrl] Last 5 files:`, allLevel2Files.slice(-5));
+            const latestKey = allLevel2Files[allLevel2Files.length - 1];
+            console.log(`[getLatestFileUrl] Returning: ${latestKey}`);
+            return `${BUCKET_URL}/${latestKey}`;
         }
         throw new Error(`No radar files found in last 5 days.`);
     } else if (level == 3) {

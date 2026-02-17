@@ -70,6 +70,10 @@ export default (raf, message, offset, options) => {
 	let prevBlockStart = 0;
 	// process blocks, the order of the blocks is not guaranteed so the name must be used to select proper parser
 	for (let i = 0; i < dbp.length; i += 1) {
+		if (dbp[i] <= 0 || dbp[i] >= messageSizeBytes) {
+			options.logger.warn(`Skipping invalid data block pointer: ${dbp[i]}`);
+			continue;
+		}
 		// jump to record position
 		const parserStartPos = dbp[i] + offset + MESSAGE_HEADER_SIZE;
 		raf.seek(parserStartPos);
@@ -112,10 +116,7 @@ export default (raf, message, offset, options) => {
 			options.logger.warn(e.message);
 			// clear out the previous record
 			prevRecord = false;
-
-			// set flag to search for next block
-			message.endedEarly = prevBlockStart;
-			break;
+			continue;
 		}
 	}
 
@@ -235,10 +236,12 @@ const parseMomentData = (raf) => {
 	for (let i = 0; i < endI; i += inc) {
 		const val = getDataBlock();
 		// per documentation 0 = below threshold, 1 = range folding
-		if (val >= 2) {
-			data.moment_data.push((val - data.offset) / data.scale);
+		if (val === 0) {
+			data.moment_data.push(null); // below threshold
+		} else if (val === 1) {
+			data.moment_data.push('rf'); // range folding
 		} else {
-			data.moment_data.push(null);
+			data.moment_data.push((val - data.offset) / data.scale);
 		}
 	}
 	return data;

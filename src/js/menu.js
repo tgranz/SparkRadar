@@ -7,8 +7,6 @@ This module handles the menu component.
 See LICENSE for more.
 */
 
-import '../css/menu.css';
-
 class Menu {
     // Constructor function
     constructor() {
