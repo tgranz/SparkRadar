@@ -2,35 +2,35 @@ import { Buffer } from 'buffer';
 import { Level2Radar } from '../../parse/level2/src/index.js';
 import nexradLevel3Data from '../../parse/level3/src/browser.js';
 
-const destinationPoint = (lat, lon, azimuthDeg, distanceMeters) => {
-    const R = 6371000;
-    const az = (azimuthDeg * Math.PI) / 180;
-    const dR = distanceMeters / R;
-    const lat1 = (lat * Math.PI) / 180;
-    const lon1 = (lon * Math.PI) / 180;
-    const lat2 = Math.asin(
-        Math.sin(lat1) * Math.cos(dR) + Math.cos(lat1) * Math.sin(dR) * Math.cos(az)
-    );
-    const lon2 = lon1 + Math.atan2(
-        Math.sin(az) * Math.sin(dR) * Math.cos(lat1),
-        Math.cos(dR) - Math.sin(lat1) * Math.sin(lat2)
-    );
-    return { lat: (lat2 * 180) / Math.PI, lon: (lon2 * 180) / Math.PI };
+const EARTH_RADIUS = 6371000;
+const DEG_TO_RAD = Math.PI / 180;
+const RAD_TO_DEG = 180 / Math.PI;
+
+const createRadarProjector = (radarLat, radarLon) => {
+    const lat1 = radarLat * DEG_TO_RAD;
+    const lon1 = radarLon * DEG_TO_RAD;
+    const sinLat1 = Math.sin(lat1);
+    const cosLat1 = Math.cos(lat1);
+
+    return (sinAz, cosAz, distanceMeters) => {
+        const dR = distanceMeters / EARTH_RADIUS;
+        const sinDR = Math.sin(dR);
+        const cosDR = Math.cos(dR);
+        const lat2 = Math.asin(sinLat1 * cosDR + cosLat1 * sinDR * cosAz);
+        const lon2 = lon1 + Math.atan2(
+            sinAz * sinDR * cosLat1,
+            cosDR - sinLat1 * Math.sin(lat2)
+        );
+        return [lon2 * RAD_TO_DEG, lat2 * RAD_TO_DEG];
+    };
 };
 
-const convertPointToPixel = (radarLat, radarLon, az1, az2, r1, r2) => {
-    const p1 = destinationPoint(radarLat, radarLon, az1, r1);
-    const p2 = destinationPoint(radarLat, radarLon, az2, r1);
-    const p3 = destinationPoint(radarLat, radarLon, az2, r2);
-    const p4 = destinationPoint(radarLat, radarLon, az1, r2);
-
-    return [
-        [p1.lon.toFixed(4), p1.lat.toFixed(4)],
-        [p2.lon.toFixed(4), p2.lat.toFixed(4)],
-        [p3.lon.toFixed(4), p3.lat.toFixed(4)],
-        [p4.lon.toFixed(4), p4.lat.toFixed(4)],
-        [p1.lon.toFixed(4), p1.lat.toFixed(4)]
-    ];
+const buildPolygon = (project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2) => {
+    const p1 = project(sinAz1, cosAz1, r1);
+    const p2 = project(sinAz2, cosAz2, r1);
+    const p3 = project(sinAz2, cosAz2, r2);
+    const p4 = project(sinAz1, cosAz1, r2);
+    return [p1, p2, p3, p4, p1];
 };
 
 const processRadarData = (radar, radarLocation, extent, layer, options = {}) => {
@@ -69,6 +69,8 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
 
     const numberOfRadarIterations = radarData.length;
     const features = [];
+    const gateLimit = Number.isFinite(options.gate_limit) ? options.gate_limit : null;
+    const project = createRadarProjector(radarLocation[0], radarLocation[1]);
 
     for (let index = 0; index < numberOfRadarIterations; index++) {
         const radial = radarData[index];
@@ -81,19 +83,29 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
 
         const az1 = radialHeader.azimuth;
         const az2 = nextHeader.azimuth;
+        const az1Rad = az1 * DEG_TO_RAD;
+        const az2Rad = az2 * DEG_TO_RAD;
+        const sinAz1 = Math.sin(az1Rad);
+        const cosAz1 = Math.cos(az1Rad);
+        const sinAz2 = Math.sin(az2Rad);
+        const cosAz2 = Math.cos(az2Rad);
+
+        const firstGate = radial.first_gate;
+        const gateSize = radial.gate_size;
 
         for (let gateIndex = 0; gateIndex < radial.gate_count - 1; gateIndex++) {
             const dbz = radial.moment_data[gateIndex];
             if (dbz === null) {
                 continue;
             }
+            if (layer === 'REF' && gateLimit !== null && dbz !== 'rf' && dbz < gateLimit) {
+                continue;
+            }
 
-            const first_gate = radial.first_gate;
-            const gate_size = radial.gate_size;
-            const r1 = (first_gate + gateIndex * gate_size) * 1000;
-            const r2 = (first_gate + (gateIndex + 1) * gate_size) * 1000;
+            const r1 = (firstGate + gateIndex * gateSize) * 1000;
+            const r2 = (firstGate + (gateIndex + 1) * gateSize) * 1000;
 
-            const coords = convertPointToPixel(radarLocation[0], radarLocation[1], az1, az2, r1, r2);
+            const coords = buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
 
             features.push({
                 type: 'Feature',
@@ -129,6 +141,7 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
 
     const features = [];
     const numberOfRadarIterations = radials.length;
+    const project = createRadarProjector(radarLocation[0], radarLocation[1]);
 
     for (let index = 0; index < numberOfRadarIterations; index++) {
         const radial = radials[index];
@@ -138,6 +151,12 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
 
         const az1 = radial.startAngle;
         const az2 = radial.startAngle + radial.angleDelta;
+        const az1Rad = az1 * DEG_TO_RAD;
+        const az2Rad = az2 * DEG_TO_RAD;
+        const sinAz1 = Math.sin(az1Rad);
+        const cosAz1 = Math.cos(az1Rad);
+        const sinAz2 = Math.sin(az2Rad);
+        const cosAz2 = Math.cos(az2Rad);
         const bins = radial.bins || [];
 
         for (let binIndex = 0; binIndex < Math.min(bins.length, numberBins); binIndex++) {
@@ -152,7 +171,7 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
             const r1 = (firstBin + (binIndex * rangeScaleKm)) * 250;
             const r2 = (firstBin + ((binIndex + 1) * rangeScaleKm)) * 250;
 
-            const coords = convertPointToPixel(radarLocation[0], radarLocation[1], az1, az2, r1, r2);
+            const coords = buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
 
             features.push({
                 type: 'Feature',
