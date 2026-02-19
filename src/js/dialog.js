@@ -12,7 +12,8 @@ class Dialog {
     constructor(title, icon, htmlContent, callbacks = {}) {
         this.callbacks = callbacks;
         this.dialog = document.createElement('div');
-        this.dialog.id = 'menu';
+        this.dialog.id = `dialog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // Unique ID
+        this.dialog.classList.add('menu'); // Use menu styling
         this.dialog.classList.add('menu-hidden'); // Use same transition as menu
 
         // Create dialog header with close button
@@ -32,7 +33,7 @@ class Dialog {
         titleObj.id = 'dialog-title';
 
         const closeBtn = document.createElement('button');
-        closeBtn.id = 'menu-close-btn';
+        closeBtn.classList.add('menu-close-btn');
         closeBtn.innerHTML = '<i class="ti ti-x"></i>';
         closeBtn.addEventListener('click', () => this.close());
 
@@ -50,9 +51,7 @@ class Dialog {
         document.body.appendChild(this.dialog);
 
         // Trigger animation by removing menu-hidden on next frame
-        requestAnimationFrame(() => {
-            this.dialog.classList.remove('menu-hidden');
-        });
+        setTimeout(() => this.dialog.classList.remove('menu-hidden'), 10);
 
         // Remove the dialog if esc is pressed
         this.escListener = (event) => {
@@ -66,6 +65,13 @@ class Dialog {
     close() {
         this.dialog.classList.add('menu-hidden');
         document.removeEventListener('keydown', this.escListener);
+        
+        // Remove the dialog from DOM after animation completes
+        setTimeout(() => {
+            if (this.dialog.parentNode) {
+                this.dialog.parentNode.removeChild(this.dialog);
+            }
+        }, 300); // Match the CSS transition duration
     }
 
     toggle() {

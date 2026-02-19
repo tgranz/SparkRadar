@@ -1,5 +1,6 @@
 import settingsHTML from '../components/settings.html?raw';
 import Palettes from './palettes.js';
+import Toast from './toast.js';
 
 // Mapping of setting keys to palette names
 const paletteKeyMap = {
@@ -131,6 +132,17 @@ function bindSectionControls(settingsInstance, content) {
             return;
         }
 
+        if (input.type === 'checkbox') {
+            const currentValue = settingsInstance.getSetting(key);
+            if (typeof currentValue === 'boolean') {
+                input.checked = currentValue;
+            }
+            input.addEventListener('change', () => {
+                settingsInstance.setSetting(key, input.checked);
+            });
+            return;
+        }
+
         const currentValue = settingsInstance.getSetting(key);
         if (typeof currentValue !== 'undefined') {
             input.value = currentValue;
@@ -210,6 +222,7 @@ export default class Settings {
             showProductPicker: true,
             showTimeAndTilt: true,
             reflectivityGateFilter: -10,
+            enableSplitCursorMarker: true,
         };
 
         this.settings = {
@@ -240,6 +253,11 @@ export default class Settings {
         this.settings[key] = value;
         this.saveSettings();
         document.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key, value } }));
+
+        // Some settings may show a toast notification when changed
+        if (key === 'enableSplitCursorMarker') {
+            new Toast('If split screen is currently open, close and reopen it to apply changes.').show();
+        }
     }
 
     getSetting(key) {

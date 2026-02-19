@@ -7,7 +7,12 @@ body {
   overflow: hidden;
 }
 
-p, h1, h2, h3, h4, h5, h6 {
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  text-align: center;
+}
+
+p {
   margin: 0;
 }
 
@@ -53,7 +58,7 @@ a:hover {
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   border: 1px solid gray;
   padding: 5px;
@@ -91,7 +96,7 @@ button:hover {
   bottom: 0px;
   left: 0px;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   border-top: 1px solid gray;
   padding: 5px 10px;
@@ -118,7 +123,7 @@ button:hover {
   top: 10px;
   left: 10px;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   border: 1px solid gray;
   padding: 5px;
@@ -130,33 +135,20 @@ button:hover {
 }
 
 /* Loader animation */
+/* HTML: <div class="loader"></div> */
 .loader {
-  width: 30px;
+  width: 38px;
   aspect-ratio: 1;
-  display: grid;
-  border: 4px solid #0000;
   border-radius: 50%;
-  border-right-color: #27beff;
-  animation: l15 1s infinite linear;
-}
-.loader::before,
-.loader::after {    
-  content: "";
-  grid-area: 1/1;
-  margin: 2px;
-  border: inherit;
-  border-radius: 50%;
-  animation: l15 2s infinite;
-}
-.loader::after {
-  margin: 8px;
-  animation-duration: 3s;
-}
-@keyframes l15{ 
-  100%{transform: rotate(1turn)}
+  background: conic-gradient(transparent 0deg, #27beff 60deg, transparent 60deg, transparent 360deg);
+  animation: l21 2s infinite linear;
 }
 
-#menu {
+@keyframes l21 {
+  100% {transform: rotate(1turn)}
+}
+
+.menu {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -164,7 +156,7 @@ button:hover {
   width: calc(100% - 60px);
   max-height: calc(100% - 60px);
   height: auto;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   color: white;
   border: 1px solid gray;
   backdrop-filter: blur(20px);
@@ -176,14 +168,14 @@ button:hover {
   transition: opacity 0.2s ease-out, transform 0.2s ease-out, visibility 0.2s ease-out;
 }
 
-#menu img {
+.menu img {
   width: 36px;
   height: 36px;
   margin-right: 10px;
 }
 
 /* Hidden state: faded out and slides up */
-#menu.menu-hidden {
+.menu.menu-hidden {
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) translateY(-40px);
@@ -191,36 +183,36 @@ button:hover {
 }
 
 /* Visible state: faded in and slides down */
-#menu:not(.menu-hidden) {
+.menu:not(.menu-hidden) {
   opacity: 1;
   pointer-events: auto;
   transform: translate(-50%, -50%) translateY(0);
   visibility: visible;
 }
 
-#menu ul {
+.menu ul {
   list-style: none;
   padding: 0;
   margin: 20px 0 0 0;
 }
 
-#menu li {
+.menu li {
   padding: 12px 0;
   cursor: pointer;
   transition: margin-left 0.2s ease, color 0.2s ease;
 }
 
-#menu li:hover {
+.menu li:hover {
   margin-left: 10px;
   color: #27beff;
 }
 
-#menu li i {
+.menu li i {
   font-size: 2em;
   margin-right: 10px;
 }
 
-#menu-close-btn {
+.menu-close-btn {
   background: #ff2121;
   border: none;
   font-size: 1.5em;
@@ -231,7 +223,7 @@ button:hover {
   transition: transform 0.2s ease;
 }
 
-#menu-close-btn:hover {
+.menu-close-btn:hover {
   transform: scale(1.2);
 }
 
@@ -240,7 +232,7 @@ button:hover {
   flex-direction: column;
   position: fixed;
   z-index: 1000;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   border: 1px solid gray;
   padding: 10px;
@@ -324,6 +316,32 @@ button:hover {
   flex-direction: column;
   gap: 2px;
   cursor: pointer;
+  background: none;
+  border: none;
+  text-align: right;
+  position: fixed;
+  bottom: 0px;
+  right: 10px;
+  z-index: 1001;
+  backdrop-filter: none;
+}
+
+#toolbar-station-info-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  text-align: right;
+  position: fixed;
+  bottom: 60px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid gray;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  padding: 10px;
+  border-radius: 10px;
+  will-change: backdrop-filter;
 }
 
 #toolbar-station {
@@ -450,7 +468,7 @@ button:hover {
 
 .settings-nav {
   width: 250px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -575,6 +593,54 @@ button:hover {
   accent-color: #27beff;
 }
 
+.settings-control input[type="checkbox"]:not(.switch) {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #27beff;
+  margin-left: auto;
+}
+
+/* Switch toggle styling */
+.settings-control input[type="checkbox"].switch {
+  width: 50px;
+  height: 26px;
+  position: relative;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  border-radius: 13px;
+  border: 1px solid gray;
+  transition: background-color 0.2s, border-color 0.2s;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.settings-control input[type="checkbox"].switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.settings-control input[type="checkbox"].switch:hover {
+  border-color: rgba(39, 190, 255, 0.5);
+}
+
+.settings-control input[type="checkbox"].switch:checked {
+  background: #27beff;
+  border-color: gray;
+}
+
+.settings-control input[type="checkbox"].switch:checked::before {
+  transform: translateX(24px);
+}
+
 /* Tablet Layout (< 1024px) */
 @media (max-width: 1023px) {
   .settings-nav {
@@ -674,10 +740,166 @@ button:hover {
   white-space: pre-wrap;
   font-family: Consolas, monospace;
   font-size: 0.9em;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   padding: 10px;
   border-radius: 10px;
   max-height: 400px;
   overflow-y: auto;
+}
+
+/* Attribution element */
+#attribution {
+  position: fixed;
+  bottom: 60px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid gray;
+  padding: 0px;
+  border-radius: 100px;
+  color: white;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: width 0.2s ease, gap 0.2s ease;
+  width: 24px;
+  overflow: hidden;
+}
+
+#attribution:hover {
+  width: auto;
+  gap: 10px;
+}
+
+.attribution-icon {
+  font-weight: bold;
+  font-size: 1em;
+  color: white;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.attribution-text {
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  margin-right: 10px;
+}
+
+#attribution:hover .attribution-text {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid gray;
+  backdrop-filter: blur(20px);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 1em;
+  z-index: 10000;
+  opacity: 0;
+  animation: fadeInOut 5s forwards;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.popup {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  gap: 10px;
+  width: 400px;
+  color: white;
+  border: 1px solid gray;
+  border-radius: 10px;
+  padding: 10px;
+  max-width: 260px;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.popup::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid gray;
+}
+
+.popup-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.popup-list {
+  display: grid;
+  gap: 6px;
+}
+
+.popup-item:hover {
+  border: 1px solid #27beff;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.popup-item {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  column-gap: 8px;
+  align-items: start;
+  border: 1px solid gray;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  background-color: rgba(0, 0, 0, 0);
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.popup-item-title {
+  font-weight: 600;
+}
+
+.popup-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.popup-meta {
+  color: #cbd5e1;
+  font-size: 11px;
 }

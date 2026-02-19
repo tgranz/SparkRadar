@@ -1,4 +1,4 @@
-export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick) {
+export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick) {    
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
 
@@ -21,26 +21,40 @@ export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick) {
             onOpenMenu();
         }
     });
-
     toolbar.appendChild(openMenuButton);
     toolbar.appendChild(startSplitLayoutButton);
-    const spacer = document.createElement('div');
-    spacer.className = 'toolbar-spacer';
-    toolbar.appendChild(spacer); // push buttons to the left
 
     const loader = document.createElement('div');
     loader.className = 'loader';
     loader.id = 'toolbar-loader';
-    toolbar.appendChild(loader); // loading animation
+    toolbar.appendChild(loader);
+
+    const spacer = document.createElement('div');
+    spacer.className = 'toolbar-spacer';
+    toolbar.appendChild(spacer); // push everything to the left
 
     const stationInfoDiv = document.createElement('div');
     stationInfoDiv.id = 'toolbar-station-info';
     stationInfoDiv.textContent = '';
-    toolbar.appendChild(stationInfoDiv);
+    document.body.appendChild(stationInfoDiv);
+
+    if (window.innerWidth <= 400) {
+        stationInfoDiv.id = 'toolbar-station-info-mobile';
+    } else {
+        stationInfoDiv.id = 'toolbar-station-info';
+    }
+
+    window.onresize = () => {
+        if (window.innerWidth <= 400) {
+            stationInfoDiv.id = 'toolbar-station-info-mobile';
+        } else {
+            stationInfoDiv.id = 'toolbar-station-info';
+        }
+    };
 
     const stationInfo = document.createElement('div');
-    stationInfo.id = 'toolbar-station';
     stationInfo.textContent = '';
+    stationInfo.id = 'toolbar-station';
     stationInfoDiv.appendChild(stationInfo);
     stationInfoDiv.addEventListener('click', () => {
         if (typeof onRadarStatusClick === 'function') {

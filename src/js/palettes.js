@@ -127,10 +127,15 @@ const defaultPalettes = {
 class Palettes {
     constructor() {
         const storedPalettes = localStorage.getItem('colorPalettes');
+        console.log('[Palettes] Constructor - stored palettes in localStorage:', storedPalettes ? 'exists' : 'empty');
         // Merge stored palettes with defaults, giving priority to stored (custom) palettes
         this.palettes = storedPalettes 
             ? { ...defaultPalettes, ...JSON.parse(storedPalettes) }
             : defaultPalettes;
+        if (storedPalettes) {
+            const customKeys = Object.keys(JSON.parse(storedPalettes));
+            console.log('[Palettes] Custom palette keys loaded:', customKeys);
+        }
     }
 
     convertPalToArray(palString) {
@@ -191,6 +196,8 @@ class Palettes {
                 units = match[1].toUpperCase();
             }
         }
+        // For velocity palettes: only apply scale as a divisor if units are NOT specified or not MPH
+        // When units: MPH, the scale is metadata (conversion factor), not a divisor
         if (paletteName === 'VEL' && scaleLine && units !== 'MPH') {
             const match = scaleLine.match(/scale\s*:\s*([\d.]+)/i);
             if (match) {
@@ -218,9 +225,10 @@ class Palettes {
             
             if (parts.length < 4) return; // Need at least value + RGB
             
+            // Apply scale division (for raw values) unless units are specified
             let val = parts[0] / scale;
+            // If palette values are in MPH, convert to knots to match radar data
             if (paletteName === 'VEL' && units === 'MPH') {
-                // Convert MPH palette values to knots to match Level 3 velocity units.
                 val *= 0.868976;
             }
             const r1 = parts[1];
@@ -296,12 +304,23 @@ class Palettes {
             console.warn(`Palette "${name}" not found, using default.`);
             return this.convertPalToArray(defaultPalettes["REF"]);
         }
-        return this.convertPalToArray(this.palettes[name]);
+        const palString = this.palettes[name];
+        console.log(`[Palettes] Getting palette "${name}" - first 100 chars:`, palString.substring(0, 100));
+        return this.convertPalToArray(palString);
     }
 
     storePalette(name, palString) {
+        console.log(`[Palettes] Storing palette "${name}" - first 100 chars:`, palString.substring(0, 100));
         this.palettes[name] = palString;
-        localStorage.setItem('colorPalettes', JSON.stringify(this.palettes));
+        const toStore = {};
+        // Only store custom palettes, not defaults
+        Object.keys(this.palettes).forEach(key => {
+            if (this.palettes[key] !== defaultPalettes[key]) {
+                toStore[key] = this.palettes[key];
+            }
+        });
+        localStorage.setItem('colorPalettes', JSON.stringify(toStore));
+        console.log('[Palettes] Stored custom palettes:', Object.keys(toStore));
     }
 
     generateGradientCSS(paletteName) {
@@ -355,24 +374,24 @@ units: MPH
 step: 10
 product: BV
 Scale:   2.23694 
-0 130 106 120 122 48 57
-10 105 0 0 242 1 6 
-40 249 58 84 255 142 212
-55 255 157 206 255 221 176
-60 255 230 169 255 151 86
-80 254 137 80 
-120 97 6 2 
-140 60 0 0
-200 45 0 0
--10 72 112 71 106 125 105
--40 10 248 35 15 99 20
--50 180 240 243 33 253 50
--70  55 226 229  172 239 242
--90 25 1 142 47 215 225
--100 105 2 142 32 1 141 
--120 250 4 130 114 3 141
--140 255 20 180
--200 255 220 220
+color: 0 130 106 120 122 48 57
+color: 10 105 0 0 242 1 6 
+color: 40 249 58 84 255 142 212
+color: 55 255 157 206 255 221 176
+color: 60 255 230 169 255 151 86
+color: 80 254 137 80 
+color: 120 97 6 2 
+color: 140 60 0 0
+color: 200 45 0 0
+color: -10 72 112 71 106 125 105
+color: -40 10 248 35 15 99 20
+color: -50 180 240 243 33 253 50
+color: -70  55 226 229  172 239 242
+color: -90 25 1 142 47 215 225
+color: -100 105 2 142 32 1 141 
+color: -120 250 4 130 114 3 141
+color: -140 255 20 180
+color: -200 255 220 220
 RF: 123 0 200
 
 */

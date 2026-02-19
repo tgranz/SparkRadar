@@ -39,14 +39,14 @@ const initialStation = urlParams.get('station') ? urlParams.get('station').toUpp
 var mainRadar = {
     station: initialStation,
     product: 'N0B', // Reflectivity
-  level: 'L3',
+    level: 'L3',
     options: { gate_limit: -30 }
 }
 
 var splitRadar = {
     station: initialStation,
     product: 'N0G', // Velocity
-  level: 'L3',
+    level: 'L3',
     options: { gate_limit: -30 }
 }
 
@@ -143,8 +143,45 @@ map.setRadar(radar); // Set radar instance on map for split view
 map.map.on('load', async () => {
     // Add radar stations
     map.updateRadarStations();
+    // Fetch and display alerts
+    setTimeout(() => {
+      map.fetchAlerts();
+      map.fetchWatches();
+    }, 5000);
     // Add radar
     await setRadar(null, null, 'main', { gate_limit: -30 });
+
+    /*let lastInspectValue = undefined;
+    let lastInspectAt = 0;
+    map.map.on('mousemove', (e) => {
+      if (!map.currentGeojson) return;
+      const point = [e.lngLat.lng, e.lngLat.lat];
+      const value = map._findValueAtPoint(map.currentGeojson, point);
+      const now = Date.now();
+      if (value === lastInspectValue && now - lastInspectAt < 250) return;
+      lastInspectValue = value;
+      lastInspectAt = now;
+      if (value === null) {
+        const bounds = map.inspectBounds;
+        if (bounds) {
+          const lng = e.lngLat.lng;
+          const lat = e.lngLat.lat;
+          const outside = lng < bounds[0][0] || lng > bounds[1][0] || lat < bounds[0][1] || lat > bounds[1][1];
+          if (outside) {
+            console.log('[Inspector] val: no data (outside bounds)');
+            return;
+          }
+        }
+        const swappedValue = map._findValueAtPoint(map.currentGeojson, [point[1], point[0]]);
+        if (swappedValue !== null) {
+          console.log(`[Inspector] val: ${swappedValue} (swapped lat/lng)`);
+          return;
+        }
+        console.log('[Inspector] val: no data');
+        return;
+      }
+      console.log(`[Inspector] val: ${value}`);
+    });*/
 });
 
 // Add the main toolbar
@@ -271,10 +308,14 @@ setInterval(async () => {
       updateTimes = 0;
     }
 
+    // Update alerts
+    map.fetchAlerts();
+    map.fetchWatches();
+
   } finally {
     updateInProgress = false;
   }
-}, 15 * 1000); // Check for updates every 15 seconds
+}, 15 * 1000); // Check for updates every 10 seconds
 
 
 

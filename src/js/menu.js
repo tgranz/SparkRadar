@@ -15,7 +15,7 @@ class Menu {
     constructor(callbacks = {}) {
         this.callbacks = callbacks;
         this.menu = document.createElement('div');
-        this.menu.id = 'menu';
+        this.menu.classList.add('menu');
         this.menu.classList.add('menu-hidden');
 
         // Create menu header with close button
@@ -32,7 +32,7 @@ class Menu {
         title.id = 'menu-title';
 
         const closeBtn = document.createElement('button');
-        closeBtn.id = 'menu-close-btn';
+        closeBtn.classList.add('menu-close-btn');
         closeBtn.innerHTML = '<i class="ti ti-x"></i>';
         closeBtn.addEventListener('click', () => this.close());
 

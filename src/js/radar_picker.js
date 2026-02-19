@@ -99,6 +99,9 @@ class RadarPicker {
         // Store the onChangeProduct callback for later use
         this.onChangeProduct = onChangeProduct;
 
+        // Restore persisted time and tilt data
+        this.restoreTimeAndTilt();
+
         // Append the picker to the body
         document.body.appendChild(this.picker);
     }
@@ -133,6 +136,29 @@ class RadarPicker {
             timeElem.style.color = '#ffcc00';
         } else {
             timeElem.style.color = 'white';
+        }
+
+        // Persist time and tilt to localStorage
+        try {
+            localStorage.setItem('radarPicker_timeAndTilt', JSON.stringify({
+                time,
+                tilt,
+                timeIso
+            }));
+        } catch (e) {
+            console.warn('Failed to persist radar picker time and tilt:', e);
+        }
+    }
+
+    restoreTimeAndTilt() {
+        try {
+            const saved = localStorage.getItem('radarPicker_timeAndTilt');
+            if (saved) {
+                const { time, tilt, timeIso } = JSON.parse(saved);
+                this.setTimeAndTilt(time, tilt, timeIso);
+            }
+        } catch (e) {
+            console.warn('Failed to restore radar picker time and tilt:', e);
         }
     }
 
