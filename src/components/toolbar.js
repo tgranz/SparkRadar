@@ -1,4 +1,4 @@
-export function createToolbar(onSplitLayout, onOpenMenu) {
+export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick) {
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
 
@@ -42,6 +42,11 @@ export function createToolbar(onSplitLayout, onOpenMenu) {
     stationInfo.id = 'toolbar-station';
     stationInfo.textContent = '';
     stationInfoDiv.appendChild(stationInfo);
+    stationInfoDiv.addEventListener('click', () => {
+        if (typeof onRadarStatusClick === 'function') {
+            onRadarStatusClick();
+        }
+    });
 
     const vcpInfo = document.createElement('div');
     vcpInfo.id = 'toolbar-vcp';

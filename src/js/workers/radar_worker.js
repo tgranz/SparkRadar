@@ -57,6 +57,8 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
         radarData = radar.getHighresDiffPhase();
     } else if (layer === 'SW') {
         radarData = radar.getHighresSpectrum();
+    } else if (layer == 'ZDR') {
+        radarData = radar.getHighResDiffReflectivity();
     } else {
         throw new Error(`Unknown radar layer: ${layer}`);
     }

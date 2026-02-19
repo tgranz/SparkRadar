@@ -12,74 +12,52 @@ See LICENSE for more.
 
 // Palettes are stored in text .pal format
 const defaultPalettes = {
-    // Reflectivity: Ben's BR (https://www.wxtools.org/reflectivity/bens-br)
+    // Reflectivity: Baron Lynx (https://www.wxtools.org/reflectivity/baronlynx)
     "REF": 
-        `0 0 0 0
-        10 106  90 205
-        12  72  61 139
-        14  70 130 180
-        16  95 158 160
-        18   0 139 139
-        20  34 139  34
-        22  60 179 113
-        24 107 142  35
-        26 154 205  50
-        28 205 173   0
-        30 255 215   0
-        32 255 255   0
-        34 255 165   0
-        36 255 140   0
-        38 255 127   0
-        40 255  99  71
-        42 255  69   0
-        44 226  1   30
-        46 200  6   30
-        48 185  1   30
-        50 252 156 156
-        52 255 182 193
-        54 238 130 238
-        56 219 112 147
-        58 218 112 214
-        60 186  85 211
-        62 153  50 204
-        64 160  32 240
-        66 159 121 238
-        68 171 130 255
-        70 138 143 255
-        72 54  62  255
-        74 45  48  122
-        76 45  48  82
-        78 32  40  44
-        80 0   0   0
-        82 64  64  64
-        84 102 102 102
-        86 140 140 140
-        88 179 179 179
-        90 204 204 204
-        92 230 230 230
-        94 255 255 255
-        96 179 179 255
-        98 128 128 255
-        100 77  77  255`,
+        `0   000 255 255 0
+        10   000 100 150
+        10.1 000 160 230
+        15   000 215 130
+        15.1 000  75 000
+        35   255 255 33
+        42   255 115 000
+        45   255 000 000
+        45.1 150 000 000
+        55   175 000 150
+        60   230 100 230
+        70   000 000 000
+        90   255 255 255`,
 
     // Velocity
     "VEL":
         `-200 255 220 220
         -140 255 20 180
+        -120.1 114 3 141
         -120 250 4 130
+        -100.1 32 1 141 
         -100 105 2 142
+        -90.1 47 215 225
         -90 25 1 142
+        -70.1 172 239 242
         -70 55 226 229
+        -50.1 33 253 50
         -50 180 240 243
+        -40.1 15 99 20
         -40 10 248 35
+        -10.1 106 125 105
         -10 72 112 71
         0 130 106 120
+        0.1 122 48 57
         10 105 0 0
+        10.1 242 1 6 
         40 249 58 84
+        40.5 255 142 212
         55 255 157 206
+        55.5 255 221 176
         60 255 230 169
-        80 254 137 80
-        120 97 6 2
+        65 255 151 86
+        80 254 137 80 
+        120 97 6 2 
         140 60 0 0
         200 45 0 0`,
     // Correlation Coefficient: AWIPS RHO (https://www.wxtools.org/correlation-coefficient/awips-rho-cc)
@@ -125,20 +103,53 @@ const defaultPalettes = {
         130 255 0 255
         140 0 255 255
         150 255 255 255`,
+    // Spectrum Width: Ben's SW (https://www.wxtools.org/spectrum-width/bens-sw)
+    "SW":
+        `0 20 5 72
+        2 50 20 140
+        4 124 38 190
+        7 218 55 120
+        15 251 126 33
+        18 255 255 0
+        22 153 255 51
+        30 0 153 230
+        35 0 17 26
+        40 255 255 255`,
+    // Differential Reflectivity: custom based on radarscope
+    "ZDR":
+        `-5 0 0 255
+        -2 0 100 255
+        0 255 255 255
+        2 255 100 100
+        5 255 0 0`,
 };
 
 class Palettes {
     constructor() {
         const storedPalettes = localStorage.getItem('colorPalettes');
-        this.palettes = storedPalettes ? JSON.parse(storedPalettes) : defaultPalettes;
+        // Merge stored palettes with defaults, giving priority to stored (custom) palettes
+        this.palettes = storedPalettes 
+            ? { ...defaultPalettes, ...JSON.parse(storedPalettes) }
+            : defaultPalettes;
     }
 
     convertPalToArray(palString) {
         const lines = palString.trim().split('\n');
-        const result = [];
+        const parsed = [];
         
         lines.forEach(line => {
             const [val, r, g, b] = line.trim().split(/\s+/).map(Number);
+            if (!isNaN(val) && !isNaN(r)) {
+                parsed.push({ val, r, g, b });
+            }
+        });
+
+        // Sort by value to ensure correct order
+        parsed.sort((a, b) => a.val - b.val);
+
+        // Convert to interleaved array format: [val1, 'rgb(...)', val2, 'rgb(...)', ...]
+        const result = [];
+        parsed.forEach(({val, r, g, b}) => {
             result.push(val, `rgb(${r}, ${g}, ${b})`);
         });
 
@@ -147,10 +158,17 @@ class Palettes {
 
     convertPalToGLSL(palString) {
         const lines = palString.trim().split('\n');
-        const colors = lines.map(line => {
+        const colors = [];
+        
+        lines.forEach(line => {
             const [val, r, g, b] = line.trim().split(/\s+/).map(Number);
-            return { val, r, g, b };
+            if (!isNaN(val) && !isNaN(r)) {
+                colors.push({ val, r, g, b });
+            }
         });
+
+        // Sort by value to ensure correct order
+        colors.sort((a, b) => a.val - b.val);
 
         // Create GLSL array string
         let glslArray = `const vec4 palette[${colors.length}] = vec4[](\n`;
@@ -158,6 +176,119 @@ class Palettes {
         glslArray += '\n);';
 
         return glslArray;
+    }
+
+    convertPalFileFormat(palFileContent, options = {}) {
+        const { paletteName } = options;
+        const lines = palFileContent.split('\n');
+        const unitsLine = lines.find(line => /\bunits\b\s*:/i.test(line));
+        const scaleLine = lines.find(line => /\bscale\s*:/i.test(line));
+        let units = null;
+        let scale = 1;
+        if (unitsLine) {
+            const match = unitsLine.match(/units\s*:\s*([A-Za-z]+)/i);
+            if (match) {
+                units = match[1].toUpperCase();
+            }
+        }
+        if (paletteName === 'VEL' && scaleLine && units !== 'MPH') {
+            const match = scaleLine.match(/scale\s*:\s*([\d.]+)/i);
+            if (match) {
+                const parsedScale = Number(match[1]);
+                if (Number.isFinite(parsedScale) && parsedScale !== 0) {
+                    scale = parsedScale;
+                }
+            }
+        }
+        // Match both 'color:' and 'Color:' (case-insensitive) or 'Color4:'
+        const colorLines = lines.filter(line => {
+            const trimmed = line.trim();
+            return /^color\d*:/i.test(trimmed);
+        });
+        
+        const result = [];
+        const epsilon = 0.00001; // Small offset for hard stops
+        
+        colorLines.forEach(line => {
+            // Remove the color label (Color:, Color4:, color:, etc.)
+            const withoutLabel = line.replace(/^.*?color\d*:\s*/i, '').trim();
+            
+            // Split by whitespace and convert to numbers
+            const parts = withoutLabel.split(/\s+/).map(Number);
+            
+            if (parts.length < 4) return; // Need at least value + RGB
+            
+            let val = parts[0] / scale;
+            if (paletteName === 'VEL' && units === 'MPH') {
+                // Convert MPH palette values to knots to match Level 3 velocity units.
+                val *= 0.868976;
+            }
+            const r1 = parts[1];
+            const g1 = parts[2];
+            const b1 = parts[3];
+            
+            // Check for second RGB set (hard stop between colors)
+            if (parts.length >= 7) {
+                const r2 = parts[4];
+                const g2 = parts[5];
+                const b2 = parts[6];
+                
+                // Output the first color slightly before this value to create the hard stop
+                result.push({ val: val - epsilon, r: r1, g: g1, b: b1 });
+                
+                // Output the second color at the value
+                result.push({ val, r: r2, g: g2, b: b2 });
+            } else {
+                // Output the only color at the value
+                result.push({ val, r: r1, g: g1, b: b1 });
+            }
+        });
+
+        // Sort by value to ensure correct order
+        result.sort((a, b) => a.val - b.val);
+        
+        // Convert back to string format
+        const sortedLines = result.map(stop => 
+            `${stop.val.toFixed(5)} ${stop.r} ${stop.g} ${stop.b}`
+        );
+
+        return sortedLines.join('\n');
+    }
+
+    interpolateColor(value, palArray) {
+        // palArray is [val1, 'rgb(...)', val2, 'rgb(...)', ...]
+        for (let i = 0; i < palArray.length; i += 2) {
+            const currentVal = palArray[i];
+            if (i + 2 < palArray.length) {
+                const nextVal = palArray[i + 2];
+                if (value >= currentVal && value <= nextVal) {
+                    // Interpolate between current and next color
+                    const t = (value - currentVal) / (nextVal - currentVal);
+                    const color1 = this.parseRGB(palArray[i + 1]);
+                    const color2 = this.parseRGB(palArray[i + 3]);
+                    
+                    return this.lerpColor(color1, color2, t);
+                }
+            } else if (value === currentVal) {
+                return palArray[i + 1];
+            }
+        }
+        
+        // Fallback to closest value
+        return palArray[palArray.length - 1];
+    }
+
+    parseRGB(rgbString) {
+        const match = rgbString.match(/\d+/g);
+        return { r: parseInt(match[0]), g: parseInt(match[1]), b: parseInt(match[2]) };
+    }
+
+    lerpColor(color1, color2, t) {
+        const r = Math.round(color1.r + (color2.r - color1.r) * t);
+        const g = Math.round(color1.g + (color2.g - color1.g) * t);
+        const b = Math.round(color1.b + (color2.b - color1.b) * t);
+        
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     getPalette(name) {
@@ -172,6 +303,76 @@ class Palettes {
         this.palettes[name] = palString;
         localStorage.setItem('colorPalettes', JSON.stringify(this.palettes));
     }
+
+    generateGradientCSS(paletteName) {
+        const palString = this.palettes[paletteName];
+        
+        if (!palString) {
+            return null; // Palette not found
+        }
+        
+        const lines = palString.trim().split('\n');
+        const colorStops = [];
+        
+        lines.forEach(line => {
+            const parts = line.trim().split(/\s+/).map(Number);
+            if (parts.length >= 4) {
+                const val = parts[0];
+                const r = parts[1];
+                const g = parts[2];
+                const b = parts[3];
+                colorStops.push({ val, r, g, b });
+            }
+        });
+        
+        if (colorStops.length === 0) {
+            return null;
+        }
+        
+        // Sort by value to ensure correct order
+        colorStops.sort((a, b) => a.val - b.val);
+        
+        // Find min and max values to normalize positions
+        const minVal = colorStops[0].val;
+        const maxVal = colorStops[colorStops.length - 1].val;
+        const range = maxVal - minVal;
+        
+        // Generate gradient stops based on actual value positions
+        const gradientStops = colorStops.map(stop => {
+            const percent = range === 0 ? 0 : ((stop.val - minVal) / range) * 100;
+            return `rgb(${stop.r}, ${stop.g}, ${stop.b}) ${percent}%`;
+        }).join(', ');
+        
+        return `linear-gradient(to right, ${gradientStops})`;
+    }
 }
 
 export default Palettes;
+
+
+/* Example .pal file:
+units: MPH
+step: 10
+product: BV
+Scale:   2.23694 
+0 130 106 120 122 48 57
+10 105 0 0 242 1 6 
+40 249 58 84 255 142 212
+55 255 157 206 255 221 176
+60 255 230 169 255 151 86
+80 254 137 80 
+120 97 6 2 
+140 60 0 0
+200 45 0 0
+-10 72 112 71 106 125 105
+-40 10 248 35 15 99 20
+-50 180 240 243 33 253 50
+-70  55 226 229  172 239 242
+-90 25 1 142 47 215 225
+-100 105 2 142 32 1 141 
+-120 250 4 130 114 3 141
+-140 255 20 180
+-200 255 220 220
+RF: 123 0 200
+
+*/

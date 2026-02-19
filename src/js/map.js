@@ -44,6 +44,8 @@ class Map {
                 color: this._parseRgb(this.colorTable[i + 1])
             });
         }
+        // Sort stops to ensure consistent ordering
+        this.colorStops.sort((a, b) => a.value - b.value);
 
         // Need to force apply projection because I don't freaking know.
         this.applyProjection(this.map, params.projection);
@@ -51,6 +53,36 @@ class Map {
         this.moveListeners = { main: null, dual: null };
         // Store radar station markers for cleanup
         this.radarMarkers = { main: [], dual: [] };
+
+        // Reflectivity gate filter (for filtering out weak reflectivity values)
+        // Initialize from localStorage if available, otherwise use default
+        try {
+            const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+            this.reflectivityGateFilter = settings.reflectivityGateFilter ?? -10;
+        } catch {
+            this.reflectivityGateFilter = -10;
+        }
+
+        // Listen for palette updates from settings
+        document.addEventListener('paletteUpdated', (e) => {
+            const { paletteName } = e.detail;
+            // If the updated palette matches the current palette, reload it
+            if (paletteName && this.currentPalette && paletteName === this.currentPalette) {
+                this._reloadCurrentPalette();
+            }
+        });
+
+        // Listen for settings changes
+        document.addEventListener('settingsChanged', (e) => {
+            const { key, value } = e.detail;
+            if (key === 'reflectivityGateFilter') {
+                this.reflectivityGateFilter = value;
+                // Re-render the radar with new filter
+                if (this.currentGeojson) {
+                    this.addWebGlRadarLayer(this.currentGeojson, 'main');
+                }
+            }
+        });
     }
 
     // Function to apply projection to a map instance
@@ -387,6 +419,10 @@ class Map {
                 return 'KDP';
             case 'H':
                 return 'DHC';
+            case 'W':
+                return 'SW';
+            case 'X':
+                return 'ZDR';
             default:
                 return product.toUpperCase();
         }
@@ -395,7 +431,9 @@ class Map {
     // Method to update color palette
     _updatePalette(layer) {
         if (this.currentPalette === layer) return; // Skip if already set
-        
+
+        // Refresh palettes from localStorage so uploads are picked up
+        this.palettes = new Palettes();
         this.currentPalette = layer;
         this.colorTable = this.palettes.getPalette(layer);
         this.colorStops = [];
@@ -406,6 +444,35 @@ class Map {
                 value: Number(this.colorTable[i]),
                 color: this._parseRgb(this.colorTable[i + 1])
             });
+        }
+        
+        // Sort stops by value to ensure correct interpolation
+        this.colorStops.sort((a, b) => a.value - b.value);
+    }
+
+    // Method to reload the current palette when it's updated in settings
+    _reloadCurrentPalette() {
+        // Reload the palettes instance to get fresh data from localStorage
+        this.palettes = new Palettes();
+        
+        // Update the palette with fresh data
+        this.colorTable = this.palettes.getPalette(this.currentPalette);
+        this.colorStops = [];
+        
+        // Pre-parse all RGB values
+        for (let i = 0; i < this.colorTable.length; i += 2) {
+            this.colorStops.push({
+                value: Number(this.colorTable[i]),
+                color: this._parseRgb(this.colorTable[i + 1])
+            });
+        }
+        
+        // Sort stops by value to ensure correct interpolation
+        this.colorStops.sort((a, b) => a.value - b.value);
+        
+        // Re-render the current radar layer with new colors
+        if (this.currentGeojson) {
+            this.addWebGlRadarLayer(this.currentGeojson, 'main');
         }
     }
 
@@ -438,20 +505,34 @@ class Map {
         }
         
         const stops = this.colorStops;
+        if (!stops || stops.length === 0) {
+            return [1, 1, 1]; // White fallback for invalid palette
+        }
+        
+        // Clamp to first stop if value is below minimum
         if (value <= stops[0].value) {
             return stops[0].color;
         }
         
+        // Clamp to last stop if value is above maximum
+        if (value >= stops[stops.length - 1].value) {
+            return stops[stops.length - 1].color;
+        }
+        
         // Linear search is faster for small arrays (typical: 16-32 stops)
         for (let i = 0; i < stops.length - 1; i++) {
-            if (value <= stops[i + 1].value) {
-                const leftStop = stops[i];
-                const rightStop = stops[i + 1];
+            const leftStop = stops[i];
+            const rightStop = stops[i + 1];
+            
+            // Check if value falls between these two stops
+            if (value >= leftStop.value && value <= rightStop.value) {
                 const span = rightStop.value - leftStop.value;
                 const t = span > 0 ? (value - leftStop.value) / span : 0;
                 return this._lerpColor(leftStop.color, rightStop.color, t);
             }
         }
+        
+        // Shouldn't reach here, but return last stop as fallback
         return stops[stops.length - 1].color;
     }
 
@@ -483,6 +564,12 @@ class Map {
         for (const feature of features) {
             const rawValue = feature.properties?.val;
             const value = rawValue === 'rf' ? 'rf' : Number(rawValue ?? 0);
+            
+            // Apply reflectivity gate filter (only for REF palette)
+            if (this.currentPalette === 'REF' && value !== 'rf' && value < this.reflectivityGateFilter) {
+                continue; // Skip this feature
+            }
+            
             const color = this._colorForValue(value);
             const geometry = feature.geometry;
             if (!geometry) continue;
@@ -858,8 +945,10 @@ class Map {
                     const station = features[i];
                     const properties = station.properties;
                     
-                    // Filter early - skip TDWR stations
+                    // Filter TDWR stations
                     if (properties.stationType !== 'WSR-88D') continue;
+                    // Filter non-CONUS stations
+                    if (!properties.id.startsWith('K')) continue;
 
                     const coords = station.geometry.coordinates;
                     const icao = properties.id;

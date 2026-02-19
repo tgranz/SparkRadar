@@ -1,0 +1,68 @@
+<div class="settings-container">
+  <header class="settings-header">
+    <div class="settings-header-content">
+      <i class="ti ti-settings settings-header-icon"></i>
+      <h2 class="settings-header-title">Settings</h2>
+      <button class="settings-header-close" aria-label="Close settings">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+  </header>
+
+  <div class="settings-body">
+    <nav class="settings-nav">
+      <div class="settings-nav-mobile-header">
+        <button class="settings-nav-toggle" aria-label="Toggle navigation">
+          <i class="ti ti-chevron-down"></i>
+        </button>
+        <span class="settings-nav-title" aria-live="polite"></span>
+      </div>
+      <ul class="settings-nav-list">
+        <li><a href="#general" class="settings-nav-item" data-section="general">General</a></li>
+        <li><a href="#radar" class="settings-nav-item" data-section="radar">Radar</a></li>
+      </ul>
+    </nav>
+
+    <main class="settings-content">
+      <!-- Sections will be populated here -->
+    </main>
+  </div>
+
+  <div class="settings-sections" hidden>
+    <section class="settings-section" data-section="general">
+      <h2>General Settings</h2>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="general-reset">Reset Settings</label>
+            <input class="danger-button" type="button" id="general-reset" name="general-reset" value="Reset" data-setting="generalReset">
+        </div>
+        <p class="settings-control-help">Click to reset all settings to their defaults.</p>
+      </div>
+    </section>
+    <section class="settings-section" data-section="radar">
+      <h2>Radar</h2>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="reflectivity-gate-filter">Reflectivity Gate Filter</label>
+          <span class="settings-control-value" data-for="reflectivity-gate-filter"></span>
+        </div>
+        <input type="range" id="reflectivity-gate-filter" name="reflectivity-gate-filter" min="-30" max="50" step="0.5" value="-10" data-setting="reflectivityGateFilter">
+        <p class="settings-control-help">Reflectivity gates ("pixels") with dBz values below this threshold will be hidden. Turn up to increase performance, or down to view more radar clutter.</p>
+      </div>
+      <div class="settings-control palette-pickers">
+        <div class="settings-control-header">
+          <label for="color-palettes">Color Palettes</label>
+          <span class="settings-control-value" data-for="color-palettes"></span>
+        </div>
+        <input type="button" id="color-palettes-ref" name="color-palettes-ref" value="Reflectivity" data-setting="uploadPaletteRef">
+        <input type="button" id="color-palettes-vel" name="color-palettes-vel" value="Velocity" data-setting="uploadPaletteVel">
+        <input type="button" id="color-palettes-cc" name="color-palettes-cc" value="Correlation Coefficient" data-setting="uploadPaletteCC">
+        <input type="button" id="color-palettes-zdr" name="color-palettes-zdr" value="Differential Reflectivity" data-setting="uploadPaletteZDR">
+        <input type="button" id="color-palettes-kdp" name="color-palettes-kdp" value="Specific Differential Phase" data-setting="uploadPaletteKDP">
+        <input type="button" id="color-palettes-sw" name="color-palettes-sw" value="Spectrum Width" data-setting="uploadPaletteSW">
+        <input type="button" id="color-palettes-dhc" name="color-palettes-dhc" value="Digital Hydrometer Classification" data-setting="uploadPaletteDHC">
+        <p class="settings-control-help">Palettes are .pal files that tell the radar how to color the radar mesh.</p>
+      </div>
+    </section>
+  </div>
+</div>

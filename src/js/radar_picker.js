@@ -13,24 +13,28 @@ const productLabels = {
     'N_C': 'Correlation Coefficient',
     'N_K': 'Specific Differential Phase',
     'N_H': 'Hydrometeor Classification',
-    'REF': 'Super-Res Base Reflectivity',
-    'VEL': 'Super-Res Base Velocity',
+    'N_X': 'Differential Reflectivity',
+    'REF': 'Raw Base Reflectivity',
+    'VEL': 'Raw Base Velocity',
     'CC': 'Super-Res Correlation Coefficient',
     'KDP': 'Super-Res Specific Differential Phase',
-    'SW': 'Super-Res Spectrum Width'
+    'SW': 'Super-Res Spectrum Width',
+    //'ZDR': 'Super-Res Differential Reflectivity'
 };
 
 const productEntries = [
-    { type: 'header', label: 'Standard Products' },
+    { type: 'header', label: 'Standard Products (L-III)' },
     { type: 'item', code: 'N_B' },
     { type: 'item', code: 'N_G' },
+    { type: 'item', code: 'N_C' },
+    { type: 'item', code: 'N_X' },
     { type: 'item', code: 'N_H' },
     { type: 'item', code: 'N_K' },
-    { type: 'item', code: 'N_C' },
-    { type: 'header', label: 'Super-Res Products' },
+    { type: 'header', label: 'Super-Res Products (L-II)' },
     { type: 'item', code: 'REF' },
     { type: 'item', code: 'VEL' },
     { type: 'item', code: 'CC' },
+    //{ type: 'item', code: 'ZDR' }, not working
     { type: 'item', code: 'KDP' },
     { type: 'item', code: 'SW' }
 ];

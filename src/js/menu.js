@@ -8,6 +8,7 @@ See LICENSE for more.
 */
 
 import about from '../components/about.js';
+import Settings from './settings.js';
 
 class Menu {
     // Constructor function
@@ -43,8 +44,10 @@ class Menu {
         // Create menu items
         const menuList = document.createElement('ul');
         const menuItems = [
-            { label: 'Settings', icon: 'settings', onClick: () => { if (this.callbacks.onSettings) this.callbacks.onSettings(); } },
+            { label: 'Settings', icon: 'settings', onClick: () => { this.close(); setTimeout(() => { new Settings().showSettingsMenu(); }, 250); } },
             { label: 'About', icon: 'info-circle', onClick: () => { this.close(); setTimeout(() => { about(); }, 250); } },
+            { label: 'Help', icon: 'help-circle', onClick: () => { window.location = 'https://wiki.sparkradar.app/'; } },
+            { label: 'Switch to Lite Version', icon: 'logout', onClick: () => { window.location = 'https://lite.sparkradar.app/'; } },
             { label: 'Buy Me a Coffee', icon: 'cup', onClick: () => { window.location = 'https://www.buymeacoffee.com/tgranz'; } },
         ];
 

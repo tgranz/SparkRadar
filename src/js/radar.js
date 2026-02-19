@@ -26,7 +26,7 @@ class Radar {
     _inferLevelFromProduct(product) {
         if (!product) return 'L3';
         const upper = product.toUpperCase();
-        if (upper === 'REF' || upper === 'VEL' || upper === 'CC' || upper === 'KDP' || upper === 'SW') {
+        if (upper === 'REF' || upper === 'VEL' || upper === 'CC' || upper === 'KDP' || upper === 'SW' || upper === 'ZDR') {
             return 'L2';
         }
         return 'L3';
@@ -187,6 +187,8 @@ class Radar {
             radarData = radar.getHighresDiffPhase();
         } else if (layer === 'SW') {
             radarData = radar.getHighresSpectrum();
+        } else if (layer === 'ZDR') {
+            radarData = radar.getHighresDiffReflectivity();
         } else {
             throw new Error(`Unknown radar layer: ${layer}`);
         }
@@ -421,7 +423,7 @@ class Radar {
                 }
             }
 
-            if (!isLevel3 && !['REF', 'VEL', 'CC', 'KDP', 'SW'].includes(layer)) {
+            if (!isLevel3 && !['REF', 'VEL', 'CC', 'KDP', 'SW', 'ZDR'].includes(layer)) {
                 console.warn(`Unknown radar layer: ${layer}. Ignoring.`);
                 return null;
             }

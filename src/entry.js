@@ -25,22 +25,27 @@ import "./style.css";
 import Map from "./js/map.js";
 import Menu from "./js/menu.js";
 import Radar from "./js/radar.js";
+import RadarStatus from "./js/radar_status.js";
 
 // Components
 import { createToolbar } from "./components/toolbar.js";
 import { hideLoadingAnimation, showLoadingAnimation } from "./js/loader.js";
 
+// See if there are URL parameters for station
+const urlParams = new URLSearchParams(window.location.search);
+const initialStation = urlParams.get('station') ? urlParams.get('station').toUpperCase() : 'KTLX';
+
 // Function to store the current radars
 var mainRadar = {
-    station: 'KTLX',
-    product: 'N0B',
+    station: initialStation,
+    product: 'N0B', // Reflectivity
   level: 'L3',
     options: { gate_limit: -30 }
 }
 
 var splitRadar = {
-    station: 'KTLX',
-    product: 'N0G',
+    station: initialStation,
+    product: 'N0G', // Velocity
   level: 'L3',
     options: { gate_limit: -30 }
 }
@@ -48,7 +53,7 @@ var splitRadar = {
 const inferLevelFromProduct = (product) => {
   if (!product) return 'L3';
   const upper = product.toUpperCase();
-  if (upper === 'REF' || upper === 'VEL' || upper === 'CC' || upper === 'KDP' || upper === 'SW') {
+  if (upper === 'REF' || upper === 'VEL' || upper === 'CC' || upper === 'KDP' || upper === 'SW' || upper === 'ZDR') {
     return 'L2';
   }
   return 'L3';
@@ -140,39 +145,6 @@ map.map.on('load', async () => {
     map.updateRadarStations();
     // Add radar
     await setRadar(null, null, 'main', { gate_limit: -30 });
-    
-    /* Radar inspector: log value on hover
-    let lastInspectValue = undefined;
-    let lastInspectAt = 0;
-    map.map.on('mousemove', (e) => {
-      if (!map.currentGeojson) return;
-      const point = [e.lngLat.lng, e.lngLat.lat];
-      const value = map._findValueAtPoint(map.currentGeojson, point);
-      const now = Date.now();
-      if (value === lastInspectValue && now - lastInspectAt < 250) return;
-      lastInspectValue = value;
-      lastInspectAt = now;
-      if (value === null) {
-        const bounds = map.inspectBounds;
-        if (bounds) {
-          const lng = e.lngLat.lng;
-          const lat = e.lngLat.lat;
-          const outside = lng < bounds[0][0] || lng > bounds[1][0] || lat < bounds[0][1] || lat > bounds[1][1];
-          if (outside) {
-            console.log('[Inspector] val: no data (outside bounds)');
-            return;
-          }
-        }
-        const swappedValue = map._findValueAtPoint(map.currentGeojson, [point[1], point[0]]);
-        if (swappedValue !== null) {
-          console.log(`[Inspector] val: ${swappedValue} (swapped lat/lng)`);
-          return;
-        }
-        console.log('[Inspector] val: no data');
-        return;
-      }
-      console.log(`[Inspector] val: ${value}`);
-    });*/ 
 });
 
 // Add the main toolbar
@@ -195,7 +167,10 @@ const toolbar = createToolbar(
       map.splitMap('horizontal', { station: mainRadar.station, product: newProduct });
     } 
   },
-  () => { menu.open(); }
+  () => { menu.open(); },
+  () => {
+    const statusDialog = new RadarStatus(mainRadar.station);
+  }
 );
 document.body.appendChild(toolbar);
 
@@ -300,3 +275,41 @@ setInterval(async () => {
     updateInProgress = false;
   }
 }, 15 * 1000); // Check for updates every 15 seconds
+
+
+
+/* Inspector: TODO
+
+let lastInspectValue = undefined;
+    let lastInspectAt = 0;
+    map.map.on('mousemove', (e) => {
+      if (!map.currentGeojson) return;
+      const point = [e.lngLat.lng, e.lngLat.lat];
+      const value = map._findValueAtPoint(map.currentGeojson, point);
+      const now = Date.now();
+      if (value === lastInspectValue && now - lastInspectAt < 250) return;
+      lastInspectValue = value;
+      lastInspectAt = now;
+      if (value === null) {
+        const bounds = map.inspectBounds;
+        if (bounds) {
+          const lng = e.lngLat.lng;
+          const lat = e.lngLat.lat;
+          const outside = lng < bounds[0][0] || lng > bounds[1][0] || lat < bounds[0][1] || lat > bounds[1][1];
+          if (outside) {
+            console.log('[Inspector] val: no data (outside bounds)');
+            return;
+          }
+        }
+        const swappedValue = map._findValueAtPoint(map.currentGeojson, [point[1], point[0]]);
+        if (swappedValue !== null) {
+          console.log(`[Inspector] val: ${swappedValue} (swapped lat/lng)`);
+          return;
+        }
+        console.log('[Inspector] val: no data');
+        return;
+      }
+      console.log(`[Inspector] val: ${value}`);
+    });
+
+*/
