@@ -91,7 +91,61 @@ class Radar {
         const p2 = project(sinAz2, cosAz2, r1);
         const p3 = project(sinAz2, cosAz2, r2);
         const p4 = project(sinAz1, cosAz1, r2);
-        return [p1, p2, p3, p4, p1];
+        return [p1, p2, p3, p4];
+    }
+
+    _createMeshBuilder(includeGeojson) {
+        const mesh = [];
+        const features = includeGeojson ? [] : null;
+        let minLng = Infinity;
+        let minLat = Infinity;
+        let maxLng = -Infinity;
+        let maxLat = -Infinity;
+
+        const updateBounds = (point) => {
+            const lng = point[0];
+            const lat = point[1];
+            minLng = Math.min(minLng, lng);
+            minLat = Math.min(minLat, lat);
+            maxLng = Math.max(maxLng, lng);
+            maxLat = Math.max(maxLat, lat);
+        };
+
+        const pushQuad = (quad, value) => {
+            for (let i = 0; i < 4; i++) {
+                updateBounds(quad[i]);
+            }
+
+            const encodedValue = value === 'rf' ? NaN : value;
+            mesh.push(
+                quad[0][0], quad[0][1],
+                quad[1][0], quad[1][1],
+                quad[2][0], quad[2][1],
+                quad[3][0], quad[3][1],
+                encodedValue
+            );
+
+            if (features) {
+                const closed = [quad[0], quad[1], quad[2], quad[3], quad[0]];
+                features.push({
+                    type: 'Feature',
+                    properties: { val: value === 'rf' ? 'rf' : value },
+                    geometry: {
+                        type: 'Polygon',
+                        coordinates: [closed]
+                    }
+                });
+            }
+        };
+
+        const finalize = () => {
+            const meshData = new Float32Array(mesh);
+            const bounds = Number.isFinite(minLng) ? [minLng, minLat, maxLng, maxLat] : null;
+            const geojson = features ? { type: 'FeatureCollection', features } : null;
+            return { meshData, bounds, geojson };
+        };
+
+        return { pushQuad, finalize };
     }
 
     async _fetchRadarData(station, options = {}, rawDataOverride = null) {
@@ -145,10 +199,10 @@ class Radar {
             };
 
             worker.onmessage = (event) => {
-                const { type, geojson, metadata, message } = event.data || {};
+                const { type, geojson, meshData, bounds, metadata, message } = event.data || {};
                 if (type === 'result') {
                     cleanup();
-                    resolve({ geojson, metadata });
+                    resolve({ geojson, meshData, bounds, metadata });
                 } else if (type === 'error') {
                     cleanup();
                     reject(new Error(message || 'Radar worker failed'));
@@ -205,9 +259,10 @@ class Radar {
 
         // Loop over each radial
         const numberOfRadarIterations = radarData.length;
-        const features = [];
         const gateLimit = Number.isFinite(options.gate_limit) ? options.gate_limit : null;
         const project = this._createRadarProjector(radarLocation[0], radarLocation[1]);
+        const includeGeojson = options.includeGeojson === true;
+        const builder = this._createMeshBuilder(includeGeojson);
         
         for (let index = 0; index < numberOfRadarIterations; index++) {
             const radial = radarData[index];
@@ -261,29 +316,11 @@ class Radar {
                 const r2 = (firstGate + (gateIndex + 1) * gateSize) * 1000;
 
                 const coords = this._buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
-                
-                // Create GeoJSON feature
-                features.push({
-                    type: 'Feature',
-                    properties: {
-                        val: dbz === 'rf' ? 'rf' : dbz
-                    },
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [coords]
-                    }
-                });
+                builder.pushQuad(coords, dbz);
             }
         }
 
-        // Create GeoJSON FeatureCollection
-        const geojson = {
-            type: 'FeatureCollection',
-            features: features
-        };
-
-        console.log("GeoJSON data processed.");
-        return geojson;
+        return builder.finalize();
     }
 
     async _processLevel3RadarData(radar, radarLocation, layer, options = {}) {
@@ -299,9 +336,10 @@ class Radar {
         const radials = packet.radials || [];
         const gateLimit = Number.isFinite(options.gate_limit) ? options.gate_limit : 0;
 
-        const features = [];
         const numberOfRadarIterations = radials.length;
         const project = this._createRadarProjector(radarLocation[0], radarLocation[1]);
+        const includeGeojson = options.includeGeojson === true;
+        const builder = this._createMeshBuilder(includeGeojson);
 
         for (let index = 0; index < numberOfRadarIterations; index++) {
             const radial = radials[index];
@@ -340,21 +378,11 @@ class Radar {
                 const r2 = (firstBin + ((binIndex + 1) * rangeScaleKm)) * 250;
 
                 const coords = this._buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
-                features.push({
-                    type: 'Feature',
-                    properties: { val: value },
-                    geometry: {
-                        type: 'Polygon',
-                        coordinates: [coords]
-                    }
-                });
+                builder.pushQuad(coords, value);
             }
         }
 
-        return {
-            type: 'FeatureCollection',
-            features
-        };
+        return builder.finalize();
     }
 
     async isUpdateAvailable(radarStation, product = null) {
@@ -398,20 +426,28 @@ class Radar {
             console.log(`[getRadarLayer] Loaded file: ${radarFile.fileName}`);
             const rawData = radarFile.data;
 
+            const includeGeojson = options.includeGeojson === true;
             let geojson = null;
+            let meshData = null;
+            let bounds = null;
             let metadata = null;
 
             if (this.workerSupported) {
-                const workerOptions = { ...options };
+                const workerOptions = { ...options, includeGeojson };
                 delete workerOptions.onMetadata;
                 const arrayBuffer = rawData.buffer.slice(rawData.byteOffset, rawData.byteOffset + rawData.byteLength);
                 const result = await this._processRadarDataInWorker(arrayBuffer, layer, { ...workerOptions, station: radarStation });
                 geojson = result.geojson;
+                meshData = result.meshData || null;
+                bounds = result.bounds || null;
                 metadata = result.metadata;
             } else {
                 if (isLevel3) {
                     const { radar, radarLocation } = await this._fetchLevel3RadarData(radarStation, layer, rawData);
-                    geojson = await this._processLevel3RadarData(radar, radarLocation, layer, options);
+                    const processed = await this._processLevel3RadarData(radar, radarLocation, layer, { ...options, includeGeojson });
+                    geojson = processed.geojson;
+                    meshData = processed.meshData;
+                    bounds = processed.bounds;
                     const level3Meta = this._getLevel3Metadata(radar);
                     metadata = {
                         station: radarStation,
@@ -420,7 +456,10 @@ class Radar {
                     };
                 } else {
                     const { radar, radarLocation, extent, header } = await this._fetchRadarData(radarStation, options, rawData);
-                    geojson = await this._processRadarData(radar, radarLocation, extent, layer, options);
+                    const processed = await this._processRadarData(radar, radarLocation, extent, layer, { ...options, includeGeojson });
+                    geojson = processed.geojson;
+                    meshData = processed.meshData;
+                    bounds = processed.bounds;
                     metadata = {
                         timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds).toISOString(),
                         elevationAngle: header.elevation_angle,
@@ -463,7 +502,7 @@ class Radar {
 
             console.log("Done processing radar layer.");
             document.title = `SparkRadar | ${radarStation}`;
-            return geojson;
+            return { geojson, meshData, bounds, metadata };
         } catch (error) {
             console.error(`Error adding radar layer: ${error.message}`);
             return null;

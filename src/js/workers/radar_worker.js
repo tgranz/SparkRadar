@@ -30,7 +30,61 @@ const buildPolygon = (project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2) => {
     const p2 = project(sinAz2, cosAz2, r1);
     const p3 = project(sinAz2, cosAz2, r2);
     const p4 = project(sinAz1, cosAz1, r2);
-    return [p1, p2, p3, p4, p1];
+    return [p1, p2, p3, p4];
+};
+
+const createMeshBuilder = (includeGeojson) => {
+    const mesh = [];
+    const features = includeGeojson ? [] : null;
+    let minLng = Infinity;
+    let minLat = Infinity;
+    let maxLng = -Infinity;
+    let maxLat = -Infinity;
+
+    const updateBounds = (point) => {
+        const lng = point[0];
+        const lat = point[1];
+        minLng = Math.min(minLng, lng);
+        minLat = Math.min(minLat, lat);
+        maxLng = Math.max(maxLng, lng);
+        maxLat = Math.max(maxLat, lat);
+    };
+
+    const pushQuad = (quad, value) => {
+        for (let i = 0; i < 4; i++) {
+            updateBounds(quad[i]);
+        }
+
+        const encodedValue = value === 'rf' ? NaN : value;
+        mesh.push(
+            quad[0][0], quad[0][1],
+            quad[1][0], quad[1][1],
+            quad[2][0], quad[2][1],
+            quad[3][0], quad[3][1],
+            encodedValue
+        );
+
+        if (features) {
+            const closed = [quad[0], quad[1], quad[2], quad[3], quad[0]];
+            features.push({
+                type: 'Feature',
+                properties: { val: value === 'rf' ? 'rf' : value },
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: [closed]
+                }
+            });
+        }
+    };
+
+    const finalize = () => {
+        const meshData = new Float32Array(mesh);
+        const bounds = Number.isFinite(minLng) ? [minLng, minLat, maxLng, maxLat] : null;
+        const geojson = features ? { type: 'FeatureCollection', features } : null;
+        return { meshData, bounds, geojson };
+    };
+
+    return { pushQuad, finalize };
 };
 
 const processRadarData = (radar, radarLocation, extent, layer, options = {}) => {
@@ -68,9 +122,10 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
     }
 
     const numberOfRadarIterations = radarData.length;
-    const features = [];
     const gateLimit = Number.isFinite(options.gate_limit) ? options.gate_limit : null;
     const project = createRadarProjector(radarLocation[0], radarLocation[1]);
+    const includeGeojson = options.includeGeojson === true;
+    const builder = createMeshBuilder(includeGeojson);
 
     for (let index = 0; index < numberOfRadarIterations; index++) {
         const radial = radarData[index];
@@ -106,24 +161,11 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
             const r2 = (firstGate + (gateIndex + 1) * gateSize) * 1000;
 
             const coords = buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
-
-            features.push({
-                type: 'Feature',
-                properties: {
-                    val: dbz === 'rf' ? 'rf' : dbz
-                },
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [coords]
-                }
-            });
+            builder.pushQuad(coords, dbz);
         }
     }
 
-    return {
-        type: 'FeatureCollection',
-        features
-    };
+    return builder.finalize();
 };
 
 const processLevel3Data = (radar, radarLocation, options = {}) => {
@@ -139,9 +181,10 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
     const radials = packet.radials || [];
     const gateLimit = Number.isFinite(options.gate_limit) ? options.gate_limit : 0;
 
-    const features = [];
     const numberOfRadarIterations = radials.length;
     const project = createRadarProjector(radarLocation[0], radarLocation[1]);
+    const includeGeojson = options.includeGeojson === true;
+    const builder = createMeshBuilder(includeGeojson);
 
     for (let index = 0; index < numberOfRadarIterations; index++) {
         const radial = radials[index];
@@ -172,22 +215,11 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
             const r2 = (firstBin + ((binIndex + 1) * rangeScaleKm)) * 250;
 
             const coords = buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
-
-            features.push({
-                type: 'Feature',
-                properties: { val: value === 'rf' ? 'rf' : value },
-                geometry: {
-                    type: 'Polygon',
-                    coordinates: [coords]
-                }
-            });
+            builder.pushQuad(coords, value);
         }
     }
 
-    return {
-        type: 'FeatureCollection',
-        features
-    };
+    return builder.finalize();
 };
 
 const getLevel3Metadata = (radar) => {
@@ -233,7 +265,7 @@ self.onmessage = (event) => {
                 throw new Error('Missing radar location in Level 3 product description.');
             }
             const radarLocation = [radarLat, radarLon];
-            const geojson = processLevel3Data(radar, radarLocation, options);
+            const { meshData, bounds, geojson } = processLevel3Data(radar, radarLocation, options);
             const { timeIso, elevationAngle, vcp } = getLevel3Metadata(radar);
             const metadata = {
                 station: options?.station || null,
@@ -243,7 +275,7 @@ self.onmessage = (event) => {
                 vcp
             };
 
-            self.postMessage({ type: 'result', geojson, metadata });
+            self.postMessage({ type: 'result', geojson, meshData, bounds, metadata }, [meshData.buffer]);
         } else {
             const radar = new Level2Radar(buffer);
 
@@ -258,7 +290,7 @@ self.onmessage = (event) => {
             const radarLocation = [header.volume.latitude, header.volume.longitude];
             const extent = header.radial_length;
 
-            const geojson = processRadarData(radar, radarLocation, extent, layer, options);
+            const { meshData, bounds, geojson } = processRadarData(radar, radarLocation, extent, layer, options);
             const metadata = {
                 timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds).toISOString(),
                 elevationAngle: header.elevation_angle,
@@ -266,7 +298,7 @@ self.onmessage = (event) => {
                 vcp: Number.isFinite(header.vcp) ? header.vcp : null
             };
 
-            self.postMessage({ type: 'result', geojson, metadata });
+            self.postMessage({ type: 'result', geojson, meshData, bounds, metadata }, [meshData.buffer]);
         }
     } catch (error) {
         self.postMessage({ type: 'error', message: error?.message || String(error) });

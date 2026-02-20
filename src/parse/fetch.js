@@ -11,10 +11,20 @@ import { Buffer } from 'buffer';
 
 // Constants
 const BUCKET_URL = "https://unidata-nexrad-level2.s3.amazonaws.com";
+const LEVEL3_BUCKET_URL = "https://unidata-nexrad-level3.s3.amazonaws.com";
+const FETCH_TIMEOUT_MS = 8000;
+const LIST_CACHE_TTL_MS = 30000;
+const LATEST_CACHE_TTL_MS = 30000;
 let STATION = "";
 
+const listKeysCache = new Map();
+const latestUrlCache = new Map();
+
 async function fetchUrl(url) {
-    const response = await fetch(url, { cache: 'no-store' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
     }
@@ -22,7 +32,10 @@ async function fetchUrl(url) {
 }
 
 async function downloadFile(url) {
-    const response = await fetch(url, { cache: 'no-store' });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    const response = await fetch(url, { cache: 'no-cache', signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) {
         throw new Error(`Download failed: ${response.status}`);
     }
@@ -64,6 +77,12 @@ function normalizeLevel3Product(product) {
 }
 
 async function listKeysForPrefix(prefix, bucketUrl = BUCKET_URL) {
+    const cacheKey = `${bucketUrl}|${prefix}`;
+    const cached = listKeysCache.get(cacheKey);
+    if (cached && (Date.now() - cached.ts) < LIST_CACHE_TTL_MS) {
+        return cached.keys;
+    }
+
     let continuationToken = null;
     const keys = [];
     do {
@@ -73,37 +92,39 @@ async function listKeysForPrefix(prefix, bucketUrl = BUCKET_URL) {
         keys.push(...parseKeysFromXml(xml));
         continuationToken = parseNextContinuationToken(xml);
     } while (continuationToken);
+
+    listKeysCache.set(cacheKey, { keys, ts: Date.now() });
     return keys;
 }
         
 async function getLatestFileUrl(level, product = null) {
+    const cacheKey = `${STATION}|${level}|${product ?? ''}`;
+    const cached = latestUrlCache.get(cacheKey);
+    if (cached && (Date.now() - cached.ts) < LATEST_CACHE_TTL_MS) {
+        return cached.url;
+    }
+
     if (level == 2) {
         const now = new Date();
-        const allLevel2Files = [];
         for (let i = 0; i < 5; i++) {
             const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
             date.setUTCDate(date.getUTCDate() - i);
             const prefix = getDatePrefix(date);
             const keys = await listKeysForPrefix(prefix);
             const level2 = keys.filter((k) => k.endsWith('_V06'));
-            console.log(`[getLatestFileUrl] Date ${date.toISOString()}: Found ${level2.length} V06 files:`, level2.slice(-3));
-            allLevel2Files.push(...level2);
-        }
-        if (allLevel2Files.length > 0) {
-            allLevel2Files.sort();
-            console.log(`[getLatestFileUrl] Total files collected: ${allLevel2Files.length}`);
-            console.log(`[getLatestFileUrl] Last 5 files:`, allLevel2Files.slice(-5));
-            const latestKey = allLevel2Files[allLevel2Files.length - 1];
-            console.log(`[getLatestFileUrl] Returning: ${latestKey}`);
-            return `${BUCKET_URL}/${latestKey}`;
+            if (level2.length > 0) {
+                level2.sort();
+                const latestKey = level2[level2.length - 1];
+                const latestUrl = `${BUCKET_URL}/${latestKey}`;
+                latestUrlCache.set(cacheKey, { url: latestUrl, ts: Date.now() });
+                return latestUrl;
+            }
         }
         throw new Error(`No radar files found in last 5 days.`);
     } else if (level == 3) {
         // Level 3 bucket has flat file structure: SSS_PPP_YYYY_MM_DD_HH_MM_SS
         // SSS = station without leading K, PPP = product code
         // Filter with ?list-type=2&prefix=SSS_PPP_YYYY_MM
-        const level3BucketUrl = "https://unidata-nexrad-level3.s3.amazonaws.com";
-        
         // Remove leading K from station for Level 3 naming
         const stationCode = STATION.startsWith('K') ? STATION.substring(1) : STATION;
         
@@ -121,13 +142,18 @@ async function getLatestFileUrl(level, product = null) {
             const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
             const dd = String(date.getUTCDate()).padStart(2, '0');
 
-            for (const prefix of prefixes) {
-                const datedPrefix = `${prefix}_${yyyy}_${mm}_${dd}`;
-                const keys = await listKeysForPrefix(datedPrefix, level3BucketUrl);
+            const datedPrefixes = prefixes.map((prefix) => `${prefix}_${yyyy}_${mm}_${dd}`);
+            const keyLists = await Promise.all(
+                datedPrefixes.map((datedPrefix) => listKeysForPrefix(datedPrefix, LEVEL3_BUCKET_URL))
+            );
+
+            for (const keys of keyLists) {
                 if (keys.length > 0) {
                     keys.sort();
                     const latestKey = keys[keys.length - 1];
-                    return `${level3BucketUrl}/${latestKey}`;
+                    const latestUrl = `${LEVEL3_BUCKET_URL}/${latestKey}`;
+                    latestUrlCache.set(cacheKey, { url: latestUrl, ts: Date.now() });
+                    return latestUrl;
                 }
             }
         }

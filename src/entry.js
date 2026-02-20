@@ -79,8 +79,9 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     try {
       showLoadingAnimation();
       const picker = mainOrSplit === 'split' ? map.splitRadarPicker : map.radarPicker;
-      const radarGeoJson = await radar.getRadarLayer(station, product, {
+      const radarResult = await radar.getRadarLayer(station, product, {
         ...options,
+        includeGeojson: false,
         onMetadata: ({ timeString, timeIso, tilt, vcp }) => {
           if (picker && typeof picker.setTimeAndTilt === 'function') {
             picker.setTimeAndTilt(timeString, `${tilt.toFixed(1)}°`, timeIso);
@@ -108,9 +109,18 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
           }
         }
       });
-      map.addWebGlRadarLayer(radarGeoJson, mainOrSplit, product);
-      if (mainOrSplit === 'main' && map.currentGeojson) {
-        map.inspectBounds = map._computeBounds(map.currentGeojson);
+      if (radarResult?.meshData instanceof Float32Array) {
+        map.addWebGlRadarMesh(radarResult.meshData, radarResult.bounds, mainOrSplit, product);
+        if (mainOrSplit === 'main') {
+          map.inspectBounds = radarResult.bounds
+            ? [[radarResult.bounds[0], radarResult.bounds[1]], [radarResult.bounds[2], radarResult.bounds[3]]]
+            : null;
+        }
+      } else if (radarResult?.geojson) {
+        map.addWebGlRadarLayer(radarResult.geojson, mainOrSplit, product);
+        if (mainOrSplit === 'main' && map.currentGeojson) {
+          map.inspectBounds = map._computeBounds(map.currentGeojson);
+        }
       }
       hideLoadingAnimation();
     } catch (error) {

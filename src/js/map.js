@@ -27,6 +27,9 @@ class Map {
         // WebGL radar layer tracking
         this.currentRadarLayer = null;
         this.currentGeojson = null;
+        this.currentMesh = null;
+        this.currentMeshBounds = null;
+        this.currentRadarProduct = null;
         this.radar = null; // Store reference to radar instance
         this.palettes = new Palettes(); // Store palettes instance
         this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product) => {
@@ -102,7 +105,9 @@ class Map {
                 this.reflectivityGateFilter = value;
                 // Re-render the radar with new filter
                 if (this.currentGeojson) {
-                    this.addWebGlRadarLayer(this.currentGeojson, 'main');
+                    this.addWebGlRadarLayer(this.currentGeojson, 'main', this.currentRadarProduct);
+                } else if (this.currentMesh) {
+                    this.addWebGlRadarMesh(this.currentMesh, this.currentMeshBounds, 'main', this.currentRadarProduct);
                 }
             }
             if (key === 'enableSplitCursorMarker') {
@@ -173,15 +178,20 @@ class Map {
             // Load velocity on dual map if radar instance is available
             if (this.radar && options.station) {
                 const product = options.product || 'N0G';
-                const radarGeoJson = await this.radar.getRadarLayer(options.station, product, {
+                const radarResult = await this.radar.getRadarLayer(options.station, product, {
                     ...options,
+                    includeGeojson: false,
                     onMetadata: ({ timeString, timeIso, tilt }) => {
                         if (this.splitRadarPicker && typeof this.splitRadarPicker.setTimeAndTilt === 'function') {
                             this.splitRadarPicker.setTimeAndTilt(timeString, `${tilt.toFixed(1)}°`, timeIso);
                         }
                     }
                 });
-                this.addWebGlRadarLayer(radarGeoJson, 'split', product);
+                if (radarResult?.meshData instanceof Float32Array) {
+                    this.addWebGlRadarMesh(radarResult.meshData, radarResult.bounds, 'split', product);
+                } else if (radarResult?.geojson) {
+                    this.addWebGlRadarLayer(radarResult.geojson, 'split', product);
+                }
             }
 
             // Display alerts on dual map if they exist
@@ -538,9 +548,12 @@ class Map {
         // Re-render the current radar layer with new colors
         if (this.currentGeojson) {
             console.log('[Map] Re-rendering radar layer with new colors');
-            this.addWebGlRadarLayer(this.currentGeojson, 'main');
+            this.addWebGlRadarLayer(this.currentGeojson, 'main', this.currentRadarProduct);
+        } else if (this.currentMesh) {
+            console.log('[Map] Re-rendering radar mesh with new colors');
+            this.addWebGlRadarMesh(this.currentMesh, this.currentMeshBounds, 'main', this.currentRadarProduct);
         } else {
-            console.log('[Map] No current geojson to re-render');
+            console.log('[Map] No current radar data to re-render');
         }
     }
 
@@ -673,6 +686,45 @@ class Map {
         return new Float32Array(data);
     }
 
+    _buildVertexDataFromMesh(meshData) {
+        const data = [];
+        const alpha = this.currentPalette === 'VEL' ? 1.0 : 0.85;
+
+        for (let i = 0; i < meshData.length; i += 9) {
+            const lon1 = meshData[i];
+            const lat1 = meshData[i + 1];
+            const lon2 = meshData[i + 2];
+            const lat2 = meshData[i + 3];
+            const lon3 = meshData[i + 4];
+            const lat3 = meshData[i + 5];
+            const lon4 = meshData[i + 6];
+            const lat4 = meshData[i + 7];
+            const rawValue = meshData[i + 8];
+            const value = Number.isNaN(rawValue) ? 'rf' : rawValue;
+
+            if (this.currentPalette === 'REF' && value !== 'rf' && value < this.reflectivityGateFilter) {
+                continue;
+            }
+
+            const color = this._colorForValue(value);
+            const p1 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon1, lat: lat1 });
+            const p2 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon2, lat: lat2 });
+            const p3 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon3, lat: lat3 });
+            const p4 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon4, lat: lat4 });
+
+            data.push(
+                p1.x, p1.y, color[0], color[1], color[2], alpha,
+                p2.x, p2.y, color[0], color[1], color[2], alpha,
+                p3.x, p3.y, color[0], color[1], color[2], alpha,
+                p1.x, p1.y, color[0], color[1], color[2], alpha,
+                p3.x, p3.y, color[0], color[1], color[2], alpha,
+                p4.x, p4.y, color[0], color[1], color[2], alpha
+            );
+        }
+
+        return new Float32Array(data);
+    }
+
     _computeBounds(geojson) {
         let minLng = Infinity;
         let minLat = Infinity;
@@ -795,77 +847,24 @@ class Map {
         return null;
     }
 
-    addWebGlRadarLayer(radarGeoJson, targetMap = null, product = null) {
-        // Accept a map instance or string identifiers for convenience.
-        let map = this.map;
-        let layerId = 'radar-webgl';
-        let isMainLayer = true;
-
-        if (targetMap) {
-            if (targetMap === 'main') {
-                map = this.map;
-                layerId = 'radar-webgl';
-            } else if (targetMap === 'dual' || targetMap === 'split') {
-                map = this.dualMap;
-                layerId = 'radar-webgl-dual';
-                isMainLayer = false;
-            } else {
-                map = targetMap;
-                layerId = 'radar-webgl-dual';
-                isMainLayer = false;
-            }
-        }
-
-        if (!map) {
-            console.warn('Target map is not available yet.');
-            return;
-        }
-        
-        if (!radarGeoJson || !radarGeoJson.features) {
-            console.error('Invalid GeoJSON data provided to addWebGlRadarLayer');
-            return;
-        }
-        
-        // Automatically select palette based on product type
-        if (product) {
-            const paletteForProduct = this._getPaletteForProduct(product);
-            this._updatePalette(paletteForProduct);
-        }
-
-        // Compute bounding boxes for all features in one pass (avoid double iteration)
-        const features = radarGeoJson.features;
-        for (let i = 0; i < features.length; i++) {
-            features[i].__bbox = this._computeFeatureBBox(features[i]);
-        }
-        
-        if (isMainLayer) {
-            this.currentGeojson = radarGeoJson;
-        }
-
-        // Prepare the vertex data
-        const vertexData = this._buildVertexData(radarGeoJson);
+    _renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer) {
         const vertexCount = vertexData.length / 6;
 
-        // Remove old radar layer if it exists
         if (map.getLayer(layerId)) {
             map.removeLayer(layerId);
         }
-        
-        if (isMainLayer) {
-            this.currentRadarLayer = null;
-        }
 
-        // Create a custom style layer to implement the WebGL content
         const highlightLayer = {
             id: layerId,
             type: 'custom',
             renderingMode: '2d',
+            program: null,
+            uMatrix: null,
+            vertexCount: 0,
 
-            // Method called when the layer is added to the map
             onAdd: (map, gl) => {
                 const isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
 
-                // Vertex shader: tells where points are to be drawn
                 const vertexSource = isWebGL2
                     ? `#version 300 es
 
@@ -890,7 +889,6 @@ class Map {
                         gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
                     }`;
 
-                // Fragment shader: tells what color the drawn points should be
                 const fragmentSource = isWebGL2
                     ? `#version 300 es
 
@@ -908,74 +906,163 @@ class Map {
                         gl_FragColor = v_color;
                     }`;
 
-                // Create and compile the shaders to GPU
-                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-                gl.shaderSource(vertexShader, vertexSource);
-                gl.compileShader(vertexShader);
-                if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-                    console.error('Vertex shader error:', gl.getShaderInfoLog(vertexShader));
-                }
-                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-                gl.shaderSource(fragmentShader, fragmentSource);
-                gl.compileShader(fragmentShader);
-                if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
-                    console.error('Fragment shader error:', gl.getShaderInfoLog(fragmentShader));
-                }
+                const createShader = (gl, type, source) => {
+                    const shader = gl.createShader(type);
+                    gl.shaderSource(shader, source);
+                    gl.compileShader(shader);
+                    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                        console.error(gl.getShaderInfoLog(shader));
+                        return null;
+                    }
+                    return shader;
+                };
 
-                // Attach the shaders and link the program
-                highlightLayer.program = gl.createProgram();
-                gl.attachShader(highlightLayer.program, vertexShader);
-                gl.attachShader(highlightLayer.program, fragmentShader);
-                gl.linkProgram(highlightLayer.program);
-                if (!gl.getProgramParameter(highlightLayer.program, gl.LINK_STATUS)) {
-                    console.error('Program link error:', gl.getProgramInfoLog(highlightLayer.program));
+                const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource);
+                const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+
+                const program = gl.createProgram();
+                gl.attachShader(program, vertexShader);
+                gl.attachShader(program, fragmentShader);
+                gl.linkProgram(program);
+                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                    console.error(gl.getProgramInfoLog(program));
+                    return;
                 }
+                gl.useProgram(program);
 
-                // Cache attribute locations for the packed vertex buffer.
-                highlightLayer.aPos = gl.getAttribLocation(highlightLayer.program, 'a_pos');
-                highlightLayer.aColor = gl.getAttribLocation(highlightLayer.program, 'a_color');
-
-                // Upload interleaved vertex data: [x, y, r, g, b, a] per vertex.
-                highlightLayer.buffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, highlightLayer.buffer);
+                const buffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
                 gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+
+                const aPos = gl.getAttribLocation(program, 'a_pos');
+                const aColor = gl.getAttribLocation(program, 'a_color');
+                gl.enableVertexAttribArray(aPos);
+                gl.enableVertexAttribArray(aColor);
+
+                gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 6 * 4, 0);
+                gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 6 * 4, 2 * 4);
+
+                const uMatrix = gl.getUniformLocation(program, 'u_matrix');
+
+                highlightLayer.program = program;
+                highlightLayer.uMatrix = uMatrix;
                 highlightLayer.vertexCount = vertexCount;
             },
 
-            // Method called to render the layer
             render: (gl, args) => {
-                if (!highlightLayer.vertexCount) return;
+                if (!highlightLayer.program || !highlightLayer.uMatrix || !highlightLayer.vertexCount) return;
+                const rawMatrix = args?.defaultProjectionData?.mainMatrix ?? args;
+                if (!rawMatrix) return;
+                const matrix = rawMatrix instanceof Float32Array
+                    ? rawMatrix
+                    : new Float32Array(rawMatrix);
                 gl.useProgram(highlightLayer.program);
-                gl.uniformMatrix4fv(
-                    gl.getUniformLocation(highlightLayer.program, 'u_matrix'),
-                    false,
-                    args.defaultProjectionData.mainMatrix
-                );
-                gl.bindBuffer(gl.ARRAY_BUFFER, highlightLayer.buffer);
-                // Stride = 6 floats * 4 bytes; pos starts at 0, color at offset 8 bytes.
-                gl.enableVertexAttribArray(highlightLayer.aPos);
-                gl.vertexAttribPointer(highlightLayer.aPos, 2, gl.FLOAT, false, 24, 0);
-                gl.enableVertexAttribArray(highlightLayer.aColor);
-                gl.vertexAttribPointer(highlightLayer.aColor, 4, gl.FLOAT, false, 24, 8);
-                gl.enable(gl.BLEND);
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                gl.uniformMatrix4fv(highlightLayer.uMatrix, false, matrix);
                 gl.drawArrays(gl.TRIANGLES, 0, highlightLayer.vertexCount);
             }
         };
 
-        // Remove old radar layer if it exists
-        if (map.getLayer(layerId)) {
-            map.removeLayer(layerId);
-        }
-
-        // Add the WebGL content layer to the map
         map.addLayer(highlightLayer, 'Pier');
-        
         if (isMainLayer) {
             this.currentRadarLayer = highlightLayer;
         }
+    }
 
-        console.log('WebGL radar layer added successfully');
+    addWebGlRadarLayer(radarGeoJson, targetMap = null, product = null) {
+        let map = this.map;
+        let layerId = 'radar-webgl';
+        let isMainLayer = true;
+
+        if (targetMap) {
+            if (targetMap === 'main') {
+                map = this.map;
+                layerId = 'radar-webgl';
+            } else if (targetMap === 'dual' || targetMap === 'split') {
+                map = this.dualMap;
+                layerId = 'radar-webgl-dual';
+                isMainLayer = false;
+            } else {
+                map = targetMap;
+                layerId = 'radar-webgl-dual';
+                isMainLayer = false;
+            }
+        }
+
+        if (!map) {
+            console.warn('Target map is not available yet.');
+            return;
+        }
+
+        if (!radarGeoJson || !radarGeoJson.features) {
+            console.error('Invalid GeoJSON data provided to addWebGlRadarLayer');
+            return;
+        }
+
+        if (product) {
+            const paletteForProduct = this._getPaletteForProduct(product);
+            this._updatePalette(paletteForProduct);
+        }
+
+        const features = radarGeoJson.features;
+        for (let i = 0; i < features.length; i++) {
+            features[i].__bbox = this._computeFeatureBBox(features[i]);
+        }
+
+        if (isMainLayer) {
+            this.currentGeojson = radarGeoJson;
+            this.currentMesh = null;
+            this.currentMeshBounds = null;
+        }
+        this.currentRadarProduct = product;
+
+        const vertexData = this._buildVertexData(radarGeoJson);
+        this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer);
+    }
+
+    addWebGlRadarMesh(meshData, bounds, targetMap = null, product = null) {
+        let map = this.map;
+        let layerId = 'radar-webgl';
+        let isMainLayer = true;
+
+        if (targetMap) {
+            if (targetMap === 'main') {
+                map = this.map;
+                layerId = 'radar-webgl';
+            } else if (targetMap === 'dual' || targetMap === 'split') {
+                map = this.dualMap;
+                layerId = 'radar-webgl-dual';
+                isMainLayer = false;
+            } else {
+                map = targetMap;
+                layerId = 'radar-webgl-dual';
+                isMainLayer = false;
+            }
+        }
+
+        if (!map) {
+            console.warn('Target map is not available yet.');
+            return;
+        }
+
+        if (!meshData || !(meshData instanceof Float32Array)) {
+            console.error('Invalid mesh data provided to addWebGlRadarMesh');
+            return;
+        }
+
+        if (product) {
+            const paletteForProduct = this._getPaletteForProduct(product);
+            this._updatePalette(paletteForProduct);
+        }
+
+        if (isMainLayer) {
+            this.currentMesh = meshData;
+            this.currentMeshBounds = bounds || null;
+            this.currentGeojson = null;
+        }
+        this.currentRadarProduct = product;
+
+        const vertexData = this._buildVertexDataFromMesh(meshData);
+        this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer);
     }
 
     _createStationMarkerElement(icao, isOperational) {
