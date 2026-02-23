@@ -1,6 +1,6 @@
 # SparkRadar
 
-<img style="height: 100px; border-radius: 20px;" src="https://sparkradar.app/assets/logo-rounded.webp">
+<img style="height: 100px; border-radius: 20px;" src="https://lite.sparkradar.app/assets/logo-rounded.webp">
 
 <br>
 

@@ -20,6 +20,12 @@ p {
   scrollbar-width: none;
 }
 
+/* Remove tap highlight on mobile */
+input, textarea, button, select, a, * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
 a {
   color: #27beff;
   transition: color 0.2s;
