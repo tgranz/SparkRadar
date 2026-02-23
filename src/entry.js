@@ -24,15 +24,16 @@ if (!globalThis.Buffer) {
 
 // Import modules
 import "./style.css";
-import Map from "./js/map.js";
-import Menu from "./js/menu.js";
+import Map from "./js/ui/map.js";
+import Menu from "./js/ui/menu.js";
 import Radar from "./js/radar.js";
-import RadarStatus from "./js/radar_status.js";
-import Dialog from './js/dialog.js';
+import RadarStatus from "./js/ui/radar_status.js";
+import Dialog from './js/ui/dialog.js';
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
-import { hideLoadingAnimation, showLoadingAnimation } from "./js/loader.js";
+import { hideLoadingAnimation, showLoadingAnimation } from "./js/ui/loader.js";
+import { layerMenu } from "./components/layer_menu.js";
 
 // See if there are URL parameters for station
 const urlParams = new URLSearchParams(window.location.search);
@@ -175,6 +176,8 @@ window.addEventListener('keydown', (e) => {
     const statusDialog = new RadarStatus(mainRadar.station);
   } else if (e.key === 'h') {
     menu.open();
+  } else if (e.key === 'l') {
+    layerMenu.open();
   } else if (e.key === '1') {
     setRadar(null, 'N0B', 'main') // Reflectivity
   } else if (e.key === '2') {
@@ -192,6 +195,9 @@ window.addEventListener('keydown', (e) => {
 const radar = new Radar();
 map.setRadar(radar); // Set radar instance on map for split view
 
+// Initialize layer menu toggles
+layerMenu.init(map);
+
 // Initial map render
 map.map.on('load', async () => {
     // Add radar stations
@@ -199,14 +205,6 @@ map.map.on('load', async () => {
 
     // Add radar
     await setRadar(null, null, 'main');
-
-    // Fetch and display alerts
-    // Wait 5 sec until the radar is added (alerts require the radar layer to be present)
-    // If radar is not loaded yet, the alerts will wait until next update
-    setTimeout(() => {
-      map.fetchAlerts();
-      map.fetchWatches();
-    }, 5000);
 });
 
 // Build the main toolbar
@@ -231,7 +229,7 @@ const toolbar = createToolbar(
   },
   () => { menu.open(); },
   () => { new RadarStatus(mainRadar.station); },
-  () => {  }
+  () => { layerMenu.open(); }
 );
 
 // Add the toolbar to the page
@@ -347,7 +345,7 @@ setInterval(async () => {
 
 // Show welcome dialog if first time
 if (localStorage.getItem('firstUse') !== 'true') {
-  const welcomeDialog = new Dialog('Welcome SparkRadar.app', 'bolt', 
+  const welcomeDialog = new Dialog('Welcome to SparkRadar.app', 'bolt', 
   `<h2 style="margin-bottom: 10px; text-align: left;">Welcome to the new SparkRadar!</h2>
   <p style="margin-bottom: 10px;">Looking for the old version? It has become <a href="https://lite.sparkradar.app" target="_blank">SparkRadar Lite</a>.</p>
   <p style="margin-bottom: 10px; font-weight: bold;">Please note that the new SparkRadar is still in active development. THIS IS NOT THE FINAL PRODUCT!!! You may report any bugs or feature requests on the <a href="https://github.com/tgranz/sparkradar" target="_blank">GitHub</a>.</p>

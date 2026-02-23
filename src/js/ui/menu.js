@@ -7,7 +7,7 @@ This module handles the menu component.
 See LICENSE for more.
 */
 
-import about from '../components/about.js';
+import about from '../../components/about.js';
 import Settings from './settings.js';
 
 class Menu {
@@ -25,7 +25,7 @@ class Menu {
         header.style.alignItems = 'center';
 
         const logo = document.createElement('img');
-        logo.src = 'https://sparkradar.app/assets/logo-rounded.webp';
+        logo.src = 'https://lite.sparkradar.app/assets/logo-rounded.webp';
 
         const title = document.createElement('h2');
         title.innerHTML = 'SparkRadar.app';

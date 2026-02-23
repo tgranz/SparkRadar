@@ -1,4 +1,4 @@
-import Dialog from "../js/dialog.js";
+import Dialog from "../js/ui/dialog.js";
 
 export default function openAbout() {
     const aboutContent = `

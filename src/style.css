@@ -99,7 +99,7 @@ button:hover {
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   border-top: 1px solid gray;
-  padding: 5px 10px;
+  padding: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -197,9 +197,13 @@ button:hover {
 }
 
 .menu li {
-  padding: 12px 0;
+  padding: 0;
   cursor: pointer;
   transition: margin-left 0.2s ease, color 0.2s ease;
+}
+
+.menu li div {
+  padding: 12px 0;
 }
 
 .menu li:hover {
@@ -238,7 +242,7 @@ button:hover {
   padding: 10px;
   border-radius: 10px;
   color: white;
-  width: calc(100% - 40px);
+  width: calc(100% - 42px);
   max-width: 400px;
 }
 
@@ -301,6 +305,7 @@ button:hover {
   text-align: center;
   font-size: 0.9em;
   cursor: pointer;
+  font-weight: bold;
 }
 
 .timeAndTiltSub {
@@ -320,7 +325,7 @@ button:hover {
   border: none;
   text-align: right;
   position: fixed;
-  bottom: 0px;
+  bottom: 5px;
   right: 10px;
   z-index: 1001;
   backdrop-filter: none;
@@ -333,7 +338,7 @@ button:hover {
   cursor: pointer;
   text-align: right;
   position: fixed;
-  bottom: 60px;
+  bottom: 70px;
   right: 10px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid gray;
@@ -602,7 +607,7 @@ button:hover {
 }
 
 /* Switch toggle styling */
-.settings-control input[type="checkbox"].switch {
+.switch {
   width: 50px;
   height: 26px;
   position: relative;
@@ -616,7 +621,7 @@ button:hover {
   margin-left: auto;
 }
 
-.settings-control input[type="checkbox"].switch::before {
+.switch::before {
   content: '';
   position: absolute;
   top: 2px;
@@ -628,16 +633,16 @@ button:hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.settings-control input[type="checkbox"].switch:hover {
+.switch:hover {
   border-color: rgba(39, 190, 255, 0.5);
 }
 
-.settings-control input[type="checkbox"].switch:checked {
+.switch:checked {
   background: #27beff;
   border-color: gray;
 }
 
-.settings-control input[type="checkbox"].switch:checked::before {
+.switch:checked::before {
   transform: translateX(24px);
 }
 
@@ -750,7 +755,7 @@ button:hover {
 /* Attribution element */
 #attribution {
   position: fixed;
-  bottom: 60px;
+  bottom: 70px;
   left: 10px;
   z-index: 1000;
   display: flex;
@@ -919,4 +924,100 @@ button:hover {
 .welcomeul li:hover {
   margin-left: unset;
   color: unset;
+}
+
+#layer-menu {
+  position: fixed;
+  width: calc(100% - 62px);
+  max-width: 400px;
+  height: calc(100% - 122px);
+  max-height: 500px;
+  bottom: 70px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: 1px solid gray;
+  backdrop-filter: blur(20px);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  z-index: 10000;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out, visibility 0.2s ease-out;
+}
+
+.layer-menu-content {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  height: calc(100% - 50px);
+}
+
+.layer-menu-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(20px);
+  visibility: hidden;
+}
+
+.layer-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.layer-menu-section-header {
+  font-size: 1.2em;
+  font-weight: bold;
+  margin-bottom: 10px;
+  margin-top: 20px;
+  color: #27beff;
+}
+
+.layer-menu-section {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid gray;
+}
+
+.layer-menu-section h3 {
+  font-size: 1em;
+  margin-left: 10px;
+  text-align: left;
+}
+
+.layer-menu-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tag {
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+.tag.new {
+  background-color: #27beff;
+  color: black;
+}
+
+.tag.beta {
+  background-color: #ffcc00;
+  color: black;
+}
+
+.tag.inprogress {
+  background-color: #888888;
+  color: white;
 }

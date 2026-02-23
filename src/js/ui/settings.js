@@ -1,5 +1,5 @@
-import settingsHTML from '../components/settings.html?raw';
-import Palettes from './palettes.js';
+import settingsHTML from '../../components/settings.html?raw';
+import Palettes from '../palettes.js';
 import Toast from './toast.js';
 
 // Mapping of setting keys to palette names

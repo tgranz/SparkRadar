@@ -51,14 +51,14 @@ export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onL
     stationInfoDiv.textContent = '';
     document.body.appendChild(stationInfoDiv);
 
-    if (window.innerWidth <= 400) {
+    if (window.innerWidth <= 450) {
         stationInfoDiv.id = 'toolbar-station-info-mobile';
     } else {
         stationInfoDiv.id = 'toolbar-station-info';
     }
 
     window.onresize = () => {
-        if (window.innerWidth <= 400) {
+        if (window.innerWidth <= 450) {
             stationInfoDiv.id = 'toolbar-station-info-mobile';
         } else {
             stationInfoDiv.id = 'toolbar-station-info';
