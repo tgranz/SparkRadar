@@ -58,6 +58,8 @@ class Map {
         this.moveListeners = { main: null, dual: null };
         // Store radar station markers for cleanup
         this.radarMarkers = { main: [], dual: [] };
+        // Store radar station overlap handlers for cleanup
+        this.radarStationHandlers = { main: null, dual: null };
 
         // Alert tracking
         this.alerts = [];
@@ -425,6 +427,20 @@ class Map {
         if (this.dualMap) {
             this.dualMap.remove();
             this.dualMap = null;
+        }
+
+        // Clean up radar station layers and handlers from split/dual map
+        if (this.radarStationHandlers?.dual) {
+            if (this.dualMap) {
+                this.dualMap.off('move', this.radarStationHandlers.dual);
+            }
+            this.radarStationHandlers.dual = null;
+        }
+
+        // Reset main map handler so it gets re-added on next station update
+        if (this.radarStationHandlers?.main) {
+            this.map.off('move', this.radarStationHandlers.main);
+            this.radarStationHandlers.main = null;
         }
 
         // Clean up radar markers from split/dual map
@@ -1089,10 +1105,9 @@ class Map {
         fetch('https://api.weather.gov/radar/stations', { signal: AbortSignal.timeout(5000) })
             .then(response => response.json())
             .then(data => {
-                // Batch remove existing markers from both maps
                 const markers = this.radarMarkers;
                 markers.main.forEach(m => m.remove());
-                markers.main.length = 0; // Clear array in place (faster than reassign)
+                markers.main.length = 0;
                 
                 if (this.isSplit()) {
                     markers.dual.forEach(m => m.remove());
@@ -1105,6 +1120,8 @@ class Map {
                 const mainMap = this.map;
                 const dualMap = this.dualMap;
                 
+                const filteredFeatures = [];
+                
                 for (let i = 0; i < features.length; i++) {
                     const station = features[i];
                     const properties = station.properties;
@@ -1114,39 +1131,121 @@ class Map {
                     // Filter non-CONUS stations
                     if (!properties.id.startsWith('K')) continue;
 
-                    const coords = station.geometry.coordinates;
-                    const icao = properties.id;
                     const isOperational = station.properties?.rda?.properties?.status === 'Operate';
-                    const popupText = `${properties.name} (${icao}) - Status: ${properties.status}`;
+                    filteredFeatures.push({
+                        type: 'Feature',
+                        geometry: station.geometry,
+                        properties: {
+                            ...properties,
+                            isOperational: isOperational ? 1 : 0
+                        }
+                    });
+                }
 
-                    // Add to main map
-                    const mainMarkerElement = this._createStationMarkerElement(icao, isOperational);
-                    mainMarkerElement.addEventListener('click', (e) => {
+                // Add markers to main map
+                filteredFeatures.forEach((feature) => {
+                    const isOperational = feature.properties.isOperational === 1;
+                    const icao = feature.properties.id;
+                    const coords = feature.geometry.coordinates;
+                    
+                    const markerElement = this._createStationMarkerElement(icao, isOperational);
+                    markerElement.addEventListener('click', (e) => {
                         e.stopPropagation();
                         if (typeof callbacks.onSelectStation === 'function') {
                             callbacks.onSelectStation(icao);
                         }
                     });
-                    const mainMarker = new maplibregl.Marker({ element: mainMarkerElement })
+                    const marker = new maplibregl.Marker({ element: markerElement })
                         .setLngLat(coords)
                         .addTo(mainMap);
-                    markers.main.push(mainMarker);
+                    markers.main.push(marker);
+                });
 
-                    // Add to split map if active
-                    if (isSplit) {
-                        const dualMarkerElement = this._createStationMarkerElement(icao, isOperational);
-                        dualMarkerElement.addEventListener('click', (e) => {
+                // Add to split map if active
+                if (isSplit) {
+                    filteredFeatures.forEach((feature) => {
+                        const isOperational = feature.properties.isOperational === 1;
+                        const icao = feature.properties.id;
+                        const coords = feature.geometry.coordinates;
+                        
+                        const markerElement = this._createStationMarkerElement(icao, isOperational);
+                        markerElement.addEventListener('click', (e) => {
                             e.stopPropagation();
                             if (typeof callbacks.onSelectStationSplit === 'function') {
                                 callbacks.onSelectStationSplit(icao);
                             }
                         });
-                        const dualMarkerPopup = new maplibregl.Popup({ offset: 25 }).setText(popupText);
-                        const dualMarker = new maplibregl.Marker({ element: dualMarkerElement })
+                        const marker = new maplibregl.Marker({ element: markerElement })
                             .setLngLat(coords)
                             .addTo(dualMap);
-                        markers.dual.push(dualMarker);
+                        markers.dual.push(marker);
+                    });
+                }
+
+                // Hide overlapping markers
+                const hideOverlappingMarkers = (markerArray, map) => {
+                    if (!markerArray || markerArray.length === 0) return;
+                    
+                    // Reset visibility
+                    markerArray.forEach(marker => {
+                        marker.getElement().style.display = 'block';
+                    });
+                    
+                    const markerWidth = 50;
+                    const markerHeight = 25;
+                    
+                    for (let i = 0; i < markerArray.length; i++) {
+                        const marker1 = markerArray[i];
+                        if (marker1.getElement().style.display === 'none') continue;
+                        
+                        const point1 = map.project(marker1.getLngLat());
+                        
+                        for (let j = i + 1; j < markerArray.length; j++) {
+                            const marker2 = markerArray[j];
+                            const point2 = map.project(marker2.getLngLat());
+                            
+                            const dx = point1.x - point2.x;
+                            const dy = point1.y - point2.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance < markerWidth) {
+                                marker2.getElement().style.display = 'none';
+                            }
+                        }
                     }
+                };
+
+                hideOverlappingMarkers(markers.main, mainMap);
+                
+                if (isSplit) {
+                    hideOverlappingMarkers(markers.dual, dualMap);
+                }
+
+                // Re-check overlaps on map move
+                const updateOverlapHandler = () => {
+                    hideOverlappingMarkers(markers.main, mainMap);
+                    if (isSplit) {
+                        hideOverlappingMarkers(markers.dual, dualMap);
+                    }
+                };
+
+                // Store handlers for cleanup
+                if (!this.radarStationHandlers) {
+                    this.radarStationHandlers = { main: null, dual: null };
+                }
+                
+                if (this.radarStationHandlers.main) {
+                    mainMap.off('move', this.radarStationHandlers.main);
+                }
+                this.radarStationHandlers.main = updateOverlapHandler;
+                mainMap.on('move', this.radarStationHandlers.main);
+
+                if (isSplit) {
+                    if (this.radarStationHandlers.dual) {
+                        dualMap.off('move', this.radarStationHandlers.dual);
+                    }
+                    this.radarStationHandlers.dual = updateOverlapHandler;
+                    dualMap.on('move', this.radarStationHandlers.dual);
                 }
             })
             .catch(error => {
@@ -1397,8 +1496,9 @@ class Map {
                 const is_confirmed = alert.message.toLowerCase().includes('tornado...observed');
                 const is_destructive = alert.message.toLowerCase().includes('destructive') || alert.message.toLowerCase().includes('catastrophic');
                 const is_considerable = alert.message.toLowerCase().includes('considerable');
+                const is_tor_possible = alert.message.toLowerCase().includes('tornado...possible');
 
-                const meta = `${expiry}`;
+                const meta = `${expiry}${is_tor_possible ? ' | Tornado Possible' : ''}`;
 
                 return `
                     <div class="popup-item" data-type="alert" data-index="${index}" style="cursor: pointer;">
@@ -1533,6 +1633,7 @@ class Map {
         const is_confirmed = alert.message.toLowerCase().includes('tornado...observed');
         const is_destructive = alert.message.toLowerCase().includes('destructive') || alert.message.toLowerCase().includes('catastrophic');
         const is_considerable = alert.message.toLowerCase().includes('considerable');
+        const is_tor_possible = alert.message.toLowerCase().includes('tornado...possible');
         
         const formatDate = (dateStr) => {
             if (!dateStr) return 'N/A';
@@ -1549,16 +1650,17 @@ class Map {
         const html = `
             <div style="max-width: 600px;">
                 <div style="margin-bottom: 20px; padding: 15px; background: ${colors.fill}30; border-left: 4px solid ${colors.fill}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; color: ${colors.fill};">${is_pds ? 'PDS ' : ''}${is_confirmed ? 'Confirmed ' : ''}${is_destructive ? 'Destructive ' : ''}${is_considerable ? 'Considerable ' : ''}${title}</h3>
+                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.fill};">${is_pds ? 'PDS ' : ''}${is_confirmed ? 'Confirmed ' : ''}${is_destructive ? 'Destructive ' : ''}${is_considerable ? 'Considerable ' : ''}${title}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Issued:</strong> <span>${formatDate(alert.issued)}</span>
                         <strong>Expires:</strong> <span>${formatDate(alert.expiry)}</span>
                         ${alert.sender ? `<strong>Sender:</strong> <span>${alert.sender}</span>` : ''}
+                        ${is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                     </div>
                 </div>
                 ${alert.message ? `
                     <div style="margin-bottom: 15px;">
-                        <h4 style="margin: 0 0 8px 0;">Description</h4>
+                        <h4 style="margin: 0 0 8px 0; text-align: left;">Description</h4>
                         <p style="margin: 0; white-space: pre-wrap; line-height: 1.5;">${alert.message.replace('  ', '\n')}</p>
                     </div>
                 ` : ''}
@@ -1591,7 +1693,7 @@ class Map {
         const html = `
             <div style="max-width: 600px;">
                 <div style="margin-bottom: 20px; padding: 15px; background: ${colors.fill}30; border-left: 4px solid ${colors.fill}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; color: ${colors.fill};">${props.is_pds ? 'PDS ' : ''}${title}</h3>
+                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.fill};">${props.is_pds ? 'PDS ' : ''}${title}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Issued:</strong> <span>${formatDate(props.issue)}</span>
                         <strong>Expires:</strong> <span>${formatDate(props.expire)}</span>

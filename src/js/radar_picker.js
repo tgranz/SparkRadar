@@ -19,24 +19,24 @@ const productLabels = {
     'CC': 'Super-Res Correlation Coefficient',
     'KDP': 'Super-Res Specific Differential Phase',
     'SW': 'Super-Res Spectrum Width',
-    //'ZDR': 'Super-Res Differential Reflectivity'
+    'ZDR': 'Super-Res Differential Reflectivity'
 };
 
 const productEntries = [
-    { type: 'header', label: 'Standard Products (L-III)' },
+    { type: 'header', label: 'Standard Products (Level III)' },
     { type: 'item', code: 'N_B' },
     { type: 'item', code: 'N_G' },
     { type: 'item', code: 'N_C' },
     { type: 'item', code: 'N_X' },
     { type: 'item', code: 'N_H' },
     { type: 'item', code: 'N_K' },
-    { type: 'header', label: 'Super-Res Products (L-II)' },
+    { type: 'header', label: 'Super-Res Products (Level II)' },
     { type: 'item', code: 'REF' },
     { type: 'item', code: 'VEL' },
     { type: 'item', code: 'CC' },
-    //{ type: 'item', code: 'ZDR' }, not working
-    { type: 'item', code: 'KDP' },
-    { type: 'item', code: 'SW' }
+    //{ type: 'item', code: 'ZDR' }, <-- doesnt load
+    //{ type: 'item', code: 'KDP' }, <-- looks wrong
+    //{ type: 'item', code: 'SW' } <-- doesnt load
 ];
 
 class RadarPicker {

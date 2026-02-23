@@ -8,11 +8,12 @@ This module loads and manages all other modules of the app.
 See LICENSE for more.
 */
 
+// L3 Product code mapping cheat sheet:
 // N0H, N1H, N2H... > Hydrometer Classification
 // N0K, N1K, N2K... > Specific Differential Phase
-// N0B, N1B, N2B... > Base Reflectivity (Same as L2 REF but lower resolution therefore much faster)
-// N0G, N1G, N2U... > Base Velocity (Same as L2 VEL but lower resolution therefore much faster, tilt 1 and 2 end in G, 3 and 4 end in U)
-// N0C, N1C, N2C... > Correlation Coefficient (Same as L2 CC but lower resolution therefore much faster)
+// N0B, N1B, N2B... > Base Reflectivity (Same as L2 REF but much faster)
+// N0G, N1G, N2U... > Base Velocity (Same as L2 VEL but much faster, tilt 1 and 2 end in G, 3 and 4 end in U)
+// N0C, N1C, N2C... > Correlation Coefficient (Same as L2 CC but lower resolution and much faster)
 // DTA > Storm Total Accumulation
 
 // Polyfill Buffer for browser environment
@@ -21,13 +22,15 @@ if (!globalThis.Buffer) {
   globalThis.Buffer = Buffer;
 }
 
+// Import modules
 import "./style.css";
 import Map from "./js/map.js";
 import Menu from "./js/menu.js";
 import Radar from "./js/radar.js";
 import RadarStatus from "./js/radar_status.js";
+import Dialog from './js/dialog.js';
 
-// Components
+// Import components
 import { createToolbar } from "./components/toolbar.js";
 import { hideLoadingAnimation, showLoadingAnimation } from "./js/loader.js";
 
@@ -35,7 +38,7 @@ import { hideLoadingAnimation, showLoadingAnimation } from "./js/loader.js";
 const urlParams = new URLSearchParams(window.location.search);
 const initialStation = urlParams.get('station') ? urlParams.get('station').toUpperCase() : 'KTLX';
 
-// Function to store the current radars
+// Function to store and set the current radars
 var mainRadar = {
     station: initialStation,
     product: 'N0B', // Reflectivity
@@ -50,6 +53,7 @@ var splitRadar = {
     options: { gate_limit: -30 }
 }
 
+// Function to infer radar level from product code, also sets the VCP
 const inferLevelFromProduct = (product) => {
   if (!product) return 'L3';
   const upper = product.toUpperCase();
@@ -59,6 +63,7 @@ const inferLevelFromProduct = (product) => {
   return 'L3';
 };
 
+// Function to set the current radar on the map
 async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     if (!map) return;
 
@@ -129,72 +134,82 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     }
 }
 
-// Setup the map
+// Construct the map
 const map = new Map({
     container: "map",
     style: 'https://api.maptiler.com/maps/01991750-e542-745a-bb74-f8f5646a978c/style.json?key=UMONrX6MjViuKZoR882u',
     center: [-97.1, 35.4],
     zoom: 5,
     minZoom: 3,
-    maxZoom: 18,
+    maxZoom: 17,
     projection: 'mercator',
     attributionControl: false,
 }, {
+  // Callbacks
   onChangeProduct: async (product) => setRadar(null, product, 'main'),
   onChangeProductSplit: async (product) => setRadar(null, product, 'split'),
-  onSelectStation: async (station) => setRadar(station, null, 'main'),
-  onSelectStationSplit: async (station) => setRadar(station, null, 'split'),
+  onSelectStation: async (station) => {
+    await setRadar(station, null, 'main');
+    if (map.isSplit()) {
+      await setRadar(station, null, 'split');
+    }
+  },
+  onSelectStationSplit: async (station) => {
+    await setRadar(station, null, 'split');
+    if (map.isSplit()) {
+      await setRadar(station, null, 'main');
+    }
+  },
+});
+
+// Keybinds
+// TODO: custom keybinds
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'm') {
+    if (map.isSplit()) {
+      map.stopSplit();
+    } else {
+      map.splitMap('horizontal', { station: mainRadar.station, product: mainRadar.product });
+    }
+  } else if (e.key === 's') {
+    const statusDialog = new RadarStatus(mainRadar.station);
+  } else if (e.key === 'h') {
+    menu.open();
+  } else if (e.key === '1') {
+    setRadar(null, 'N0B', 'main') // Reflectivity
+  } else if (e.key === '2') {
+    setRadar(null, 'N0G', 'main') // Velocity
+  } else if (e.key === '3') {
+    setRadar(null, 'N0C', 'main') // Correlation Coefficient
+  } else if (e.key === '4') {
+    setRadar(null, 'N0H', 'main') // Hydrometer Classification
+  } else if (e.key === '5') {
+    setRadar(null, 'N0K', 'main') // Specific Differential Phase
+  }
 });
 
 // Add the radar to the map
 const radar = new Radar();
 map.setRadar(radar); // Set radar instance on map for split view
 
+// Initial map render
 map.map.on('load', async () => {
     // Add radar stations
     map.updateRadarStations();
+
+    // Add radar
+    await setRadar(null, null, 'main');
+
     // Fetch and display alerts
+    // Wait 5 sec until the radar is added (alerts require the radar layer to be present)
+    // If radar is not loaded yet, the alerts will wait until next update
     setTimeout(() => {
       map.fetchAlerts();
       map.fetchWatches();
     }, 5000);
-    // Add radar
-    await setRadar(null, null, 'main', { gate_limit: -30 });
-
-    /*let lastInspectValue = undefined;
-    let lastInspectAt = 0;
-    map.map.on('mousemove', (e) => {
-      if (!map.currentGeojson) return;
-      const point = [e.lngLat.lng, e.lngLat.lat];
-      const value = map._findValueAtPoint(map.currentGeojson, point);
-      const now = Date.now();
-      if (value === lastInspectValue && now - lastInspectAt < 250) return;
-      lastInspectValue = value;
-      lastInspectAt = now;
-      if (value === null) {
-        const bounds = map.inspectBounds;
-        if (bounds) {
-          const lng = e.lngLat.lng;
-          const lat = e.lngLat.lat;
-          const outside = lng < bounds[0][0] || lng > bounds[1][0] || lat < bounds[0][1] || lat > bounds[1][1];
-          if (outside) {
-            console.log('[Inspector] val: no data (outside bounds)');
-            return;
-          }
-        }
-        const swappedValue = map._findValueAtPoint(map.currentGeojson, [point[1], point[0]]);
-        if (swappedValue !== null) {
-          console.log(`[Inspector] val: ${swappedValue} (swapped lat/lng)`);
-          return;
-        }
-        console.log('[Inspector] val: no data');
-        return;
-      }
-      console.log(`[Inspector] val: ${value}`);
-    });*/
 });
 
-// Add the main toolbar
+// Build the main toolbar
 const toolbar = createToolbar(
   () => { 
     if (map.isSplit()) {
@@ -215,16 +230,17 @@ const toolbar = createToolbar(
     } 
   },
   () => { menu.open(); },
-  () => {
-    const statusDialog = new RadarStatus(mainRadar.station);
-  }
+  () => { new RadarStatus(mainRadar.station); },
+  () => {  }
 );
+
+// Add the toolbar to the page
 document.body.appendChild(toolbar);
 
-// Add the menu
+// Add the menu to the page
 const menu = new Menu();
 
-// Refresh handler to update radar data
+// Refresh handler to update radar data with debouncing and station change detection
 let updateInProgress = false;
 let lastStationChangeTime = { main: 0, split: 0 };
 let lastCheckedRadar = { main: null, split: null }; // Track last checked radar state
@@ -234,6 +250,7 @@ const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
 var updateTimes = 0;
 
 // Track when stations change
+// tbh i dont know why this is here
 const originalSetRadar = setRadar;
 setRadar = async function(station, product, mainOrSplit, options) {
   if (station && (
@@ -312,21 +329,40 @@ setInterval(async () => {
       }
     }
 
-    // Update radar stations
+    // Update radar stations every 6 cycles (1.5min)
     if (updateTimes == 6) {
       map.updateRadarStations();
       updateTimes = 0;
     }
 
-    // Update alerts
+    // Update alerts and watches
     map.fetchAlerts();
     map.fetchWatches();
 
   } finally {
     updateInProgress = false;
   }
-}, 15 * 1000); // Check for updates every 10 seconds
+}, 15 * 1000); // Run updates every 15 seconds
 
+
+// Show welcome dialog if first time
+if (localStorage.getItem('firstUse') !== 'true') {
+  const welcomeDialog = new Dialog('Welcome SparkRadar.app', 'bolt', 
+  `<h2 style="margin-bottom: 10px; text-align: left;">Welcome to the new SparkRadar!</h2>
+  <p style="margin-bottom: 10px;">Looking for the old version? It has become <a href="https://lite.sparkradar.app" target="_blank">SparkRadar Lite</a>.</p>
+  <p style="margin-bottom: 10px; font-weight: bold;">Please note that the new SparkRadar is still in active development. THIS IS NOT THE FINAL PRODUCT!!! You may report any bugs or feature requests on the <a href="https://github.com/tgranz/sparkradar" target="_blank">GitHub</a>.</p>
+  <p>The new SparkRadar brings more features than ever, including:</p>
+  <ul class="welcomeul" style="text-align: left; margin-left: 20px;">
+    <li>Split screen view</li>
+    <li>Highest resolution Level-II and Level-III radar products.</li>
+    <li>Instant weather alerts and weather watches.</li>
+    <li>More radar products including Correlation Coefficient, Spectrum Width, and more.</li>
+  </ul>
+  <p style="margin-bottom: 10px;">As always, SparkRadar is completely free with no subscriptions, ads, or intrusive trackers.</p>
+  <p>YOU make SparkRadar possible! If SparkRadar has helped you, consider covering domain costs by <a href="https://www.buymeacoffee.com/tgranz" target="_blank">supporting my work</a>. Thank you!</p>
+  `);
+  localStorage.setItem('firstUse', 'true');
+}
 
 
 /* Inspector: TODO

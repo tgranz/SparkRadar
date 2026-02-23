@@ -1,4 +1,4 @@
-export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick) {    
+export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onLayerPickerClick) {    
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
 
@@ -21,8 +21,21 @@ export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick) {
             onOpenMenu();
         }
     });
+
+    const openLayerPickerButton = document.createElement('button');
+    openLayerPickerButton.type = 'button';
+    openLayerPickerButton.innerHTML = '<i class="ti ti-stack-2"></i>';
+    openLayerPickerButton.style.fontSize = '1.3em'; // this icon looks smaller than the others, so make it bigger
+    openLayerPickerButton.title = 'Open layer menu';
+    openLayerPickerButton.addEventListener('click', () => {
+        if (typeof onLayerPickerClick === 'function') {
+            onLayerPickerClick();
+        }
+    });
+
     toolbar.appendChild(openMenuButton);
     toolbar.appendChild(startSplitLayoutButton);
+    toolbar.appendChild(openLayerPickerButton);
 
     const loader = document.createElement('div');
     loader.className = 'loader';

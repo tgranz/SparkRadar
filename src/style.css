@@ -741,7 +741,6 @@ button:hover {
   font-family: Consolas, monospace;
   font-size: 0.9em;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(20px);
   padding: 10px;
   border-radius: 10px;
   max-height: 400px;
@@ -902,4 +901,22 @@ button:hover {
 .popup-meta {
   color: #cbd5e1;
   font-size: 11px;
+}
+
+.welcomeul {
+  padding: 0 !important;
+  margin: 20px 0 20px 20px !important;
+  list-style-type: circle !important;
+}
+
+.welcomeul li {
+  margin-bottom: 0px;
+  transition: none;
+  cursor: text;
+  padding: 5px;
+}
+
+.welcomeul li:hover {
+  margin-left: unset;
+  color: unset;
 }

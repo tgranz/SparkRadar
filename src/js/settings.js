@@ -265,9 +265,10 @@ export default class Settings {
     }
 
     resetSettings() {
-        this.settings = { ...this.defaults };
-        this.saveSettings();
+        localStorage.removeItem('settings');
         document.dispatchEvent(new CustomEvent('settingsReset'));
+        alert('Settings have been reset to default values.');
+        window.location.reload();
     }
 
     showSettingsMenu() {
