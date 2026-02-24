@@ -19,6 +19,7 @@
       </div>
       <ul class="settings-nav-list">
         <li><a href="#general" class="settings-nav-item" data-section="general">General</a></li>
+        <li><a href="#customization" class="settings-nav-item" data-section="customization">Customization</a></li>
         <li><a href="#radar" class="settings-nav-item" data-section="radar">Radar</a></li>
         <li><a href="#shortcuts" class="settings-nav-item" data-section="shortcuts">Shortcuts</a></li>
       </ul>
@@ -45,6 +46,33 @@
             <input class="danger-button" type="button" id="general-reset" name="general-reset" value="Reset" data-setting="generalReset">
         </div>
         <p class="settings-control-help">Click to reset all settings to their defaults.</p>
+      </div>
+    </section>
+    <section class="settings-section" data-section="customization">
+      <h2>Customization</h2>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="primary-color">Primary Color</label>
+          <input type="color" id="primary-color" name="primary-color" value="#27beff" data-setting="primaryColor">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="secondary-color">Secondary Color</label>
+          <input type="color" id="secondary-color" name="secondary-color" value="#2a7fff" data-setting="secondaryColor">
+        </div>
+      </div>
+    <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="border-color">Border Color</label>
+          <input type="color" id="border-color" name="border-color" value="#808080" data-setting="borderColor">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="secondary-border-color">Secondary Border Color</label>
+          <input type="color" id="secondary-border-color" name="secondary-border-color" value="#27beff" data-setting="secondaryBorderColor">
+        </div>
       </div>
     </section>
     <section class="settings-section" data-section="radar">

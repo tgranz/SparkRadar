@@ -186,14 +186,22 @@ class Map {
             }
 
             // Display alerts on dual map if they exist
-            if (this.alerts.length > 0) {
+            if (this.layers.alerts.length > 0) {
                 this.displayAlertsOnDualMap();
             }
 
             // Display watches on dual map if they exist
-            if (this.watches.length > 0) {
+            if (this.layers.watches.length > 0) {
                 this.displayWatchesOnDualMap();
             }
+
+            // Display outlook on dual map if it exists
+            if (this.layers.outlookData) {
+                this.displayOutlookOnDualMap();
+            }
+
+            // Add radar stations to the split map
+            this.updateRadarStations();
 
             hideLoadingAnimation();
         });
@@ -222,11 +230,11 @@ class Map {
         };
         this.dualMap.on('move', this.moveListeners.dual);
 
-        if (this.alertPopupClickHandlers.dual) {
-            this.dualMap.off('click', this.alertPopupClickHandlers.dual);
+        if (this.layers.alertPopupClickHandlers.dual) {
+            this.dualMap.off('click', this.layers.alertPopupClickHandlers.dual);
         }
-        this.alertPopupClickHandlers.dual = (e) => this._handleAlertClick('dual', e);
-        this.dualMap.on('click', this.alertPopupClickHandlers.dual);
+        this.layers.alertPopupClickHandlers.dual = (e) => this.layers._handleAlertClick('dual', e);
+        this.dualMap.on('click', this.layers.alertPopupClickHandlers.dual);
 
         // Initialize cursor marker storage
         this.cursorMarkers = { mainMapCursorMarker: null, splitMapCursorMarker: null };
@@ -309,9 +317,6 @@ class Map {
             // Store handlers for cleanup
             this.cursorHandlers = { mainMapMouseMoveHandler, splitMapMouseMoveHandler, mainMapMouseLeaveHandler, splitMapMouseLeaveHandler };
         }
-
-        // Add radar stations to the split map
-        this.updateRadarStations();
     }
 
     setSplitLayout(layout = null) {
@@ -375,11 +380,11 @@ class Map {
             this.moveListeners.dual = null;
         }
 
-        if (this.alertPopupClickHandlers.dual && this.dualMap) {
-            this.dualMap.off('click', this.alertPopupClickHandlers.dual);
+        if (this.layers.alertPopupClickHandlers.dual && this.dualMap) {
+            this.dualMap.off('click', this.layers.alertPopupClickHandlers.dual);
         }
-        this.alertPopupClickHandlers.dual = null;
-        this._clearAlertPopup('dual');
+        this.layers.alertPopupClickHandlers.dual = null;
+        this.layers._clearAlertPopup('dual');
 
         // Clean up cursor handlers
         if (this.cursorHandlers && this.dualMap) {
@@ -436,9 +441,10 @@ class Map {
         this.radarMarkers.dual.forEach(marker => marker.remove());
         this.radarMarkers.dual = [];
 
-        // Clean up alerts from split/dual map
+        // Clean up layers from split/dual map
         this.clearAlerts('dual');
         this.clearWatches('dual');
+        this.layers.clearOutlook('dual');
 
         // Destroy the split map's radar picker if it exists and rebuild the main radar picker to reset its position
         try { this.splitRadarPicker.destroy(); } catch {}
@@ -522,7 +528,7 @@ class Map {
         if (layer === 'VEL') {
             console.log('[Map] VEL Palette Color Stops (first 10):', this.colorStops.slice(0, 10).map(s => ({
                 value: s.value,
-                color: `rgb(${Math.round(s.color[0]*255)}, ${Math.round(s.color[1]*255)}, ${Math.round(s.color[2]*255)})`
+                color: `rgba(${Math.round(s.color[0]*255)}, ${Math.round(s.color[1]*255)}, ${Math.round(s.color[2]*255)}, ${s.color[3].toFixed(2)})`
             })));
         }
     }
@@ -565,11 +571,28 @@ class Map {
     // WebGL Radar Layer Methods
 
     _parseRgb(color) {
-        const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-        if (!match) {
-            return [1, 1, 1];
+        // Try rgba first
+        let match = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+        if (match) {
+            return [
+                Number(match[1]) / 255, 
+                Number(match[2]) / 255, 
+                Number(match[3]) / 255,
+                Number(match[4]) / 255  // Alpha is 0-255 in palette, normalize to 0-1
+            ];
         }
-        return [Number(match[1]) / 255, Number(match[2]) / 255, Number(match[3]) / 255];
+        
+        // Fall back to rgb
+        match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (!match) {
+            return [1, 1, 1, 1];
+        }
+        return [
+            Number(match[1]) / 255, 
+            Number(match[2]) / 255, 
+            Number(match[3]) / 255,
+            1.0  // Default alpha
+        ];
     }
 
     _lerp(a, b, t) {
@@ -580,19 +603,20 @@ class Map {
         return [
             this._lerp(a[0], b[0], t),
             this._lerp(a[1], b[1], t),
-            this._lerp(a[2], b[2], t)
+            this._lerp(a[2], b[2], t),
+            this._lerp(a[3], b[3], t)
         ];
     }
 
     _colorForValue(value) {
         // Special handling for range-folded gates
         if (value === 'rf') {
-            return [0.5, 0.0, 0.5]; // Purple for range folding
+            return [0.5, 0.0, 0.5, 1.0]; // Purple for range folding
         }
         
         const stops = this.colorStops;
         if (!stops || stops.length === 0) {
-            return [1, 1, 1]; // White fallback for invalid palette
+            return [1, 1, 1, 1]; // White fallback for invalid palette
         }
         
         // Clamp to first stop if value is below minimum
@@ -645,7 +669,6 @@ class Map {
     _buildVertexData(geojson) {
         const data = [];
         const features = geojson.features || [];
-        const alpha = this.currentPalette === 'VEL' ? 1.0 : 0.85;
         
         // Debug: log first few values for velocity palette
         let debugCount = 0;
@@ -663,7 +686,7 @@ class Map {
             
             // Debug logging for velocity
             if (this.currentPalette === 'VEL' && debugCount < 10 && value !== 'rf') {
-                console.log(`Value: ${value}, Color: rgb(${Math.round(color[0]*255)}, ${Math.round(color[1]*255)}, ${Math.round(color[2]*255)})`);
+                console.log(`Value: ${value}, Color: rgba(${Math.round(color[0]*255)}, ${Math.round(color[1]*255)}, ${Math.round(color[2]*255)}, ${color[3].toFixed(2)})`);
                 debugCount++;
             }
             const geometry = feature.geometry;
@@ -683,7 +706,8 @@ class Map {
                 for (const index of indices) {
                     const x = vertices[index * 2];
                     const y = vertices[index * 2 + 1];
-                    data.push(x, y, color[0], color[1], color[2], alpha);
+                    // Use alpha from the color (color[3])
+                    data.push(x, y, color[0], color[1], color[2], color[3]);
                 }
             }
         }
@@ -693,7 +717,6 @@ class Map {
 
     _buildVertexDataFromMesh(meshData) {
         const data = [];
-        const alpha = this.currentPalette === 'VEL' ? 1.0 : 0.85;
 
         for (let i = 0; i < meshData.length; i += 9) {
             const lon1 = meshData[i];
@@ -717,13 +740,14 @@ class Map {
             const p3 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon3, lat: lat3 });
             const p4 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon4, lat: lat4 });
 
+            // Use alpha from the color (color[3])
             data.push(
-                p1.x, p1.y, color[0], color[1], color[2], alpha,
-                p2.x, p2.y, color[0], color[1], color[2], alpha,
-                p3.x, p3.y, color[0], color[1], color[2], alpha,
-                p1.x, p1.y, color[0], color[1], color[2], alpha,
-                p3.x, p3.y, color[0], color[1], color[2], alpha,
-                p4.x, p4.y, color[0], color[1], color[2], alpha
+                p1.x, p1.y, color[0], color[1], color[2], color[3],
+                p2.x, p2.y, color[0], color[1], color[2], color[3],
+                p3.x, p3.y, color[0], color[1], color[2], color[3],
+                p1.x, p1.y, color[0], color[1], color[2], color[3],
+                p3.x, p3.y, color[0], color[1], color[2], color[3],
+                p4.x, p4.y, color[0], color[1], color[2], color[3]
             );
         }
 
@@ -961,6 +985,11 @@ class Map {
                 const matrix = rawMatrix instanceof Float32Array
                     ? rawMatrix
                     : new Float32Array(rawMatrix);
+                
+                // Enable alpha blending for transparency
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+                
                 gl.useProgram(highlightLayer.program);
                 gl.uniformMatrix4fv(highlightLayer.uMatrix, false, matrix);
                 gl.drawArrays(gl.TRIANGLES, 0, highlightLayer.vertexCount);
@@ -1073,7 +1102,7 @@ class Map {
     _createStationMarkerElement(icao, isOperational) {
         const el = document.createElement('div');
         const styles = el.style;
-        styles.backgroundColor = isOperational ? '#27beff' : '#ff2121';
+        styles.backgroundColor = isOperational ? 'var(--primary-color)' : '#ff2121';
         styles.border = '2px solid #1f2937';
         styles.borderRadius = '10px';
         styles.display = 'flex';
@@ -1275,6 +1304,18 @@ class Map {
 
     displayWatchesOnDualMap() {
         return this.layers.displayWatchesOnDualMap();
+    }
+
+    displayOutlookOnDualMap() {
+        return this.layers.displayOutlookOnDualMap();
+    }
+
+    _clearAlertPopup(target) {
+        return this.layers._clearAlertPopup(target);
+    }
+
+    _handleAlertClick(target, event) {
+        return this.layers._handleAlertClick(target, event);
     }
 }
 

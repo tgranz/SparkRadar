@@ -32,10 +32,32 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Mesoscale Discussions</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-mesoscale-discussions-layer" class="switch">
+            </div>
+        </div>
+
+        <div class="layer-menu-section-header">
+            Storms
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item">
+                <h3>TVS Signatures</h3>
+                <p class="tag inprogress">WIP</p>
+            </div>
+            <div class="layer-menu-item">
+                <input type="checkbox" id="toggle-tvs-signatures-layer" class="switch">
+            </div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item">
+                <h3>Hail Signatures</h3>
+                <p class="tag inprogress">WIP</p>
+            </div>
+            <div class="layer-menu-item">
+                <input type="checkbox" id="toggle-hail-signatures-layer" class="switch">
             </div>
         </div>
 
@@ -45,7 +67,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Day 1 Outlook</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-day-1-outlook-layer" class="switch">
@@ -54,7 +76,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Day 2 Outlook</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-day-2-outlook-layer" class="switch">
@@ -63,7 +85,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Day 3 Outlook</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-day-3-outlook-layer" class="switch">
@@ -76,7 +98,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Tornado Reports</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-tornado-reports-layer" class="switch">
@@ -85,7 +107,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Wind Reports</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-wind-reports-layer" class="switch">
@@ -94,7 +116,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Hail Reports</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-hail-reports-layer" class="switch">
@@ -103,7 +125,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Spotter Network Positions</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-spotter-network-positions-layer" class="switch">
@@ -112,7 +134,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Spotter Network Reports</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-spotter-network-reports-layer" class="switch">
@@ -125,7 +147,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Hurricanes</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-hurricanes-layer" class="switch">
@@ -134,7 +156,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Weather Radios</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-weather-radios-layer" class="switch">
@@ -143,7 +165,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>METAR Stations</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-metars-layer" class="switch">
@@ -152,7 +174,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Wildfires</h3>
-                <p class="tag inprogress">IN DEVELOPMENT</p>
+                <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-wildfires-layer" class="switch">
@@ -182,10 +204,11 @@ function initializeLayerToggles(mapInstance) {
             const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
             return {
                 alertsEnabled: settings.alertsEnabled !== undefined ? settings.alertsEnabled : true,
-                watchesEnabled: settings.watchesEnabled !== undefined ? settings.watchesEnabled : true
+                watchesEnabled: settings.watchesEnabled !== undefined ? settings.watchesEnabled : true,
+                outlookDay: settings.outlookDay || null // 1, 2, 3, or null
             };
         } catch (e) {
-            return { alertsEnabled: true, watchesEnabled: true };
+            return { alertsEnabled: true, watchesEnabled: true, outlookDay: null };
         }
     };
 
@@ -194,12 +217,24 @@ function initializeLayerToggles(mapInstance) {
     // Set initial checkbox states
     const alertsCheckbox = document.getElementById('toggle-alerts-layer');
     const watchesCheckbox = document.getElementById('toggle-watches-layer');
+    const day1OutlookCheckbox = document.getElementById('toggle-day-1-outlook-layer');
+    const day2OutlookCheckbox = document.getElementById('toggle-day-2-outlook-layer');
+    const day3OutlookCheckbox = document.getElementById('toggle-day-3-outlook-layer');
     
     if (alertsCheckbox) {
         alertsCheckbox.checked = settings.alertsEnabled;
     }
     if (watchesCheckbox) {
         watchesCheckbox.checked = settings.watchesEnabled;
+    }
+    if (day1OutlookCheckbox) {
+        day1OutlookCheckbox.checked = settings.outlookDay === 1;
+    }
+    if (day2OutlookCheckbox) {
+        day2OutlookCheckbox.checked = settings.outlookDay === 2;
+    }
+    if (day3OutlookCheckbox) {
+        day3OutlookCheckbox.checked = settings.outlookDay === 3;
     }
 
     // Setup event listeners
@@ -251,6 +286,59 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    // Outlook toggle handlers - only one can be active at a time
+    const handleOutlookToggle = (day, checkbox) => {
+        if (!checkbox) return;
+
+        checkbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+
+            if (isChecked) {
+                // Uncheck other outlook checkboxes
+                if (day !== 1 && day1OutlookCheckbox) day1OutlookCheckbox.checked = false;
+                if (day !== 2 && day2OutlookCheckbox) day2OutlookCheckbox.checked = false;
+                if (day !== 3 && day3OutlookCheckbox) day3OutlookCheckbox.checked = false;
+
+                // Clear any existing outlook
+                mapInstance.layers.clearOutlook('main');
+                if (mapInstance.isSplit()) {
+                    mapInstance.layers.clearOutlook('dual');
+                }
+
+                // Fetch and display the selected outlook
+                mapInstance.layers.fetchOutlook(day);
+
+                // Save to localStorage
+                try {
+                    const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                    settings.outlookDay = day;
+                    localStorage.setItem('layerSettings', JSON.stringify(settings));
+                } catch (error) {
+                    console.error('Error saving layer settings:', error);
+                }
+            } else {
+                // Clear outlook from map
+                mapInstance.layers.clearOutlook('main');
+                if (mapInstance.isSplit()) {
+                    mapInstance.layers.clearOutlook('dual');
+                }
+
+                // Save to localStorage
+                try {
+                    const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                    settings.outlookDay = null;
+                    localStorage.setItem('layerSettings', JSON.stringify(settings));
+                } catch (error) {
+                    console.error('Error saving layer settings:', error);
+                }
+            }
+        });
+    };
+
+    handleOutlookToggle(1, day1OutlookCheckbox);
+    handleOutlookToggle(2, day2OutlookCheckbox);
+    handleOutlookToggle(3, day3OutlookCheckbox);
+
     // Fetch alerts/watches if they're enabled, but wait for radar to load first
     // Check actual checkbox state at fetch time, not initial settings
     setTimeout(() => {
@@ -259,6 +347,14 @@ function initializeLayerToggles(mapInstance) {
         }
         if (watchesCheckbox && watchesCheckbox.checked) {
             mapInstance.layers.fetchWatches();
+        }
+        // Fetch outlook if one is enabled
+        if (day1OutlookCheckbox && day1OutlookCheckbox.checked) {
+            mapInstance.layers.fetchOutlook(1);
+        } else if (day2OutlookCheckbox && day2OutlookCheckbox.checked) {
+            mapInstance.layers.fetchOutlook(2);
+        } else if (day3OutlookCheckbox && day3OutlookCheckbox.checked) {
+            mapInstance.layers.fetchOutlook(3);
         }
     }, 5000);
 }

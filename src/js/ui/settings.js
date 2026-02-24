@@ -143,6 +143,17 @@ function bindSectionControls(settingsInstance, content) {
             return;
         }
 
+        if (input.type === 'color') {
+            const currentValue = settingsInstance.getSetting(key);
+            if (typeof currentValue === 'string') {
+                input.value = currentValue;
+            }
+            input.addEventListener('input', () => {
+                settingsInstance.setSetting(key, input.value);
+            });
+            return;
+        }
+
         const currentValue = settingsInstance.getSetting(key);
         if (typeof currentValue !== 'undefined') {
             input.value = currentValue;
@@ -223,12 +234,18 @@ export default class Settings {
             showTimeAndTilt: true,
             reflectivityGateFilter: -10,
             enableSplitCursorMarker: true,
+            primaryColor: '#27beff',
+            secondaryColor: '#2a7fff',
+            borderColor: '#808080',
+            secondaryBorderColor: '#27beff'
         };
 
         this.settings = {
             ...this.defaults,
             ...this.loadSettings(),
         };
+
+        this.applyThemeColors();
     }
 
     loadSettings() {
@@ -252,6 +269,7 @@ export default class Settings {
     setSetting(key, value) {
         this.settings[key] = value;
         this.saveSettings();
+        this.applyThemeColors();
         document.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key, value } }));
 
         // Some settings may show a toast notification when changed
@@ -269,6 +287,44 @@ export default class Settings {
         document.dispatchEvent(new CustomEvent('settingsReset'));
         alert('Settings have been reset to default values.');
         window.location.reload();
+    }
+
+    applyThemeColors() {
+        const root = document.documentElement;
+        if (!root) return;
+
+        const primary = this.settings.primaryColor || this.defaults.primaryColor;
+        const secondary = this.settings.secondaryColor || this.defaults.secondaryColor;
+        const border = this.settings.borderColor || this.defaults.borderColor;
+        const secondaryBorder = this.settings.secondaryBorderColor || this.defaults.secondaryBorderColor;
+
+        root.style.setProperty('--primary-color', primary);
+        root.style.setProperty('--secondary-color', secondary);
+        root.style.setProperty('--border-color', border);
+        root.style.setProperty('--secondary-border-color', this._withAlpha(secondaryBorder, 0.2));
+    }
+
+    _withAlpha(hexColor, alpha) {
+        if (typeof hexColor !== 'string') return `rgba(39, 190, 255, ${alpha})`;
+        const trimmed = hexColor.trim();
+        const hex = trimmed.startsWith('#') ? trimmed.slice(1) : trimmed;
+        if (![3, 6].includes(hex.length)) {
+            return `rgba(39, 190, 255, ${alpha})`;
+        }
+
+        const fullHex = hex.length === 3
+            ? hex.split('').map((ch) => ch + ch).join('')
+            : hex;
+
+        const r = parseInt(fullHex.slice(0, 2), 16);
+        const g = parseInt(fullHex.slice(2, 4), 16);
+        const b = parseInt(fullHex.slice(4, 6), 16);
+
+        if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) {
+            return `rgba(39, 190, 255, ${alpha})`;
+        }
+
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 
     showSettingsMenu() {

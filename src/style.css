@@ -1,3 +1,10 @@
+:root {
+  --primary-color: #27beff;
+  --secondary-color: #2a7fff;
+  --border-color: gray;
+  --secondary-border-color: rgba(39, 190, 255, 0.2);
+}
+
 html,
 body {
   width: 100vw;
@@ -27,7 +34,7 @@ input, textarea, button, select, a, * {
 
 
 a {
-  color: #27beff;
+  color: var(--primary-color);
   transition: color 0.2s;
 }
 
@@ -66,7 +73,7 @@ a:hover {
   z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   padding: 5px;
   border-radius: 10px;
   display: flex;
@@ -85,14 +92,14 @@ button {
   cursor: pointer;
   border-radius: 100px;
   color: black;
-  background-color: #27beff;
+  background-color: var(--primary-color);
   align-items: center;
   justify-content: center;
   transition: background-color 0.2s, color 0.2s;
 }
 
 button:hover {
-  background-color: #2a7fff;
+  background-color: var(--secondary-color);
   color: white;
 }
 
@@ -104,7 +111,7 @@ button:hover {
   z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
-  border-top: 1px solid gray;
+  border-top: 1px solid var(--border-color);
   padding: 10px;
   display: flex;
   justify-content: center;
@@ -131,7 +138,7 @@ button:hover {
   z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   padding: 5px;
   border-radius: 10px;
 }
@@ -146,7 +153,7 @@ button:hover {
   width: 38px;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: conic-gradient(transparent 0deg, #27beff 60deg, transparent 60deg, transparent 360deg);
+  background: conic-gradient(transparent 0deg, var(--primary-color) 60deg, transparent 60deg, transparent 360deg);
   animation: l21 2s infinite linear;
 }
 
@@ -164,7 +171,7 @@ button:hover {
   height: auto;
   background: rgba(0, 0, 0, 0.5);
   color: white;
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(20px);
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -214,7 +221,7 @@ button:hover {
 
 .menu li:hover {
   margin-left: 10px;
-  color: #27beff;
+  color: var(--primary-color);
 }
 
 .menu li i {
@@ -244,7 +251,7 @@ button:hover {
   z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   padding: 10px;
   border-radius: 10px;
   color: white;
@@ -280,7 +287,7 @@ button:hover {
   background: rgba(0, 0, 0);
   padding: 10px 15px;
   border-radius: 0px;
-  border-bottom: 1px solid gray;
+  border-bottom: 1px solid var(--border-color);
   cursor: pointer;
   transition: background-color 0.2s;
 }
@@ -291,17 +298,17 @@ button:hover {
   background: rgba(0, 0, 0);
   padding: 15px 20px;
   border-bottom: 0px solid black !important;
-  color: #27beff;
+  color: var(--primary-color);
   cursor: default !important;
 }
 
 .radar-products-list div:hover:not(.radar-product-category) {
-  background: #2a7fff;
+  background: var(--secondary-color);
 }
 
 .radar-picker-current-product {
   text-align: center;
-  color: #27beff;
+  color: var(--primary-color);
   font-weight: bold;
   cursor: pointer;
 }
@@ -347,7 +354,7 @@ button:hover {
   bottom: 70px;
   right: 10px;
   background: rgba(0, 0, 0, 0.5);
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   padding: 10px;
@@ -357,7 +364,7 @@ button:hover {
 
 #toolbar-station {
   font-weight: bold;
-  color: #27beff;
+  color: var(--primary-color);
   text-align: right;
 }
 
@@ -379,7 +386,7 @@ button:hover {
   height: calc(100% - 60px);
   background: rgba(0, 0, 0, 0.5);
   color: white;
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(20px);
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -441,7 +448,7 @@ button:hover {
 
 .settings-header-icon {
   font-size: 1.5em;
-  color: #27beff;
+  color: var(--primary-color);
   flex-shrink: 0;
 }
 
@@ -467,7 +474,7 @@ button:hover {
 }
 
 .settings-header-close:hover {
-  color: #27beff;
+  color: var(--primary-color);
 }
 
 .settings-body {
@@ -491,7 +498,7 @@ button:hover {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(39, 190, 255, 0.2);
+  border-bottom: 1px solid var(--secondary-border-color);
 }
 
 .settings-nav-toggle {
@@ -513,7 +520,7 @@ button:hover {
 
 .settings-nav-title {
   font-size: 1.05em;
-  color: #27beff;
+  color: var(--primary-color);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -536,15 +543,15 @@ button:hover {
 }
 
 .settings-nav-item:hover {
-  background-color: rgba(39, 190, 255, 0.1);
-  color: #27beff;
-  border-left-color: #27beff;
+  background-color: var(--secondary-border-color);
+  color: var(--primary-color);
+  border-left-color: var(--primary-color);
 }
 
 .settings-nav-item.active {
-  background-color: rgba(39, 190, 255, 0.2);
-  color: #27beff;
-  border-left-color: #27beff;
+  background-color: var(--secondary-border-color);
+  color: var(--primary-color);
+  border-left-color: var(--primary-color);
 }
 
 .settings-content {
@@ -572,7 +579,7 @@ button:hover {
   padding: 16px;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(39, 190, 255, 0.2);
+  border: 1px solid var(--secondary-border-color);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
@@ -585,7 +592,7 @@ button:hover {
 
 .settings-control label {
   font-weight: 600;
-  color: #27beff;
+  color: var(--primary-color);
 }
 
 .settings-control-value {
@@ -601,14 +608,14 @@ button:hover {
 
 .settings-control input[type="range"] {
   width: 100%;
-  accent-color: #27beff;
+  accent-color: var(--primary-color);
 }
 
 .settings-control input[type="checkbox"]:not(.switch) {
   width: 20px;
   height: 20px;
   cursor: pointer;
-  accent-color: #27beff;
+  accent-color: var(--primary-color);
   margin-left: auto;
 }
 
@@ -621,7 +628,7 @@ button:hover {
   background: rgba(255, 255, 255, 0.1);
   outline: none;
   border-radius: 13px;
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   transition: background-color 0.2s, border-color 0.2s;
   cursor: pointer;
   margin-left: auto;
@@ -644,8 +651,8 @@ button:hover {
 }
 
 .switch:checked {
-  background: #27beff;
-  border-color: gray;
+  background: var(--primary-color);
+  border-color: var(--border-color);
 }
 
 .switch:checked::before {
@@ -699,12 +706,12 @@ button:hover {
   .settings-nav-item {
     padding: 15px 20px;
     border-left: none;
-    border-bottom: 1px solid rgba(39, 190, 255, 0.1);
+    border-bottom: 1px solid var(--secondary-border-color);
   }
 
   .settings-nav-item:hover {
     border-left: none;
-    border-bottom-color: #27beff;
+    border-bottom-color: var(--primary-color);
   }
 
   .settings-content {
@@ -732,7 +739,7 @@ button:hover {
 .palette-pickers input {
   color: white;
   text-shadow: 0 0 2px rgba(0,0,0,1);
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   border-radius: 50px;
   font-size: 1em;
   font-weight: bold;
@@ -742,8 +749,8 @@ button:hover {
 }
 
 .palette-pickers input:hover {
-  background: #2a7fff !important;
-  background-color: #2a7fff;
+  background: var(--secondary-color) !important;
+  background-color: var(--secondary-color);
   color: white;
 }
 
@@ -769,7 +776,7 @@ button:hover {
   gap: 0px;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   padding: 0px;
   border-radius: 100px;
   color: white;
@@ -818,7 +825,7 @@ button:hover {
   left: 50%;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.5);
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(20px);
   color: white;
   padding: 10px 20px;
@@ -846,7 +853,7 @@ button:hover {
   gap: 10px;
   width: 400px;
   color: white;
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 10px;
   max-width: 260px;
@@ -866,7 +873,7 @@ button:hover {
   height: 0;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
-  border-top: 10px solid gray;
+  border-top: 10px solid var(--border-color);
 }
 
 .popup-title {
@@ -880,7 +887,7 @@ button:hover {
 }
 
 .popup-item:hover {
-  border: 1px solid #27beff;
+  border: 1px solid var(--primary-color);
   background-color: rgba(0, 0, 0, 0.5);
 }
 
@@ -889,7 +896,7 @@ button:hover {
   grid-template-columns: 12px 1fr;
   column-gap: 8px;
   align-items: start;
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   transition: border-color 0.2s ease, background-color 0.2s ease;
   background-color: rgba(0, 0, 0, 0);
   padding: 10px;
@@ -942,7 +949,7 @@ button:hover {
   left: 10px;
   background: rgba(0, 0, 0, 0.5);
   color: white;
-  border: 1px solid gray;
+  border: 1px solid var(--border-color);
   backdrop-filter: blur(20px);
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
@@ -981,7 +988,7 @@ button:hover {
   font-weight: bold;
   margin-bottom: 10px;
   margin-top: 20px;
-  color: #27beff;
+  color: var(--primary-color);
 }
 
 .layer-menu-section {
@@ -990,7 +997,7 @@ button:hover {
   justify-content: space-between;
   align-items: center;
   padding: 5px 0;
-  border-bottom: 1px solid gray;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .layer-menu-section h3 {
@@ -1014,7 +1021,7 @@ button:hover {
 }
 
 .tag.new {
-  background-color: #27beff;
+  background-color: #00af00;
   color: black;
 }
 
@@ -1026,4 +1033,12 @@ button:hover {
 .tag.inprogress {
   background-color: #888888;
   color: white;
+}
+
+input[type="color"] {
+  width: 100px;
+  padding: 0;
+  border-radius: 100px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
 }

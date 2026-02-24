@@ -35,6 +35,10 @@ import { createToolbar } from "./components/toolbar.js";
 import { hideLoadingAnimation, showLoadingAnimation } from "./js/ui/loader.js";
 import { layerMenu } from "./components/layer_menu.js";
 
+// Set custom colors
+import Settings from './js/ui/settings.js';
+new Settings(); // Initialize settings to apply theme colors
+
 // See if there are URL parameters for station
 const urlParams = new URLSearchParams(window.location.search);
 const initialStation = urlParams.get('station') ? urlParams.get('station').toUpperCase() : 'KTLX';

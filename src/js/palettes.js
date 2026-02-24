@@ -164,24 +164,55 @@ class Palettes {
         }
     }
 
+    _palArrayToString(palArray) {
+        if (!Array.isArray(palArray)) return '';
+        const lines = [];
+        for (let i = 0; i < palArray.length; i += 2) {
+            const val = palArray[i];
+            const color = palArray[i + 1] || '';
+            const match = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+            if (match) {
+                lines.push(`${val} ${match[1]} ${match[2]} ${match[3]} ${match[4]}`);
+            } else {
+                const rgbMatch = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+                if (rgbMatch) {
+                    lines.push(`${val} ${rgbMatch[1]} ${rgbMatch[2]} ${rgbMatch[3]}`);
+                }
+            }
+        }
+        return lines.join('\n');
+    }
+
     convertPalToArray(palString) {
         const lines = palString.trim().split('\n');
         const parsed = [];
         
         lines.forEach(line => {
-            const [val, r, g, b] = line.trim().split(/\s+/).map(Number);
+            const parts = line.trim().split(/\s+/).map(Number);
+            const val = parts[0];
+            const r = parts[1];
+            const g = parts[2];
+            const b = parts[3];
+            let a = parts[4]; // Alpha, if present
+            
             if (!isNaN(val) && !isNaN(r)) {
-                parsed.push({ val, r, g, b });
+                // Include alpha if present and valid, otherwise default to 255 (1.0)
+                if (!Number.isFinite(a)) {
+                    a = 255;
+                } else if (a <= 1) {
+                    a = Math.round(a * 255);
+                }
+                parsed.push({ val, r, g, b, a });
             }
         });
 
         // Sort by value to ensure correct order
         parsed.sort((a, b) => a.val - b.val);
 
-        // Convert to interleaved array format: [val1, 'rgb(...)', val2, 'rgb(...)', ...]
+        // Convert to interleaved array format: [val1, 'rgba(...)', val2, 'rgba(...)', ...]
         const result = [];
-        parsed.forEach(({val, r, g, b}) => {
-            result.push(val, `rgb(${r}, ${g}, ${b})`);
+        parsed.forEach(({val, r, g, b, a}) => {
+            result.push(val, `rgba(${r}, ${g}, ${b}, ${a})`);
         });
 
         return result;
@@ -192,102 +223,110 @@ class Palettes {
         const colors = [];
         
         lines.forEach(line => {
-            const [val, r, g, b] = line.trim().split(/\s+/).map(Number);
+            const parts = line.trim().split(/\s+/).map(Number);
+            const val = parts[0];
+            const r = parts[1];
+            const g = parts[2];
+            const b = parts[3];
+            const a = parts[4]; // Alpha, if present
+            
             if (!isNaN(val) && !isNaN(r)) {
-                colors.push({ val, r, g, b });
+                colors.push({ val, r, g, b, a: isNaN(a) ? 255 : a });
             }
         });
 
         // Sort by value to ensure correct order
         colors.sort((a, b) => a.val - b.val);
 
-        // Create GLSL array string
+        // Create GLSL array string with alpha
         let glslArray = `const vec4 palette[${colors.length}] = vec4[](\n`;
-        glslArray += colors.map(c => `    vec4(${c.r / 255}, ${c.g / 255}, ${c.b / 255}, 1.0)`).join(',\n');
+        glslArray += colors.map(c => `    vec4(${c.r / 255}, ${c.g / 255}, ${c.b / 255}, ${c.a / 255})`).join(',\n');
         glslArray += '\n);';
 
         return glslArray;
     }
 
     convertPalFileFormat(palFileContent, options = {}) {
-        const { paletteName } = options;
-        const lines = palFileContent.split('\n');
-        const unitsLine = lines.find(line => /\bunits\b\s*:/i.test(line));
-        const scaleLine = lines.find(line => /\bscale\s*:/i.test(line));
-        let units = null;
-        let scale = 1;
-        if (unitsLine) {
-            const match = unitsLine.match(/units\s*:\s*([A-Za-z]+)/i);
-            if (match) {
-                units = match[1].toUpperCase();
-            }
+    const lines = palFileContent.split('\n')
+        .map(line => line.split(';')[0].trim())
+        .filter(line => line.length > 0);
+
+    const entries = [];
+    let scale = 1;
+
+    lines.forEach(rawLine => {
+        const match = rawLine.match(/^([a-zA-Z]+)\s*:\s*(.*)$/i);
+        if (!match) return;
+
+        const key = match[1].toLowerCase();
+        const value = match[2].trim();
+
+        if (key === 'scale') {
+            const s = Number(value);
+            if (Number.isFinite(s) && s !== 0) scale = s;
+            return;
         }
-        // For velocity palettes: only apply scale as a divisor if units are NOT specified or not MPH
-        // When units: MPH, the scale is metadata (conversion factor), not a divisor
-        if (paletteName === 'VEL' && scaleLine && units !== 'MPH') {
-            const match = scaleLine.match(/scale\s*:\s*([\d.]+)/i);
-            if (match) {
-                const parsedScale = Number(match[1]);
-                if (Number.isFinite(parsedScale) && parsedScale !== 0) {
-                    scale = parsedScale;
-                }
-            }
+
+        if (['units', 'step', 'product'].includes(key)) return; // Skip for now
+
+        if (key !== 'color') return; // Only process color lines
+
+        const nums = value.split(/\s+/).map(Number).filter(n => !isNaN(n));
+        if (nums.length < 4) return; // Need at least val + RGB
+
+        const val = nums[0] / scale;
+        const r1 = Math.round(nums[1]);
+        const g1 = Math.round(nums[2]);
+        const b1 = Math.round(nums[3]);
+        let r2 = r1, g2 = g1, b2 = b1;
+        if (nums.length >= 7) {
+            r2 = Math.round(nums[4]);
+            g2 = Math.round(nums[5]);
+            b2 = Math.round(nums[6]);
         }
-        // Match both 'color:' and 'Color:' (case-insensitive) or 'Color4:'
-        const colorLines = lines.filter(line => {
-            const trimmed = line.trim();
-            return /^color\d*:/i.test(trimmed);
-        });
-        
-        const result = [];
-        const epsilon = 0.00001; // Small offset for hard stops
-        
-        colorLines.forEach(line => {
-            // Remove the color label (Color:, Color4:, color:, etc.)
-            const withoutLabel = line.replace(/^.*?color\d*:\s*/i, '').trim();
-            
-            // Split by whitespace and convert to numbers
-            const parts = withoutLabel.split(/\s+/).map(Number);
-            
-            if (parts.length < 4) return; // Need at least value + RGB
-            
-            // Apply scale division (for raw values) unless units are specified
-            let val = parts[0] / scale;
-            // If palette values are in MPH, convert to knots to match radar data
-            if (paletteName === 'VEL' && units === 'MPH') {
-                val *= 0.868976;
-            }
-            const r1 = parts[1];
-            const g1 = parts[2];
-            const b1 = parts[3];
-            
-            // Check for second RGB set (hard stop between colors)
-            if (parts.length >= 7) {
-                const r2 = parts[4];
-                const g2 = parts[5];
-                const b2 = parts[6];
-                
-                // Output the first color slightly before this value to create the hard stop
-                result.push({ val: val - epsilon, r: r1, g: g1, b: b1 });
-                
-                // Output the second color at the value
-                result.push({ val, r: r2, g: g2, b: b2 });
+        // Assume no alpha for now
+
+        entries.push({ val, start: {r: r1, g: g1, b: b1, a: 255}, end: {r: r2, g: g2, b: b2, a: 255} });
+    });
+
+    // Sort entries by val
+    entries.sort((a, b) => a.val - b.val);
+
+    // Build the color stops
+    const colors = [];
+    for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i];
+        colors.push({ val: entry.val, r: entry.start.r, g: entry.start.g, b: entry.start.b, a: entry.start.a });
+
+        const hasGradient = (entry.start.r !== entry.end.r || entry.start.g !== entry.end.g || entry.start.b !== entry.end.b);
+        if (hasGradient) {
+            if (i < entries.length - 1) {
+                // Add end color at next val (will create jump if != next start)
+                colors.push({ val: entries[i + 1].val, r: entry.end.r, g: entry.end.g, b: entry.end.b, a: entry.end.a });
             } else {
-                // Output the only color at the value
-                result.push({ val, r: r1, g: g1, b: b1 });
+                // For last entry with gradient, add end at same val (jump at end point)
+                colors.push({ val: entry.val, r: entry.end.r, g: entry.end.g, b: entry.end.b, a: entry.end.a });
             }
-        });
-
-        // Sort by value to ensure correct order
-        result.sort((a, b) => a.val - b.val);
-        
-        // Convert back to string format
-        const sortedLines = result.map(stop => 
-            `${stop.val.toFixed(5)} ${stop.r} ${stop.g} ${stop.b}`
-        );
-
-        return sortedLines.join('\n');
+        }
     }
+
+    // Sort by val (stable, preserves order for same val)
+    colors.sort((a, b) => a.val - b.val);
+
+    // Dedup exact duplicates (same val and same color)
+    const deduped = [];
+    for (let c of colors) {
+        const last = deduped[deduped.length - 1];
+        if (!last || last.val !== c.val || last.r !== c.r || last.g !== c.g || last.b !== c.b || last.a !== c.a) {
+            deduped.push(c);
+        }
+    }
+
+    // Format output
+    const resultLines = deduped.map(c => `${c.val.toFixed(2)} ${c.r} ${c.g} ${c.b} ${c.a}`);
+
+    return resultLines.join('\n');
+}
 
     interpolateColor(value, palArray) {
         // palArray is [val1, 'rgb(...)', val2, 'rgb(...)', ...]
@@ -313,16 +352,38 @@ class Palettes {
     }
 
     parseRGB(rgbString) {
-        const match = rgbString.match(/\d+/g);
-        return { r: parseInt(match[0]), g: parseInt(match[1]), b: parseInt(match[2]) };
+        // Try rgba first
+        let match = rgbString.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+        if (match) {
+            return { 
+                r: parseInt(match[1]), 
+                g: parseInt(match[2]), 
+                b: parseInt(match[3]),
+                a: parseInt(match[4])
+            };
+        }
+        
+        // Fall back to rgb
+        match = rgbString.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        if (match) {
+            return { 
+                r: parseInt(match[1]), 
+                g: parseInt(match[2]), 
+                b: parseInt(match[3]),
+                a: 255 // Default alpha
+            };
+        }
+        
+        return { r: 255, g: 255, b: 255, a: 255 };
     }
 
     lerpColor(color1, color2, t) {
         const r = Math.round(color1.r + (color2.r - color1.r) * t);
         const g = Math.round(color1.g + (color2.g - color1.g) * t);
         const b = Math.round(color1.b + (color2.b - color1.b) * t);
+        const a = Math.round(color1.a + (color2.a - color1.a) * t);
         
-        return `rgb(${r}, ${g}, ${b})`;
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
     }
 
     getPalette(name) {
@@ -331,13 +392,20 @@ class Palettes {
             return this.convertPalToArray(defaultPalettes["REF"]);
         }
         const palString = this.palettes[name];
-        console.log(`[Palettes] Getting palette "${name}" - first 100 chars:`, palString.substring(0, 100));
+        if (Array.isArray(palString)) {
+            console.log(`[Palettes] Getting palette "${name}" - array format`);
+            return palString;
+        }
+        const preview = typeof palString === 'string' ? palString.substring(0, 100) : String(palString);
+        console.log(`[Palettes] Getting palette "${name}" - first 100 chars:`, preview);
         return this.convertPalToArray(palString);
     }
 
     storePalette(name, palString) {
-        console.log(`[Palettes] Storing palette "${name}" - first 100 chars:`, palString.substring(0, 100));
-        this.palettes[name] = palString;
+        const storedValue = Array.isArray(palString) ? this._palArrayToString(palString) : palString;
+        const preview = typeof storedValue === 'string' ? storedValue.substring(0, 100) : String(storedValue);
+        console.log(`[Palettes] Storing palette "${name}" - first 100 chars:`, preview);
+        this.palettes[name] = storedValue;
         const toStore = {};
         // Only store custom palettes, not defaults
         Object.keys(this.palettes).forEach(key => {
@@ -355,18 +423,36 @@ class Palettes {
         if (!palString) {
             return null; // Palette not found
         }
-        
-        const lines = palString.trim().split('\n');
+
+        const rawString = Array.isArray(palString) ? this._palArrayToString(palString) : palString;
+        const lines = rawString.trim().split('\n');
         const colorStops = [];
         
         lines.forEach(line => {
-            const parts = line.trim().split(/\s+/).map(Number);
+            const trimmed = line.trim();
+            if (!trimmed) return;
+            
+            // Parse value and RGBA (format: "value r g b [a]")
+            const parts = trimmed.split(/\s+/).map(Number);
             if (parts.length >= 4) {
                 const val = parts[0];
                 const r = parts[1];
                 const g = parts[2];
                 const b = parts[3];
-                colorStops.push({ val, r, g, b });
+                const a = parts[4]; // Optional alpha (0-255 or 0-1)
+                
+                // Filter out invalid values
+                if (Number.isFinite(val) && Number.isFinite(r) && Number.isFinite(g) && Number.isFinite(b)) {
+                    // Skip RF value (999) and very high values
+                    if (val < 900) {
+                        // Convert alpha from 0-255 to 0-1 if present
+                        let alpha = 1;
+                        if (Number.isFinite(a)) {
+                            alpha = a <= 1 ? a : a / 255;
+                        }
+                        colorStops.push({ val, r, g, b, a: alpha });
+                    }
+                }
             }
         });
         
@@ -385,7 +471,7 @@ class Palettes {
         // Generate gradient stops based on actual value positions
         const gradientStops = colorStops.map(stop => {
             const percent = range === 0 ? 0 : ((stop.val - minVal) / range) * 100;
-            return `rgb(${stop.r}, ${stop.g}, ${stop.b}) ${percent}%`;
+            return `rgba(${stop.r}, ${stop.g}, ${stop.b}, ${stop.a}) ${percent.toFixed(2)}%`;
         }).join(', ');
         
         return `linear-gradient(to right, ${gradientStops})`;

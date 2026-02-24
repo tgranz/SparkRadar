@@ -315,8 +315,14 @@ class Radar {
                 const r1 = (firstGate + gateIndex * gateSize) * 1000;
                 const r2 = (firstGate + (gateIndex + 1) * gateSize) * 1000;
 
+                let value = dbz;
+                if (layer === 'VEL' && value !== 'rf' && Number.isFinite(value)) {
+                    // Convert m/s to knots to match palette units
+                    value *= 1.94384;
+                }
+
                 const coords = this._buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
-                builder.pushQuad(coords, dbz);
+                builder.pushQuad(coords, value);
             }
         }
 
