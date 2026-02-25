@@ -575,7 +575,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 10px;
   padding: 16px;
   border-radius: 12px;
   background: rgba(0, 0, 0, 0.35);

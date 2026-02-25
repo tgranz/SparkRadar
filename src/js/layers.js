@@ -9,6 +9,8 @@ See LICENSE for more.
 
 import Popup from "./ui/popup.js";
 import Dialog from "./ui/dialog.js";
+import Notification from "./ui/notification.js";
+import { buildAlertDefaults } from "./ui/settings.js";
 
 class Layers {
     constructor(mapInstance) {
@@ -38,11 +40,41 @@ class Layers {
         this.sseMaxReconnectAttempts = 10;
         this.sseReconnectDelay = 3000; // 3 seconds
 
+        // Polling tracking
+        this.alertPollingInterval = null;
+        this.alertPollingRate = 15000; // 15 seconds
+        this.fetchRetryCount = 0;
+        this.maxFetchRetries = 3;
+        this.fetchInProgress = false;
+        this.isMobileDevice = this._isMobileDevice();
+        
+        if (this.isMobileDevice) {
+            console.log('[Layers] Mobile device detected - performance optimizations enabled (flashing disabled)');
+        }
+
         // Set up alert click handlers
         this.alertPopupClickHandlers.main = (e) => this._handleAlertClick('main', e);
         if (this.map?.map) {
             this.map.map.on('click', this.alertPopupClickHandlers.main);
         }
+    }
+
+    /**
+     * Detects if the device is mobile
+     */
+    _isMobileDevice() {
+        // Check for mobile user agent
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+        const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i;
+        
+        // Also check for touch-only devices with smaller screens
+        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        const isSmallScreen = window.innerWidth <= 768;
+        
+        const isMobile = mobileRegex.test(userAgent) || (isTouchDevice && isSmallScreen);
+        console.log(`[Layers] Mobile detection: isMobile=${isMobile}, userAgent match=${mobileRegex.test(userAgent)}, touch=${isTouchDevice}, smallScreen=${isSmallScreen}`);
+        
+        return isMobile;
     }
 
     // Alert methods
@@ -81,6 +113,10 @@ class Layers {
                 // Handle new alert notifications
                 if (data.id && data.name) {
                     console.log('[Layers] New alert received:', data.name);
+                    
+                    // Show notification for the new alert
+                    this._showAlertNotification(data);
+                    
                     // Wait a moment then fetch updated alerts
                     setTimeout(async () => {
                         await this.fetchAlerts();
@@ -93,6 +129,7 @@ class Layers {
 
         this.eventSource.onerror = (e) => {
             console.error('[Layers] SSE connection error:', e);
+            new Notification('Connection Error', 'Lost connection to weather alerts. Check your network connection.', 'wifi-off', '#ff2121', 5000);
             this.eventSource.close();
             this.eventSource = null;
 
@@ -105,33 +142,138 @@ class Layers {
             } else {
                 console.error('[Layers] Max SSE reconnection attempts reached. Falling back to polling.');
                 // Fall back to periodic polling
-                setInterval(() => this.fetchAlerts(), 30000);
+                this._startAlertPolling();
             }
         };
     }
 
     /**
-     * Closes the SSE connection
+     * Starts polling for alerts (used on mobile or as fallback)
+     */
+    _startAlertPolling() {
+        // Clear any existing polling
+        if (this.alertPollingInterval) {
+            clearInterval(this.alertPollingInterval);
+            this.alertPollingInterval = null;
+        }
+
+        // Wait for map to be fully ready before first fetch
+        const performFirstFetch = () => {
+            console.log('[Layers] Performing first alert fetch for polling');
+            
+            // Add a small delay on mobile to ensure network is ready
+            const delay = this._isMobileDevice() ? 2000 : 500;
+            
+            setTimeout(() => {
+                this.fetchAlerts();
+                
+                // Set up periodic polling
+                this.alertPollingInterval = setInterval(() => {
+                    this.fetchAlerts();
+                }, this.alertPollingRate);
+                
+                console.log(`[Layers] Alert polling started (${this.alertPollingRate / 1000}s interval)`);
+            }, delay);
+        };
+
+        // Check if map is ready
+        const map = this.map?.map;
+        if (!map) {
+            console.warn('[Layers] Map not available for polling, retrying...');
+            setTimeout(() => this._startAlertPolling(), 1000);
+            return;
+        }
+
+        // If map is idle, fetch immediately, otherwise wait for idle
+        if (map.isStyleLoaded && map.isStyleLoaded() && !map.isMoving()) {
+            performFirstFetch();
+        } else {
+            console.log('[Layers] Waiting for map idle before first alert fetch');
+            map.once('idle', performFirstFetch);
+        }
+    }
+
+    /**
+     * Closes the SSE connection and stops polling
      */
     closeAlertSubscription() {
+        // Close SSE connection
         if (this.eventSource) {
             this.eventSource.close();
             this.eventSource = null;
             console.log('[Layers] Alert subscription closed');
         }
+
+        // Stop polling
+        if (this.alertPollingInterval) {
+            clearInterval(this.alertPollingInterval);
+            this.alertPollingInterval = null;
+            console.log('[Layers] Alert polling stopped');
+        }
     }
 
-    async fetchAlerts() {
+    async fetchAlerts(retryCount = 0) {
+        // Prevent concurrent fetches
+        if (this.fetchInProgress) {
+            console.log('[Layers] Fetch already in progress, skipping...');
+            return;
+        }
+        
+        this.fetchInProgress = true;
+        
         try {
-            const response = await fetch('https://api.sparkradar.app/alerts', { signal: AbortSignal.timeout(5000) });
+            console.log('[Layers] Fetching alerts from API... (attempt ' + (retryCount + 1) + ')');
+            
+            // Use a longer timeout on mobile devices
+            const timeout = this._isMobileDevice() ? 10000 : 5000;
+            
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            const response = await fetch('https://api.sparkradar.app/alerts', { 
+                signal: controller.signal,
+                mode: 'cors',
+                cache: 'no-cache'
+            });
+            
+            clearTimeout(timeoutId);
+            
+            console.log('[Layers] Response status:', response.status, response.statusText);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            
+            console.log('[Layers] fetchAlerts response:', { status: data.status, alertCount: data.alerts?.length || 0 });
             
             if (data.status === 'OK' && data.alerts) {
                 this.alerts = data.alerts;
                 this.displayAlerts();
+                this.fetchRetryCount = 0; // Reset retry count on success
+            } else {
+                console.warn('[Layers] fetchAlerts: Invalid response or no alerts', data);
             }
         } catch (error) {
-            console.error('Error fetching alerts:', error);
+            console.error('[Layers] Error fetching alerts:', {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+                toString: error.toString()
+            });
+            
+            // Retry logic for mobile network issues
+            if (retryCount < this.maxFetchRetries && 
+                (error.name === 'TypeError' || error.name === 'AbortError')) {
+                const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
+                console.log(`[Layers] Retrying fetch in ${delay}ms...`);
+                this.fetchInProgress = false; // Release lock before retry
+                setTimeout(() => this.fetchAlerts(retryCount + 1), delay);
+                return; // Don't release lock at the end
+            }
+        } finally {
+            this.fetchInProgress = false;
         }
     }
 
@@ -186,37 +328,28 @@ class Layers {
     }
 
     _getAlertColor(alert) {
-        const phenomena = alert.properties?.phenomena;
-        const significance = alert.properties?.significance;
-        const message = alert.message?.toLowerCase() ?? '';
-        
-        // Color mapping based on phenomena
-        if (phenomena === 'SV') { // Severe Thunderstorm (only ever warning)
-            return { fill: '#ff9900', outline: '#ff9900', name: 'Severe Thunderstorm Warning' };
-        } else if (phenomena === 'TO') { // Tornado (only ever warning)
-            if (message.includes('tornado emergency')) {
-                return { fill: '#a200ff', outline: '#a200ff', name: 'Tornado Emergency' };
-            } else if (message.includes('particularly dangerous situation')) {
-                return { fill: '#ff00ee', outline: '#ff00ee', name: 'PDS Tornado Warning' };
-            } else {
-                return { fill: '#ff2121', outline: '#ff2121', name: 'Tornado Warning' };
-            }
-        } else if (phenomena === 'FF') { // Flash Flood 
-            if (message.includes('flash flood emergency')) {
-                return { fill: '#7f00ff', outline: '#7f00ff', name: 'Flash Flood Emergency' };
-            }
-            if (significance === 'W') {
-                return { fill: '#38f852', outline: '#38f852', name: 'Flash Flood Warning' };
-            } else if (significance === 'Y' || significance === 'S') {
-                return { fill: '#86efac', outline: '#86efac', name: 'Flash Flood Advisory' };
-            } else if (significance === 'A'){
-                return { fill: '#00c257', outline: '#00c257', name: 'Flash Flood Watch' };
-            }
-        } else if (phenomena === 'FA' || phenomena === 'FL') { // Flood
-            return { fill: '#27beff', outline: '#27beff', name: 'Flood Warning' };
-        } else {
-            return { fill: '#facc15', outline: '#facc15', name: alert.name };
+        // Check for custom colors in settings first
+        const alertSettings = this._getAlertSettings(alert.name);
+        if (alertSettings.color) {
+            return { 
+                fill: alertSettings.color, 
+                outline: alertSettings.color, 
+                name: alert.name 
+            };
         }
+
+        // Fall back to default colors from ALERT_TYPE_DEFAULTS
+        const defaultColor = buildAlertDefaults()[alert.name];
+        if (defaultColor && defaultColor.color) {
+            return { 
+                fill: defaultColor.color, 
+                outline: defaultColor.color, 
+                name: alert.name 
+            };
+        }
+        
+        // Final fallback for unknown alert types
+        return { fill: '#facc15', outline: '#facc15', name: alert.name };
     }
 
     _getAlertKey(alert, index) {
@@ -233,6 +366,127 @@ class Layers {
             properties: alert.properties,
             geometry: alert.geometry
         });
+    }
+
+    _getAlertSettings(alertName) {
+        try {
+            // Convert alert name to settings key format
+            // e.g., "Severe Thunderstorm Warning" -> "alert_severe_thunderstorm_warning"
+            const settingKey = `alert_${alertName.replace(/\s+/g, '_').toLowerCase()}`;
+            
+            // Try to get from localStorage settings
+            const storedSettings = localStorage.getItem('settings');
+            if (storedSettings) {
+                const parsed = JSON.parse(storedSettings);
+                if (parsed[settingKey]) {
+                    const value = parsed[settingKey];
+                    if (value && typeof value === 'object') {
+                        if (!value.color && (value.fillColor || value.borderColor)) {
+                            value.color = value.fillColor || value.borderColor;
+                        }
+                        return value;
+                    }
+                    return parsed[settingKey];
+                }
+            }
+            
+            // Return defaults if not found
+            return {
+                enabled: true,
+                notify: true,
+                color: null
+            };
+        } catch (error) {
+            console.error('[Layers] Error getting alert settings:', error);
+            return { enabled: true, notify: true, color: null };
+        }
+    }
+
+    _showAlertNotification(alertData) {
+        // Check if notifications are enabled for this alert type
+        const alertSettings = this._getAlertSettings(alertData.name);
+        if (!alertSettings.notify) {
+            console.log(`[Layers] Notifications disabled for ${alertData.name}`);
+            return;
+        }
+
+        // Use custom colors from settings if available, otherwise use defaults from _getAlertColor
+        let alertColor = alertSettings.color;
+        
+        // If no custom colors, try to get from _getAlertColor (which uses phenomena/significance)
+        if (!alertColor) {
+            const mockAlert = {
+                name: alertData.name,
+                message: alertData.message || '',
+                properties: alertData.properties || {}
+            };
+            const defaultColors = this._getAlertColor(mockAlert);
+            alertColor = alertSettings.color || defaultColors.fill;
+        }
+
+        // Determine icon based on alert type
+        let icon = 'alert-triangle';
+        let title = 'New Alert';
+        
+        const name = alertData.name?.toLowerCase() || '';
+        const message = alertData.message?.toLowerCase() || '';
+        
+        // Tornado alerts
+        if (name.includes('tornado')) {
+            icon = 'tornado';
+            title = 'Tornado Warning';
+        }
+        // Severe thunderstorm alerts
+        else if (name.includes('severe thunderstorm')) {
+            icon = 'bolt';
+            title = 'Severe Thunderstorm Warning';
+        }
+        // Flash flood alerts
+        else if (name.includes('flash flood')) {
+            icon = 'droplet';
+            title = 'Flash Flood Warning';
+        }
+        // Flood alerts
+        else if (name.includes('flood')) {
+            icon = 'droplet';
+            title = 'Flood Warning';
+        }
+        // Winter alerts
+        else if (name.includes('winter') || name.includes('blizzard') || name.includes('snow')) {
+            icon = 'snowflake';
+            title = 'Winter Weather';
+        }
+        // Wind alerts
+        else if (name.includes('wind')) {
+            icon = 'wind';
+            title = 'Wind Advisory';
+        }
+        // Tsunami/Marine
+        else if (name.includes('tsunami') || name.includes('marine') || name.includes('lakeshore')) {
+            icon = 'wave';
+            title = 'Marine Alert';
+        }
+        // Coastal/Storm Surge
+        else if (name.includes('coastal') || name.includes('storm surge')) {
+            icon = 'waves';
+            title = 'Coastal Alert';
+        }
+        // Hurricane/Tropical
+        else if (name.includes('hurricane') || name.includes('tropical') || name.includes('typhoon')) {
+            icon = 'cloud-storm';
+            title = 'Tropical Alert';
+        }
+        
+        // Create the notification
+        const areaDesc = alertData.areaDesc || 'Unknown area';
+        new Notification(
+            title,
+            `<b>${alertData.name}</b> issued for ${areaDesc}`,
+            icon,
+            alertColor,
+            8000 // Show for 8 seconds
+        );
+
     }
 
     _convertWatchToGeoJSON(watch) {
@@ -610,9 +864,15 @@ class Layers {
         const mainMap = this.map?.map;
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
-        if (!map) return;
+        if (!map) {
+            console.warn(`[Layers] _scheduleAlertSync: Map not available for target ${target}`);
+            return;
+        }
 
-        if (map.isStyleLoaded && map.isStyleLoaded()) {
+        const isStyleLoaded = map.isStyleLoaded && map.isStyleLoaded();
+        console.log(`[Layers] _scheduleAlertSync for ${target}: isStyleLoaded=${isStyleLoaded}, pending=${this.alertSyncPending[target]}`);
+        
+        if (isStyleLoaded) {
             this._syncAlertsToMap(target);
             return;
         }
@@ -620,6 +880,7 @@ class Layers {
         if (this.alertSyncPending[target]) return;
         this.alertSyncPending[target] = true;
 
+        console.log(`[Layers] Waiting for map ${target} to load before syncing alerts`);
         map.once('load', () => {
             this.alertSyncPending[target] = false;
             this._syncAlertsToMap(target);
@@ -700,139 +961,98 @@ class Layers {
         const mainMap = this.map?.map;
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
-        if (!map) return;
-        if (map.isStyleLoaded && !map.isStyleLoaded()) return;
+        if (!map) {
+            console.warn(`[Layers] _syncAlertsToMap: Map not available for target ${target}`);
+            return;
+        }
+        if (map.isStyleLoaded && !map.isStyleLoaded()) {
+            console.warn(`[Layers] _syncAlertsToMap: Style not loaded for target ${target}`);
+            return;
+        }
 
-        const cache = target === 'main' ? this.alertCache.main : this.alertCache.dual;
-        const nextKeys = new Set();
+        console.log(`[Layers] _syncAlertsToMap: Syncing ${this.alerts.length} alerts to ${target}`);
+
+        // Use a single GeoJSON source for ALL alerts - much better performance
+        const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
         const beforeLayerId = target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
-
+        
+        // Build a FeatureCollection with all enabled alerts
+        const features = [];
         this.alerts.forEach((alert, index) => {
-            const key = this._getAlertKey(alert, index);
-            const signature = this._getAlertSignature(alert);
+            const alertSettings = this._getAlertSettings(alert.name);
+            if (!alertSettings.enabled) {
+                return;
+            }
+
             const geojson = this._convertAlertToGeoJSON(alert);
             const colors = this._getAlertColor(alert);
-            const colorSignature = `${colors.fill}|${colors.outline}`;
-
-            nextKeys.add(key);
-
-            const sourceId = target === 'main' ? `alert-source-${key}` : `alert-source-${key}-dual`;
-            const layerPrefix = target === 'main' ? `alert-${key}` : `alert-${key}-dual`;
-            const cached = cache.get(key);
-
-            if (!map.getSource(sourceId)) {
-                map.addSource(sourceId, {
-                    type: 'geojson',
-                    data: geojson
-                });
-            } else if (!cached || cached.signature !== signature) {
-                map.getSource(sourceId).setData(geojson);
-            }
-
-            if (!map.getLayer(`${layerPrefix}-fill`)) {
-                map.addLayer({
-                    id: `${layerPrefix}-fill`,
-                    type: 'fill',
-                    source: sourceId,
-                    paint: {
-                        'fill-color': colors.fill,
-                        'fill-opacity': 0.4
-                    }
-                }, beforeLayerId);
-            }
-
-            if (!map.getLayer(`${layerPrefix}-outline`)) {
-                map.addLayer({
-                    id: `${layerPrefix}-outline`,
-                    type: 'line',
-                    source: sourceId,
-                    paint: {
-                        'line-color': colors.outline,
-                        'line-width': 2,
-                        'line-opacity': 1
-                    }
-                }, 'Pier road');
-            }
-
-            if (!map.getLayer(`${layerPrefix}-outline-outline`)) {
-                map.addLayer({
-                    id: `${layerPrefix}-outline-outline`,
-                    type: 'line',
-                    source: sourceId,
-                    paint: {
-                        'line-color': '#000000',
-                        'line-width': 6,
-                        'line-opacity': 1
-                    }
-                }, `${layerPrefix}-outline`);
-            }
-
-            if (!cached || cached.colorSignature !== colorSignature) {
-                if (map.getLayer(`${layerPrefix}-fill`)) {
-                    map.setPaintProperty(`${layerPrefix}-fill`, 'fill-color', colors.fill);
-                }
-                if (map.getLayer(`${layerPrefix}-outline`)) {
-                    map.setPaintProperty(`${layerPrefix}-outline`, 'line-color', colors.outline);
-                }
-            }
-
-            // Check if alert was issued in the past minute and add flashing animation
-            const now = new Date();
-            const issued = new Date(alert.issued);
-            const timeSinceIssued = now - issued;
-            const oneMinute = 60 * 1000;
-            const flashIntervals = target === 'main' ? this.alertFlashIntervals.main : this.alertFlashIntervals.dual;
             
-            if (timeSinceIssued < oneMinute && timeSinceIssued >= 0) {
-                // Start flashing if not already flashing
-                if (!flashIntervals.has(key)) {
-                    let isWhite = false;
-                    const interval = setInterval(() => {
-                        if (map.getLayer(`${layerPrefix}-outline`)) {
-                            isWhite = !isWhite;
-                            map.setPaintProperty(`${layerPrefix}-outline`, 'line-color', isWhite ? '#ffffff' : colors.outline);
-                        } else {
-                            // Layer removed, clear interval
-                            clearInterval(interval);
-                            flashIntervals.delete(key);
-                        }
-                    }, 500); // Flash every 500ms
-                    flashIntervals.set(key, interval);
-                    
-                    // Stop flashing after 1 minute
-                    setTimeout(() => {
-                        clearInterval(interval);
-                        flashIntervals.delete(key);
-                        if (map.getLayer(`${layerPrefix}-outline`)) {
-                            map.setPaintProperty(`${layerPrefix}-outline`, 'line-color', colors.outline);
-                        }
-                    }, oneMinute - timeSinceIssued);
-                }
-            } else {
-                // Make sure outline is not flashing
-                if (flashIntervals.has(key)) {
-                    clearInterval(flashIntervals.get(key));
-                    flashIntervals.delete(key);
-                    if (map.getLayer(`${layerPrefix}-outline`)) {
-                        map.setPaintProperty(`${layerPrefix}-outline`, 'line-color', colors.outline);
-                    }
-                }
-            }
-
-            cache.set(key, { signature, colorSignature });
+            // Add color information to properties for data-driven styling
+            geojson.properties.fillColor = colors.fill;
+            geojson.properties.outlineColor = colors.outline;
+            geojson.properties.alertIndex = index;
+            
+            features.push(geojson);
         });
 
-        for (const key of cache.keys()) {
-            if (!nextKeys.has(key)) {
-                // Clear flash interval if exists
-                const flashIntervals = target === 'main' ? this.alertFlashIntervals.main : this.alertFlashIntervals.dual;
-                if (flashIntervals.has(key)) {
-                    clearInterval(flashIntervals.get(key));
-                    flashIntervals.delete(key);
+        console.log(`[Layers] Using combined source approach: ${features.length} enabled alerts in 1 source, 3 layers total`);
+
+        const featureCollection = {
+            type: 'FeatureCollection',
+            features: features
+        };
+
+        // Create or update the source
+        if (!map.getSource(sourceId)) {
+            map.addSource(sourceId, {
+                type: 'geojson',
+                data: featureCollection
+            });
+        } else {
+            map.getSource(sourceId).setData(featureCollection);
+        }
+
+        // Create the three layers if they don't exist
+        const fillLayerId = `${sourceId}-fill`;
+        const outlineLayerId = `${sourceId}-outline`;
+        const outlineOutlineLayerId = `${sourceId}-outline-outline`;
+
+        if (!map.getLayer(outlineOutlineLayerId)) {
+            map.addLayer({
+                id: outlineOutlineLayerId,
+                type: 'line',
+                source: sourceId,
+                paint: {
+                    'line-color': '#000000',
+                    'line-width': 6,
+                    'line-opacity': 1
                 }
-                this._removeAlertFromMap(target, key);
-                cache.delete(key);
-            }
+            }, 'Pier road');
+        }
+
+        if (!map.getLayer(outlineLayerId)) {
+            map.addLayer({
+                id: outlineLayerId,
+                type: 'line',
+                source: sourceId,
+                paint: {
+                    'line-color': ['get', 'outlineColor'],
+                    'line-width': 2,
+                    'line-opacity': 1
+                }
+            }, 'Pier road');
+        }
+
+        if (!map.getLayer(fillLayerId)) {
+            map.addLayer({
+                id: fillLayerId,
+                type: 'fill',
+                source: sourceId,
+                paint: {
+                    'fill-color': ['get', 'fillColor'],
+                    'fill-opacity': 0.4
+                }
+            }, beforeLayerId);
         }
     }
 
@@ -951,27 +1171,31 @@ class Layers {
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) {
-            if (target === 'main') {
-                this.alertCache.main.clear();
-            } else if (target === 'dual') {
-                this.alertCache.dual.clear();
-            }
             return;
         }
 
-        const cache = target === 'main' ? this.alertCache.main : this.alertCache.dual;
-        const flashIntervals = target === 'main' ? this.alertFlashIntervals.main : this.alertFlashIntervals.dual;
-        
-        // Clear all flash intervals
-        for (const interval of flashIntervals.values()) {
-            clearInterval(interval);
+        // Remove the combined alert layers and source
+        const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
+        const fillLayerId = `${sourceId}-fill`;
+        const outlineLayerId = `${sourceId}-outline`;
+        const outlineOutlineLayerId = `${sourceId}-outline-outline`;
+
+        // Remove layers in reverse order
+        if (map.getLayer(fillLayerId)) {
+            map.removeLayer(fillLayerId);
         }
-        flashIntervals.clear();
-        
-        for (const key of cache.keys()) {
-            this._removeAlertFromMap(target, key);
+        if (map.getLayer(outlineLayerId)) {
+            map.removeLayer(outlineLayerId);
         }
-        cache.clear();
+        if (map.getLayer(outlineOutlineLayerId)) {
+            map.removeLayer(outlineOutlineLayerId);
+        }
+
+        // Remove source
+        if (map.getSource(sourceId)) {
+            map.removeSource(sourceId);
+        }
+
         this._clearAlertPopup(target);
     }
 

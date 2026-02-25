@@ -9,6 +9,7 @@ See LICENSE for more.
 
 import about from '../../components/about.js';
 import Settings from './settings.js';
+import debugConsole from './debug_console.js';
 
 class Menu {
     // Constructor function
@@ -52,13 +53,51 @@ class Menu {
         ];
 
 
-        menuItems.forEach(item => {
+        menuItems.forEach((item, index) => {
             const li = document.createElement('li');
             const div = document.createElement('div');
             div.innerHTML = `<i class="ti ti-${item.icon}"></i> ${item.label}`;
             div.style.display = 'flex';
             div.style.alignItems = 'center';
             div.addEventListener('click', item.onClick);
+            
+            // Add secret debug console trigger on Settings item
+            if (item.label === 'Settings') {
+                let longPressTimer = null;
+                
+                // Long press handler for touch devices
+                div.addEventListener('touchstart', (e) => {
+                    longPressTimer = setTimeout(() => {
+                        e.preventDefault();
+                        console.log('[Menu] Opening debug console');
+                        this.close();
+                        setTimeout(() => debugConsole.toggle(), 100);
+                    }, 1000); // 1 second long press
+                });
+                
+                div.addEventListener('touchend', () => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                });
+                
+                div.addEventListener('touchcancel', () => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                });
+                
+                // Right-click handler for desktop
+                div.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    console.log('[Menu] Opening debug console');
+                    this.close();
+                    setTimeout(() => debugConsole.toggle(), 100);
+                });
+            }
+            
             li.appendChild(div);
             menuList.appendChild(li);
         });

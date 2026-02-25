@@ -2,6 +2,8 @@ import settingsHTML from '../../components/settings.html?raw';
 import Palettes from '../palettes.js';
 import Toast from './toast.js';
 
+// TODO: Alert color defaults dont work
+
 // Mapping of setting keys to palette names
 const paletteKeyMap = {
     uploadPaletteRef: 'REF',
@@ -12,6 +14,92 @@ const paletteKeyMap = {
     uploadPaletteSW: 'SW',
     uploadPaletteDHC: 'DHC'
 };
+
+// Alert type configurations organized by category
+const ALERT_CATEGORIES = {
+    'Severe': {
+        "Tornado Warning": { color: '#ff2121' },
+        "Tornado Emergency": { color: '#ae21ff' },
+        "PDS Tornado Warning": { color: '#ff00ff' },
+        "Severe Thunderstorm Warning": { color: '#ff9900' },
+        "Severe Weather Statement": { color: '#facc15' },
+        "Special Weather Statement": { color: '#facc15' }
+
+    },
+    'Winter': {
+        "Blizzard Warning": { color: '#00d4ff' },
+        "Winter Storm Warning": { color: '#00d4ff' },
+        "Winter Storm Watch": { color: '#00d4ff' },
+        "Winter Weather Advisory": { color: '#00d4ff' },
+        "Snow Squall Warning": { color: '#00d4ff' }
+    },
+    'Flood': {
+        "Flash Flood Warning": { color: '#38f852' },
+        "Flood Warning": { color: '#27beff' },
+        "Flood Watch": { color: '#0284c7' },
+        "Flood Advisory": { color: '#06b6d4' },
+        "Flood Statement": { color: '#06b6d4' }
+    },
+    'Marine': {
+        "Coastal Flood Advisory": { color: '#65e8ff' },
+        "Coastal Flood Statement": { color: '#65e8ff' },
+        "Coastal Flood Warning": { color: '#17dcff' },
+        "Coastal Flood Watch": { color: '#43cde6' },
+        "Lakeshore Flood Advisory": { color: '#008cff' },
+        "Lakeshore Flood Statement": { color: '#008cff' },
+        "Lakeshore Flood Warning": { color: '#006ac0' },
+        "Lakeshore Flood Watch": { color: '#005ba5' },
+        "Marine Weather Statement": { color: '#06b6d4' },
+        "Special Marine Warning": { color: '#1406d4' },
+        "Storm Surge Warning": { color: '#3500af' },
+        "Storm Surge Watch": { color: '#5f1aff' }
+    },
+    'Tropical': {
+        "Hurricane Warning": { color: '#ff0a84' },
+        "Hurricane Watch": { color: '#bb0048' },
+        "Hurricane Force Wind Warning": { color: '#ff5bad' },
+        "Hurricane Force Wind Watch": { color: '#e069a5' },
+        "Tropical Storm Warning": { color: '#ffc355' },
+        "Tropical Storm Watch": { color: '#e2a73a' },
+        "Typhoon Warning": { color: '#ff0a84' },
+        "Typhoon Watch": { color: '#bb0048' }
+    },
+    'Seismic': {
+        "Tsunami Advisory": { color: '#007a10' },
+        "Tsunami Warning": { color: '#00b418' },
+        "Tsunami Watch": { color: '#00b118' },
+        "Earthquake Warning": { color: '#b40000' },
+        "Volcano Warning": { color: '#ff8800' }
+    },
+    'Wind': {
+        "Wind Advisory": { color: '#e0b400' },
+        "Blowing Dust Advisory": { color: '#772a00' },
+        "Blowing Dust Warning": { color: '#551e00' },
+        "Dust Storm Warning": { color: '#c76531' }
+    },
+    'Avalanche': {
+        "Avalanche Advisory": { color: '#9550a7' },
+        "Avalanche Warning": { color: '#d52dff' },
+        "Avalanche Watch": { color: '#b23acf' }
+    },
+    'Hazards': {
+        "Hazardous Materials Warning": { color: '#f700ff' },
+        "Nuclear Power Plant Warning": { color: '#f700ff' },
+        "Radiological Hazard Warning": { color: '#f700ff' }
+    }
+};
+
+// Flatten alert defaults for backward compatibility
+function buildAlertDefaults() {
+    const defaults = {};
+    Object.values(ALERT_CATEGORIES).forEach(category => {
+        Object.assign(defaults, category);
+    });
+    return defaults;
+}
+
+const ALERT_TYPE_DEFAULTS = buildAlertDefaults();
+
 
 function initSettings(settingsInstance) {
     const settingsNav = document.querySelector('.settings-nav');
@@ -108,6 +196,13 @@ function bindSectionControls(settingsInstance, content) {
             }
         }
     });
+
+    // Handle alerts section specially
+    const alertSettingsList = content.querySelector('#alerts-settings-list');
+    if (alertSettingsList) {
+        generateAlertSettings(settingsInstance, alertSettingsList);
+        return;
+    }
 
     const settingInputs = content.querySelectorAll('[data-setting]');
     settingInputs.forEach((input) => {
@@ -225,9 +320,102 @@ function handlePaletteUpload(settingKey, settingsInstance) {
     fileInput.click();
 }
 
+function generateAlertSettings(settingsInstance, container) {
+    container.innerHTML = '';
+
+    Object.entries(ALERT_CATEGORIES).forEach(([category, alerts]) => {
+        // Create category header
+        const categoryHeader = document.createElement('div');
+        categoryHeader.className = 'alert-category-header';
+        categoryHeader.style.fontSize = '1.1em';
+        categoryHeader.style.fontWeight = 'bold';
+        categoryHeader.style.marginTop = '15px';
+        categoryHeader.style.color = 'var(--primary-color)';
+        categoryHeader.textContent = category;
+        container.appendChild(categoryHeader);
+
+        // Create alert items in this category
+        Object.entries(alerts).forEach(([alertType, defaultColors]) => {
+            const settingKey = `alert_${alertType.replace(/\s+/g, '_').toLowerCase()}`;
+            const alertSettings = settingsInstance.getSetting(settingKey);
+            
+            if (!alertSettings) return;
+
+            const control = document.createElement('div');
+            control.className = 'settings-control';
+            control.style.padding = '10px';
+            
+            const header = document.createElement('div');
+            header.className = 'settings-control-header';
+            header.style.gap = '10px';
+            
+            // Checkbox for enabled/disabled
+            const enableCheckbox = document.createElement('input');
+            enableCheckbox.type = 'checkbox';
+            enableCheckbox.className = 'switch';
+            enableCheckbox.id = `${settingKey}-enabled`;
+            enableCheckbox.title = `Enable or disable ${alertType}s`;
+            enableCheckbox.checked = alertSettings.enabled;
+            enableCheckbox.addEventListener('change', () => {
+                const current = settingsInstance.getSetting(settingKey);
+                settingsInstance.setSetting(settingKey, { ...current, enabled: enableCheckbox.checked });
+            });
+            
+            // Label
+            const label = document.createElement('label');
+            label.htmlFor = `${settingKey}-enabled`;
+            label.style.flex = '1';
+            label.textContent = alertType;
+            
+            // Notification toggle
+            const notifyCheckbox = document.createElement('input');
+            notifyCheckbox.type = 'checkbox';
+            notifyCheckbox.id = `${settingKey}-notify`;
+            notifyCheckbox.checked = alertSettings.notify;
+            notifyCheckbox.title = `Send notifications when a new ${alertType} is issued`;
+            notifyCheckbox.classList.add('switch');
+            notifyCheckbox.addEventListener('change', () => {
+                const current = settingsInstance.getSetting(settingKey);
+                settingsInstance.setSetting(settingKey, { ...current, notify: notifyCheckbox.checked });
+            });
+            
+            // Color picker
+            const alertColor = document.createElement('input');
+            alertColor.type = 'color';
+            alertColor.id = `${settingKey}-color`;
+            alertColor.value = alertSettings.color || defaultColors.color;
+            alertColor.title = `Set the color for ${alertType} alerts on the radar`;
+            alertColor.style.width = '40px';
+            alertColor.style.height = '32px';
+            alertColor.addEventListener('input', () => {
+                const current = settingsInstance.getSetting(settingKey);
+                settingsInstance.setSetting(settingKey, { ...current, color: alertColor.value });
+            });
+            
+            header.appendChild(enableCheckbox);
+            header.appendChild(label);
+            header.appendChild(notifyCheckbox);
+            header.appendChild(alertColor);
+            
+            control.appendChild(header);
+            container.appendChild(control);
+        });
+    });
+}
 
 export default class Settings {
     constructor() {
+        // Generate default alert settings from ALERT_TYPE_DEFAULTS
+        const alertDefaults = {};
+        Object.entries(ALERT_TYPE_DEFAULTS).forEach(([alertType, colors]) => {
+            const key = `alert_${alertType.replace(/\s+/g, '_').toLowerCase()}`;
+            alertDefaults[key] = {
+                enabled: true,
+                notify: true,
+                color: colors.color
+            };
+        });
+
         this.defaults = {
             showToolbar: true,
             showProductPicker: true,
@@ -237,7 +425,8 @@ export default class Settings {
             primaryColor: '#27beff',
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
-            secondaryBorderColor: '#27beff'
+            secondaryBorderColor: '#27beff',
+            ...alertDefaults
         };
 
         this.settings = {
@@ -252,6 +441,19 @@ export default class Settings {
         try {
             const stored = localStorage.getItem('settings');
             const parsed = stored ? JSON.parse(stored) : {};
+            Object.entries(parsed).forEach(([key, value]) => {
+                if (!key.startsWith('alert_')) return;
+                if (!value || typeof value !== 'object') return;
+                if (!value.color && (value.fillColor || value.borderColor)) {
+                    value.color = value.fillColor || value.borderColor;
+                }
+                if (Object.prototype.hasOwnProperty.call(value, 'fillColor')) {
+                    delete value.fillColor;
+                }
+                if (Object.prototype.hasOwnProperty.call(value, 'borderColor')) {
+                    delete value.borderColor;
+                }
+            });
             if (typeof parsed.radarOpacity === 'number' && typeof parsed.reflectivityGateFilter === 'undefined') {
                 parsed.reflectivityGateFilter = parsed.radarOpacity;
                 delete parsed.radarOpacity;
@@ -365,3 +567,5 @@ export default class Settings {
         }, 300);
     }
 }
+
+export { buildAlertDefaults };

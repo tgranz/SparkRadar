@@ -140,6 +140,14 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
 }
 
 // Construct the map
+// Detect mobile for performance optimizations
+const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(navigator.userAgent) || 
+  (('ontouchstart' in window) && window.innerWidth <= 768);
+
+if (isMobile) {
+    console.log('[SparkRadar] Mobile device detected - enabling performance optimizations');
+}
+
 const map = new Map({
     container: "map",
     style: 'https://api.maptiler.com/maps/01991750-e542-745a-bb74-f8f5646a978c/style.json?key=UMONrX6MjViuKZoR882u',
@@ -149,6 +157,12 @@ const map = new Map({
     maxZoom: 17,
     projection: 'mercator',
     attributionControl: false,
+    // Mobile performance optimizations
+    fadeDuration: isMobile ? 0 : 300,
+    refreshExpiredTiles: !isMobile,
+    maxTileCacheSize: isMobile ? 50 : null,
+    preserveDrawingBuffer: false,
+    antialias: !isMobile,
 }, {
   // Callbacks
   onChangeProduct: async (product) => setRadar(null, product, 'main'),
