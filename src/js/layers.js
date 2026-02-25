@@ -32,6 +32,12 @@ class Layers {
         this.outlookData = null;
         this.outlookSyncPending = { main: false, dual: false };
 
+        // SSE tracking
+        this.eventSource = null;
+        this.sseReconnectAttempts = 0;
+        this.sseMaxReconnectAttempts = 10;
+        this.sseReconnectDelay = 3000; // 3 seconds
+
         // Set up alert click handlers
         this.alertPopupClickHandlers.main = (e) => this._handleAlertClick('main', e);
         if (this.map?.map) {
@@ -40,6 +46,81 @@ class Layers {
     }
 
     // Alert methods
+    /**
+     * Subscribes to real-time alert updates via Server-Sent Events
+     */
+    subscribeToAlerts() {
+        const API_BASE_URL = 'https://api.sparkradar.app';
+
+        // Close any existing connection
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+        }
+
+        // Create EventSource for real-time updates
+        this.eventSource = new EventSource(`${API_BASE_URL}/alerts/subscribe`);
+
+        this.eventSource.onopen = () => {
+            console.log('[Layers] Connected to alert stream');
+            this.sseReconnectAttempts = 0;
+        };
+
+        this.eventSource.onmessage = async (e) => {
+            try {
+                const data = JSON.parse(e.data);
+
+                // Handle initial connection status
+                if (data.status === 'connected') {
+                    console.log('[Layers] Alert subscription established');
+                    // Fetch all existing alerts on first connection
+                    await this.fetchAlerts();
+                    return;
+                }
+
+                // Handle new alert notifications
+                if (data.id && data.name) {
+                    console.log('[Layers] New alert received:', data.name);
+                    // Wait a moment then fetch updated alerts
+                    setTimeout(async () => {
+                        await this.fetchAlerts();
+                    }, 500);
+                }
+            } catch (error) {
+                console.error('[Layers] Error processing SSE message:', error);
+            }
+        };
+
+        this.eventSource.onerror = (e) => {
+            console.error('[Layers] SSE connection error:', e);
+            this.eventSource.close();
+            this.eventSource = null;
+
+            // Attempt reconnection with exponential backoff
+            if (this.sseReconnectAttempts < this.sseMaxReconnectAttempts) {
+                this.sseReconnectAttempts++;
+                const delay = this.sseReconnectDelay * Math.pow(1.5, this.sseReconnectAttempts - 1);
+                console.log(`[Layers] Reconnecting in ${Math.round(delay)}ms (attempt ${this.sseReconnectAttempts}/${this.sseMaxReconnectAttempts})`);
+                setTimeout(() => this.subscribeToAlerts(), delay);
+            } else {
+                console.error('[Layers] Max SSE reconnection attempts reached. Falling back to polling.');
+                // Fall back to periodic polling
+                setInterval(() => this.fetchAlerts(), 30000);
+            }
+        };
+    }
+
+    /**
+     * Closes the SSE connection
+     */
+    closeAlertSubscription() {
+        if (this.eventSource) {
+            this.eventSource.close();
+            this.eventSource = null;
+            console.log('[Layers] Alert subscription closed');
+        }
+    }
+
     async fetchAlerts() {
         try {
             const response = await fetch('https://api.sparkradar.app/alerts', { signal: AbortSignal.timeout(5000) });
@@ -81,13 +162,9 @@ class Layers {
     }
 
     _convertAlertToGeoJSON(alert) {
-        // Convert alert coordinates to GeoJSON Polygon
-        const coordinates = alert.coordinates.map(coord => [coord[1], coord[0]]); // Convert [lat,lon] to [lon,lat]
-        
-        // Close the polygon by adding the first coordinate at the end
-        if (coordinates.length > 0 && coordinates[0] !== coordinates[coordinates.length - 1]) {
-            coordinates.push(coordinates[0]);
-        }
+        // Geometry is already in GeoJSON format from the API
+        // Format: [[[lon, lat], ...]] - 3D array with polygons and rings
+        const coordinates = alert.geometry && alert.geometry.length > 0 ? alert.geometry[0] : [[]];
         
         return {
             type: 'Feature',
@@ -103,7 +180,7 @@ class Layers {
             },
             geometry: {
                 type: 'Polygon',
-                coordinates: [coordinates]
+                coordinates: coordinates
             }
         };
     }
@@ -113,17 +190,30 @@ class Layers {
         const significance = alert.properties?.significance;
         const message = alert.message?.toLowerCase() ?? '';
         
-        // Color mapping based on phenomena and significance
-        if (phenomena === 'SV' && significance === 'W') {
+        // Color mapping based on phenomena
+        if (phenomena === 'SV') { // Severe Thunderstorm (only ever warning)
             return { fill: '#ff9900', outline: '#ff9900', name: 'Severe Thunderstorm Warning' };
-        } else if (phenomena === 'TO' && significance === 'W') {
-            if (message.includes('particularly dangerous situation')) {
+        } else if (phenomena === 'TO') { // Tornado (only ever warning)
+            if (message.includes('tornado emergency')) {
+                return { fill: '#a200ff', outline: '#a200ff', name: 'Tornado Emergency' };
+            } else if (message.includes('particularly dangerous situation')) {
                 return { fill: '#ff00ee', outline: '#ff00ee', name: 'PDS Tornado Warning' };
             } else {
                 return { fill: '#ff2121', outline: '#ff2121', name: 'Tornado Warning' };
             }
-        } else if (phenomena === 'FF' && significance === 'W') {
-            return { fill: '#38bdf8', outline: '#38bdf8', name: 'Flash Flood Warning' };
+        } else if (phenomena === 'FF') { // Flash Flood 
+            if (message.includes('flash flood emergency')) {
+                return { fill: '#7f00ff', outline: '#7f00ff', name: 'Flash Flood Emergency' };
+            }
+            if (significance === 'W') {
+                return { fill: '#38f852', outline: '#38f852', name: 'Flash Flood Warning' };
+            } else if (significance === 'Y' || significance === 'S') {
+                return { fill: '#86efac', outline: '#86efac', name: 'Flash Flood Advisory' };
+            } else if (significance === 'A'){
+                return { fill: '#00c257', outline: '#00c257', name: 'Flash Flood Watch' };
+            }
+        } else if (phenomena === 'FA' || phenomena === 'FL') { // Flood
+            return { fill: '#27beff', outline: '#27beff', name: 'Flood Warning' };
         } else {
             return { fill: '#facc15', outline: '#facc15', name: alert.name };
         }
@@ -141,7 +231,7 @@ class Layers {
             issued: alert.issued,
             expiry: alert.expiry,
             properties: alert.properties,
-            coordinates: alert.coordinates
+            geometry: alert.geometry
         });
     }
 
@@ -179,16 +269,15 @@ class Layers {
     _getAlertsAtPoint(point) {
         const matches = [];
         for (const alert of this.alerts) {
-            if (!alert?.coordinates?.length) continue;
-            const ring = alert.coordinates.map(coord => [coord[1], coord[0]]);
-            if (!ring.length) continue;
-            const first = ring[0];
-            const last = ring[ring.length - 1];
-            if (first[0] !== last[0] || first[1] !== last[1]) {
-                ring.push([first[0], first[1]]);
-            }
-            if (this._pointInPolygon(point, [ring])) {
-                matches.push(alert);
+            if (!alert?.geometry?.length) continue;
+            // Geometry format: [[[lon, lat], ...]] - already in correct order
+            const polygons = alert.geometry;
+            
+            for (const rings of polygons) {
+                if (this._pointInPolygon(point, rings)) {
+                    matches.push(alert);
+                    break;
+                }
             }
         }
         return matches;
@@ -473,14 +562,13 @@ class Layers {
                 </div>
                 ${alert.message ? `
                     <div style="margin-bottom: 15px;">
-                        <h4 style="margin: 0 0 8px 0; text-align: left;">Description</h4>
-                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5;">${alert.message.replace('  ', '\n')}</p>
+                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word;">${alert.message.replace('  ', '\n')}</p>
                     </div>
                 ` : ''}
             </div>
         `;
 
-        new Dialog(title, 'alert-triangle', html);
+        new Dialog(title, 'alert-triangle', html, {}, true);
     }
 
     _showWatchDialog(watch) {
@@ -515,7 +603,7 @@ class Layers {
             </div>
         `;
 
-        new Dialog(title, 'eye', html);
+        new Dialog(title, 'eye', html, {}, true);
     }
 
     _scheduleAlertSync(target) {

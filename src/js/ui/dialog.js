@@ -9,10 +9,11 @@ See LICENSE for more.
 
 class Dialog {
     // Constructor function
-    constructor(title, icon, htmlContent, callbacks = {}) {
+    constructor(title, icon, htmlContent, callbacks = {}, scrollable = false) {
         this.callbacks = callbacks;
         this.dialog = document.createElement('div');
         this.dialog.id = `dialog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // Unique ID
+        this.dialog.style.overflow = 'hidden'; // Prevent scrollbars on the dialog itself
         this.dialog.classList.add('menu'); // Use menu styling
         this.dialog.classList.add('menu-hidden'); // Use same transition as menu
 
@@ -46,6 +47,12 @@ class Dialog {
         this.content = document.createElement('div');
         this.content.id = 'dialog-content';
         this.content.innerHTML = htmlContent;
+        if (scrollable) {
+            this.content.style.overflowY = 'auto';
+            this.content.style.maxHeight = '70vh';
+        } else {
+            this.content.style.overflowY = 'hidden';
+        }
         this.dialog.appendChild(this.content);
 
         document.body.appendChild(this.dialog);

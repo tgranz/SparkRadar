@@ -1282,6 +1282,14 @@ class Map {
         return this.layers.fetchWatches();
     }
 
+    subscribeToAlerts() {
+        return this.layers.subscribeToAlerts();
+    }
+
+    closeAlertSubscription() {
+        return this.layers.closeAlertSubscription();
+    }
+
     displayAlerts() {
         return this.layers.displayAlerts();
     }

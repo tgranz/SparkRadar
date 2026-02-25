@@ -209,6 +209,9 @@ map.map.on('load', async () => {
 
     // Add radar
     await setRadar(null, null, 'main');
+
+    // Subscribe to real-time alert updates via SSE
+    map.subscribeToAlerts();
 });
 
 // Build the main toolbar
