@@ -14,7 +14,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Alerts</h3>
-                <p class="tag beta">BETA</p>
+                <p class="onlineindicator delayed" id="alerts-connection-status">CHECKING...</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-alerts-layer" class="switch" checked>
@@ -23,7 +23,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Watches</h3>
-                <p class="tag beta">BETA</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-watches-layer" class="switch" checked>
@@ -67,7 +66,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Day 1 Outlook</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-day-1-outlook-layer" class="switch">
@@ -76,7 +74,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Day 2 Outlook</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-day-2-outlook-layer" class="switch">
@@ -85,7 +82,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Day 3 Outlook</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-day-3-outlook-layer" class="switch">
@@ -214,13 +210,15 @@ function initializeLayerToggles(mapInstance) {
 
     const settings = loadLayerSettings();
 
-    // Set initial checkbox states
+    // Get UI elements
     const alertsCheckbox = document.getElementById('toggle-alerts-layer');
     const watchesCheckbox = document.getElementById('toggle-watches-layer');
     const day1OutlookCheckbox = document.getElementById('toggle-day-1-outlook-layer');
     const day2OutlookCheckbox = document.getElementById('toggle-day-2-outlook-layer');
     const day3OutlookCheckbox = document.getElementById('toggle-day-3-outlook-layer');
+    const connectionStatusElement = document.getElementById('alerts-connection-status');
     
+    // Set initial checkbox states
     if (alertsCheckbox) {
         alertsCheckbox.checked = settings.alertsEnabled;
     }
@@ -235,6 +233,25 @@ function initializeLayerToggles(mapInstance) {
     }
     if (day3OutlookCheckbox) {
         day3OutlookCheckbox.checked = settings.outlookDay === 3;
+    }
+
+    // Listen for connection status changes
+    if (connectionStatusElement) {
+        document.addEventListener('alertConnectionStatusChanged', (e) => {
+            const status = e.detail.status;
+            connectionStatusElement.textContent = status;
+            
+            // Update color classes
+            connectionStatusElement.classList.remove('online', 'delayed', 'offline');
+            
+            if (status === 'ONLINE') {
+                connectionStatusElement.classList.add('online');
+            } else if (status === 'ISSUES') {
+                connectionStatusElement.classList.add('delayed');
+            } else {
+                connectionStatusElement.classList.add('offline');
+            }
+        });
     }
 
     // Setup event listeners

@@ -37,7 +37,7 @@ class Layers {
         // SSE tracking
         this.eventSource = null;
         this.sseReconnectAttempts = 0;
-        this.sseMaxReconnectAttempts = 10;
+        this.sseMaxReconnectAttempts = 5;
         this.sseReconnectDelay = 3000; // 3 seconds
 
         // Polling tracking
@@ -47,6 +47,11 @@ class Layers {
         this.maxFetchRetries = 3;
         this.fetchInProgress = false;
         this.isMobileDevice = this._isMobileDevice();
+        
+        // Connection status tracking
+        this.connectionStatus = 'OFFLINE'; // 'ONLINE', 'ISSUES', or 'OFFLINE'
+        this.sseConnected = false;
+        this.lastSuccessfulFetch = null;
         
         if (this.isMobileDevice) {
             console.log('[Layers] Mobile device detected - performance optimizations enabled (flashing disabled)');
@@ -96,6 +101,8 @@ class Layers {
         this.eventSource.onopen = () => {
             console.log('[Layers] Connected to alert stream');
             this.sseReconnectAttempts = 0;
+            this.sseConnected = true;
+            this._updateConnectionStatus();
         };
 
         this.eventSource.onmessage = async (e) => {
@@ -105,6 +112,8 @@ class Layers {
                 // Handle initial connection status
                 if (data.status === 'connected') {
                     console.log('[Layers] Alert subscription established');
+                    this.sseConnected = true;
+                    this._updateConnectionStatus();
                     // Fetch all existing alerts on first connection
                     await this.fetchAlerts();
                     return;
@@ -113,6 +122,8 @@ class Layers {
                 // Handle new alert notifications
                 if (data.id && data.name) {
                     console.log('[Layers] New alert received:', data.name);
+                    this.sseConnected = true;
+                    this._updateConnectionStatus();
                     
                     // Show notification for the new alert
                     this._showAlertNotification(data);
@@ -129,7 +140,8 @@ class Layers {
 
         this.eventSource.onerror = (e) => {
             console.error('[Layers] SSE connection error:', e);
-            new Notification('Connection Error', 'Lost connection to weather alerts. Check your network connection.', 'wifi-off', '#ff2121', 5000);
+            this.sseConnected = false;
+            this._updateConnectionStatus("OFFLINE");
             this.eventSource.close();
             this.eventSource = null;
 
@@ -242,6 +254,12 @@ class Layers {
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            } else if (response.status === 502) {
+                // CORS error indicates offline server
+                // Update to offline
+                this.sseConnected = false;
+                this._updateConnectionStatus("OFFLINE");
+                throw new Error('Bad Gateway: Possible CORS error or server offline');
             }
             
             const data = await response.json();
@@ -252,6 +270,11 @@ class Layers {
                 this.alerts = data.alerts;
                 this.displayAlerts();
                 this.fetchRetryCount = 0; // Reset retry count on success
+                this.lastSuccessfulFetch = new Date();
+                // Update status to ISSUES (polling is working but SSE might not be)
+                if (!this.sseConnected) {
+                    this._updateConnectionStatus();
+                }
             } else {
                 console.warn('[Layers] fetchAlerts: Invalid response or no alerts', data);
             }
@@ -262,6 +285,9 @@ class Layers {
                 stack: error.stack,
                 toString: error.toString()
             });
+            
+            // Update to offline
+            this._updateConnectionStatus();
             
             // Retry logic for mobile network issues
             if (retryCount < this.maxFetchRetries && 
@@ -301,6 +327,46 @@ class Layers {
         const hour = String(date.getUTCHours()).padStart(2, '0');
         const minute = String(date.getUTCMinutes()).padStart(2, '0');
         return `${year}${month}${day}${hour}${minute}`;
+    }
+
+    /**
+     * Updates connection status based on SSE and polling state
+     * ONLINE: SSE connected
+     * ISSUES: SSE disconnected but polling is working
+     * OFFLINE: Both SSE and polling failing
+     */
+    _updateConnectionStatus(manualStatus = null) {
+        let newStatus = 'OFFLINE';
+
+        if (manualStatus) {
+            newStatus = manualStatus;
+            this.connectionStatus = newStatus;
+            console.log(`[Layers] Connection status updated: ${newStatus}`);
+            // Emit event for UI updates
+            document.dispatchEvent(new CustomEvent('alertConnectionStatusChanged', {
+                detail: { status: newStatus }
+            }));
+        }
+
+        if (this.sseConnected) {
+            newStatus = 'ONLINE';
+        } else if (this.lastSuccessfulFetch) {
+            // Check if last successful fetch was recent (within 2x polling interval)
+            const now = new Date();
+            const timeSinceLastFetch = now - this.lastSuccessfulFetch;
+            if (timeSinceLastFetch < this.alertPollingRate * 2) {
+                newStatus = 'ISSUES';
+            }
+        }
+
+        if (newStatus !== this.connectionStatus) {
+            this.connectionStatus = newStatus;
+            console.log(`[Layers] Connection status updated: ${newStatus}`);
+            // Emit event for UI updates
+            document.dispatchEvent(new CustomEvent('alertConnectionStatusChanged', {
+                detail: { status: newStatus }
+            }));
+        }
     }
 
     _convertAlertToGeoJSON(alert) {
@@ -477,11 +543,12 @@ class Layers {
             title = 'Tropical Alert';
         }
         
-        // Create the notification
-        const areaDesc = alertData.areaDesc || 'Unknown area';
+        // Don't send notifications for unknown alerts
+        if (alertData.name == "Unknown Alert") return;
+
         new Notification(
             title,
-            `<b>${alertData.name}</b> issued for ${areaDesc}`,
+            `A ${alertData.name} has been issued or updated.`,
             icon,
             alertColor,
             8000 // Show for 8 seconds
@@ -816,7 +883,7 @@ class Layers {
                 </div>
                 ${alert.message ? `
                     <div style="margin-bottom: 15px;">
-                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word;">${alert.message.replace('  ', '\n')}</p>
+                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.9em;">${alert.message.replace('  ', '\n')}</p>
                     </div>
                 ` : ''}
             </div>

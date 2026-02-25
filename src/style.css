@@ -1134,3 +1134,29 @@ input[type="color"] {
   align-items: center;
   gap: 10px;
 }
+
+.onlineindicator {
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+.onlineindicator.online {
+  background-color: #00af0055;
+  border: 1px solid #00af00;
+  color: white;
+}
+
+.onlineindicator.delayed {
+  background-color: #ffcc0055;
+  border: 1px solid #ffcc00;
+  color: white;
+}
+
+.onlineindicator.offline {
+  background-color: #ff212155;
+  border: 1px solid #ff2121;
+  color: white;
+}
