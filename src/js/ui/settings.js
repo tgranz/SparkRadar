@@ -52,7 +52,8 @@ const ALERT_CATEGORIES = {
         "Marine Weather Statement": { color: '#06b6d4' },
         "Special Marine Warning": { color: '#1406d4' },
         "Storm Surge Warning": { color: '#3500af' },
-        "Storm Surge Watch": { color: '#5f1aff' }
+        "Storm Surge Watch": { color: '#5f1aff' },
+        "Rip Current Statement": { color: '#06b6d4' },
     },
     'Tropical': {
         "Hurricane Warning": { color: '#ff0a84' },
@@ -72,7 +73,7 @@ const ALERT_CATEGORIES = {
         "Volcano Warning": { color: '#ff8800' }
     },
     'Wind': {
-        "Wind Advisory": { color: '#e0b400' },
+        "Wind Advisory": { color: '#a4af00' },
         "Blowing Dust Advisory": { color: '#772a00' },
         "Blowing Dust Warning": { color: '#551e00' },
         "Dust Storm Warning": { color: '#c76531' }

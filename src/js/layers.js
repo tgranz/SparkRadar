@@ -9,12 +9,33 @@ See LICENSE for more.
 
 import Popup from "./ui/popup.js";
 import Dialog from "./ui/dialog.js";
-import Notification from "./ui/notification.js";
+import AlertService from "./alerts.js";
 import { buildAlertDefaults } from "./ui/settings.js";
 
 class Layers {
     constructor(mapInstance) {
         this.map = mapInstance;
+
+        // Initialize AlertService
+        this.alertService = new AlertService();
+        
+        // Set up AlertService callbacks
+        this.alertService.onAlertsUpdated = (alerts) => {
+            this.alerts = alerts;
+            this.displayAlerts();
+            document.dispatchEvent(new CustomEvent('alertsUpdated', {
+                detail: { count: alerts.length, alerts }
+            }));
+        };
+        
+        this.alertService.onWatchesUpdated = (watches) => {
+            this.watches = watches;
+            this.displayWatches();
+        };
+        
+        this.alertService.onNewAlert = (alertData) => {
+            // Additional handling for new alerts can be added here if needed
+        };
 
         // Alert tracking
         this.alerts = [];
@@ -34,24 +55,8 @@ class Layers {
         this.outlookData = null;
         this.outlookSyncPending = { main: false, dual: false };
 
-        // SSE tracking
-        this.eventSource = null;
-        this.sseReconnectAttempts = 0;
-        this.sseMaxReconnectAttempts = 5;
-        this.sseReconnectDelay = 3000; // 3 seconds
-
-        // Polling tracking
-        this.alertPollingInterval = null;
-        this.alertPollingRate = 15000; // 15 seconds
-        this.fetchRetryCount = 0;
-        this.maxFetchRetries = 3;
-        this.fetchInProgress = false;
-        this.isMobileDevice = this._isMobileDevice();
-        
-        // Connection status tracking
-        this.connectionStatus = 'OFFLINE'; // 'ONLINE', 'ISSUES', or 'OFFLINE'
-        this.sseConnected = false;
-        this.lastSuccessfulFetch = null;
+        // Mobile device detection
+        this.isMobileDevice = this.alertService.isMobileDevice;
         
         if (this.isMobileDevice) {
             console.log('[Layers] Mobile device detected - performance optimizations enabled (flashing disabled)');
@@ -65,21 +70,24 @@ class Layers {
     }
 
     /**
-     * Detects if the device is mobile
+     * Get connection status from AlertService
      */
-    _isMobileDevice() {
-        // Check for mobile user agent
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i;
-        
-        // Also check for touch-only devices with smaller screens
-        const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-        const isSmallScreen = window.innerWidth <= 768;
-        
-        const isMobile = mobileRegex.test(userAgent) || (isTouchDevice && isSmallScreen);
-        console.log(`[Layers] Mobile detection: isMobile=${isMobile}, userAgent match=${mobileRegex.test(userAgent)}, touch=${isTouchDevice}, smallScreen=${isSmallScreen}`);
-        
-        return isMobile;
+    get connectionStatus() {
+        return this.alertService.connectionStatus;
+    }
+
+    /**
+     * Get SSE connected status from AlertService
+     */
+    get sseConnected() {
+        return this.alertService.sseConnected;
+    }
+
+    /**
+     * Get last successful fetch time from AlertService
+     */
+    get lastSuccessfulFetch() {
+        return this.alertService.lastSuccessfulFetch;
     }
 
     // Alert methods
@@ -87,292 +95,131 @@ class Layers {
      * Subscribes to real-time alert updates via Server-Sent Events
      */
     subscribeToAlerts() {
-        const API_BASE_URL = 'https://api.sparkradar.app';
-
-        // Close any existing connection
-        if (this.eventSource) {
-            this.eventSource.close();
-            this.eventSource = null;
-        }
-
-        // Create EventSource for real-time updates
-        this.eventSource = new EventSource(`${API_BASE_URL}/alerts/subscribe`);
-
-        this.eventSource.onopen = () => {
-            console.log('[Layers] Connected to alert stream');
-            this.sseReconnectAttempts = 0;
-            this.sseConnected = true;
-            this._updateConnectionStatus();
-        };
-
-        this.eventSource.onmessage = async (e) => {
-            try {
-                const data = JSON.parse(e.data);
-
-                // Handle initial connection status
-                if (data.status === 'connected') {
-                    console.log('[Layers] Alert subscription established');
-                    this.sseConnected = true;
-                    this._updateConnectionStatus();
-                    // Fetch all existing alerts on first connection
-                    await this.fetchAlerts();
-                    return;
-                }
-
-                // Handle new alert notifications
-                if (data.id && data.name) {
-                    console.log('[Layers] New alert received:', data.name);
-                    this.sseConnected = true;
-                    this._updateConnectionStatus();
-                    
-                    // Show notification for the new alert
-                    this._showAlertNotification(data);
-                    
-                    // Wait a moment then fetch updated alerts
-                    setTimeout(async () => {
-                        await this.fetchAlerts();
-                    }, 500);
-                }
-            } catch (error) {
-                console.error('[Layers] Error processing SSE message:', error);
-            }
-        };
-
-        this.eventSource.onerror = (e) => {
-            console.error('[Layers] SSE connection error:', e);
-            this.sseConnected = false;
-            this._updateConnectionStatus("OFFLINE");
-            this.eventSource.close();
-            this.eventSource = null;
-
-            // Attempt reconnection with exponential backoff
-            if (this.sseReconnectAttempts < this.sseMaxReconnectAttempts) {
-                this.sseReconnectAttempts++;
-                const delay = this.sseReconnectDelay * Math.pow(1.5, this.sseReconnectAttempts - 1);
-                console.log(`[Layers] Reconnecting in ${Math.round(delay)}ms (attempt ${this.sseReconnectAttempts}/${this.sseMaxReconnectAttempts})`);
-                setTimeout(() => this.subscribeToAlerts(), delay);
-            } else {
-                console.error('[Layers] Max SSE reconnection attempts reached. Falling back to polling.');
-                // Fall back to periodic polling
-                this._startAlertPolling();
-            }
-        };
+        this.alertService.subscribeToAlerts();
     }
 
     /**
      * Starts polling for alerts (used on mobile or as fallback)
      */
     _startAlertPolling() {
-        // Clear any existing polling
-        if (this.alertPollingInterval) {
-            clearInterval(this.alertPollingInterval);
-            this.alertPollingInterval = null;
-        }
-
-        // Wait for map to be fully ready before first fetch
-        const performFirstFetch = () => {
-            console.log('[Layers] Performing first alert fetch for polling');
-            
-            // Add a small delay on mobile to ensure network is ready
-            const delay = this._isMobileDevice() ? 2000 : 500;
-            
-            setTimeout(() => {
-                this.fetchAlerts();
-                
-                // Set up periodic polling
-                this.alertPollingInterval = setInterval(() => {
-                    this.fetchAlerts();
-                }, this.alertPollingRate);
-                
-                console.log(`[Layers] Alert polling started (${this.alertPollingRate / 1000}s interval)`);
-            }, delay);
-        };
-
-        // Check if map is ready
-        const map = this.map?.map;
-        if (!map) {
-            console.warn('[Layers] Map not available for polling, retrying...');
-            setTimeout(() => this._startAlertPolling(), 1000);
-            return;
-        }
-
-        // If map is idle, fetch immediately, otherwise wait for idle
-        if (map.isStyleLoaded && map.isStyleLoaded() && !map.isMoving()) {
-            performFirstFetch();
-        } else {
-            console.log('[Layers] Waiting for map idle before first alert fetch');
-            map.once('idle', performFirstFetch);
-        }
+        this.alertService._startAlertPolling(this.map);
     }
 
     /**
      * Closes the SSE connection and stops polling
      */
     closeAlertSubscription() {
-        // Close SSE connection
-        if (this.eventSource) {
-            this.eventSource.close();
-            this.eventSource = null;
-            console.log('[Layers] Alert subscription closed');
-        }
-
-        // Stop polling
-        if (this.alertPollingInterval) {
-            clearInterval(this.alertPollingInterval);
-            this.alertPollingInterval = null;
-            console.log('[Layers] Alert polling stopped');
-        }
-    }
-
-    async fetchAlerts(retryCount = 0) {
-        // Prevent concurrent fetches
-        if (this.fetchInProgress) {
-            console.log('[Layers] Fetch already in progress, skipping...');
-            return;
-        }
-        
-        this.fetchInProgress = true;
-        
-        try {
-            console.log('[Layers] Fetching alerts from API... (attempt ' + (retryCount + 1) + ')');
-            
-            // Use a longer timeout on mobile devices
-            const timeout = this._isMobileDevice() ? 10000 : 5000;
-            
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-            
-            const response = await fetch('https://api.sparkradar.app/alerts', { 
-                signal: controller.signal,
-                mode: 'cors',
-                cache: 'no-cache'
-            });
-            
-            clearTimeout(timeoutId);
-            
-            console.log('[Layers] Response status:', response.status, response.statusText);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            } else if (response.status === 502) {
-                // CORS error indicates offline server
-                // Update to offline
-                this.sseConnected = false;
-                this._updateConnectionStatus("OFFLINE");
-                throw new Error('Bad Gateway: Possible CORS error or server offline');
-            }
-            
-            const data = await response.json();
-            
-            console.log('[Layers] fetchAlerts response:', { status: data.status, alertCount: data.alerts?.length || 0 });
-            
-            if (data.status === 'OK' && data.alerts) {
-                this.alerts = data.alerts;
-                this.displayAlerts();
-                this.fetchRetryCount = 0; // Reset retry count on success
-                this.lastSuccessfulFetch = new Date();
-                // Update status to ISSUES (polling is working but SSE might not be)
-                if (!this.sseConnected) {
-                    this._updateConnectionStatus();
-                }
-            } else {
-                console.warn('[Layers] fetchAlerts: Invalid response or no alerts', data);
-            }
-        } catch (error) {
-            console.error('[Layers] Error fetching alerts:', {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
-                toString: error.toString()
-            });
-            
-            // Update to offline
-            this._updateConnectionStatus();
-            
-            // Retry logic for mobile network issues
-            if (retryCount < this.maxFetchRetries && 
-                (error.name === 'TypeError' || error.name === 'AbortError')) {
-                const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
-                console.log(`[Layers] Retrying fetch in ${delay}ms...`);
-                this.fetchInProgress = false; // Release lock before retry
-                setTimeout(() => this.fetchAlerts(retryCount + 1), delay);
-                return; // Don't release lock at the end
-            }
-        } finally {
-            this.fetchInProgress = false;
-        }
-    }
-
-    async fetchWatches() {
-        try {
-            const timestamp = this._formatWatchTimestamp(new Date());
-            const response = await fetch(`https://mesonet.agron.iastate.edu/json/spcwatch.py?ts=${timestamp}`, {
-                signal: AbortSignal.timeout(5000)
-            });
-            const data = await response.json();
-
-            if (data?.features) {
-                this.watches = data.features;
-                this.displayWatches();
-            }
-        } catch (error) {
-            console.error('Error fetching watches:', error);
-        }
-    }
-
-    _formatWatchTimestamp(date) {
-        const year = date.getUTCFullYear();
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-        const day = String(date.getUTCDate()).padStart(2, '0');
-        const hour = String(date.getUTCHours()).padStart(2, '0');
-        const minute = String(date.getUTCMinutes()).padStart(2, '0');
-        return `${year}${month}${day}${hour}${minute}`;
+        this.alertService.closeAlertSubscription();
     }
 
     /**
-     * Updates connection status based on SSE and polling state
-     * ONLINE: SSE connected
-     * ISSUES: SSE disconnected but polling is working
-     * OFFLINE: Both SSE and polling failing
+     * Fetches alerts from the API
      */
-    _updateConnectionStatus(manualStatus = null) {
-        let newStatus = 'OFFLINE';
+    async fetchAlerts(retryCount = 0) {
+        return await this.alertService.fetchAlerts(retryCount);
+    }
 
-        if (manualStatus) {
-            newStatus = manualStatus;
-            this.connectionStatus = newStatus;
-            console.log(`[Layers] Connection status updated: ${newStatus}`);
-            // Emit event for UI updates
-            document.dispatchEvent(new CustomEvent('alertConnectionStatusChanged', {
-                detail: { status: newStatus }
-            }));
+    /**
+     * Fetches watches from the Iowa Mesonet API
+     */
+    async fetchWatches() {
+        const watches = await this.alertService.fetchWatches();
+        if (watches) {
+            this.watches = watches;
+            this.displayWatches();
         }
+    }
 
-        if (this.sseConnected) {
-            newStatus = 'ONLINE';
-        } else if (this.lastSuccessfulFetch) {
-            // Check if last successful fetch was recent (within 2x polling interval)
-            const now = new Date();
-            const timeSinceLastFetch = now - this.lastSuccessfulFetch;
-            if (timeSinceLastFetch < this.alertPollingRate * 2) {
-                newStatus = 'ISSUES';
+    /**
+     * Formats a date for the watch API timestamp parameter
+     */
+    _formatWatchTimestamp(date) {
+        return this.alertService._formatWatchTimestamp(date);
+    }
+
+    _normalizePolygonRing(ring) {
+        if (!ring || ring.length < 3) return ring;
+        
+        const epsilon = 0.0001;
+        
+        // First, find which point should be the start/end (the one that appears at both ends for closing)
+        const lastPoint = ring[ring.length - 1];
+        let properStartIndex = 0;
+        
+        // Check if the first point matches the last (properly closed polygon)
+        const firstMatchesLast = Math.abs(ring[0][0] - lastPoint[0]) < epsilon && 
+                                 Math.abs(ring[0][1] - lastPoint[1]) < epsilon;
+        
+        if (!firstMatchesLast) {
+            // The polygon isn't properly closed with first=last, so we need to find the real start
+            // Look for a point that appears twice (once in the middle, once at the end)
+            for (let i = 1; i < ring.length - 1; i++) {
+                if (Math.abs(ring[i][0] - lastPoint[0]) < epsilon && 
+                    Math.abs(ring[i][1] - lastPoint[1]) < epsilon) {
+                    properStartIndex = i;
+                    console.log(`[Layers] Found proper start point at index ${i}: [${ring[i][0]}, ${ring[i][1]}]`);
+                    break;
+                }
             }
         }
-
-        if (newStatus !== this.connectionStatus) {
-            this.connectionStatus = newStatus;
-            console.log(`[Layers] Connection status updated: ${newStatus}`);
-            // Emit event for UI updates
-            document.dispatchEvent(new CustomEvent('alertConnectionStatusChanged', {
-                detail: { status: newStatus }
-            }));
+        
+        // Rebuild the ring starting from the proper start point
+        const normalized = [];
+        const seen = new Map();
+        
+        // Start from the proper start point and wrap around
+        for (let offset = 0; offset < ring.length; offset++) {
+            const i = (properStartIndex + offset) % ring.length;
+            
+            // Skip the last point for now - we'll add the closing point manually
+            if (offset === ring.length - 1) break;
+            
+            const point = ring[i];
+            const key = `${point[0].toFixed(4)},${point[1].toFixed(4)}`;
+            
+            // Skip if we've already added this point
+            if (seen.has(key)) {
+                console.log(`[Layers] Skipping duplicate point: [${point[0]}, ${point[1]}]`);
+                continue;
+            }
+            
+            seen.set(key, true);
+            normalized.push([point[0], point[1]]);
         }
+        
+        // Close the polygon by adding the first point at the end
+        if (normalized.length >= 3) {
+            normalized.push([normalized[0][0], normalized[0][1]]);
+        }
+        
+        // Need at least 4 points for a valid closed polygon
+        if (normalized.length < 4) {
+            console.warn('[Layers] Polygon ring has too few points after normalization:', normalized.length);
+            return ring;
+        }
+        
+        console.log(`[Layers] Normalized polygon: ${ring.length} points → ${normalized.length} points`);
+        return normalized;
     }
 
     _convertAlertToGeoJSON(alert) {
         // Geometry is already in GeoJSON format from the API
-        // Format: [[[lon, lat], ...]] - 3D array with polygons and rings
-        const coordinates = alert.geometry && alert.geometry.length > 0 ? alert.geometry[0] : [[]];
+        // Format can be either [[[lon, lat], ...]] (3D - proper polygon) or [[lon, lat], ...] (2D - single ring) after API changes
+        let coordinates = alert.geometry && alert.geometry.length > 0 ? alert.geometry : [[]];
+        
+        // Detect if this is a ring (2D array of coordinates) or a polygon (3D array)
+        // Check: if first element exists, is an array, has length 2, and first element is a number -> it's a coordinate pair [lon, lat]
+        // This means the whole thing is a ring of coordinates
+        if (coordinates.length > 0 && Array.isArray(coordinates[0]) && 
+            coordinates[0].length === 2 && typeof coordinates[0][0] === 'number') {
+            // This is a single ring: [[lon, lat], [lon, lat], ...], wrap it in an array to make it a polygon
+            coordinates = [coordinates];
+        }
+        // Otherwise assume it's already in proper 3D format: [[[lon, lat], ...], [[lon, lat], ...], ...]
+        // No need to transform it
+        
+        // Normalize each ring in the polygon to remove duplicate/problematic points
+        coordinates = coordinates.map(ring => this._normalizePolygonRing(ring));
         
         return {
             type: 'Feature',
@@ -395,7 +242,7 @@ class Layers {
 
     _getAlertColor(alert) {
         // Check for custom colors in settings first
-        const alertSettings = this._getAlertSettings(alert.name);
+        const alertSettings = this.alertService._getAlertSettings(alert.name);
         if (alertSettings.color) {
             return { 
                 fill: alertSettings.color, 
@@ -434,128 +281,6 @@ class Layers {
         });
     }
 
-    _getAlertSettings(alertName) {
-        try {
-            // Convert alert name to settings key format
-            // e.g., "Severe Thunderstorm Warning" -> "alert_severe_thunderstorm_warning"
-            const settingKey = `alert_${alertName.replace(/\s+/g, '_').toLowerCase()}`;
-            
-            // Try to get from localStorage settings
-            const storedSettings = localStorage.getItem('settings');
-            if (storedSettings) {
-                const parsed = JSON.parse(storedSettings);
-                if (parsed[settingKey]) {
-                    const value = parsed[settingKey];
-                    if (value && typeof value === 'object') {
-                        if (!value.color && (value.fillColor || value.borderColor)) {
-                            value.color = value.fillColor || value.borderColor;
-                        }
-                        return value;
-                    }
-                    return parsed[settingKey];
-                }
-            }
-            
-            // Return defaults if not found
-            return {
-                enabled: true,
-                notify: true,
-                color: null
-            };
-        } catch (error) {
-            console.error('[Layers] Error getting alert settings:', error);
-            return { enabled: true, notify: true, color: null };
-        }
-    }
-
-    _showAlertNotification(alertData) {
-        // Check if notifications are enabled for this alert type
-        const alertSettings = this._getAlertSettings(alertData.name);
-        if (!alertSettings.notify) {
-            console.log(`[Layers] Notifications disabled for ${alertData.name}`);
-            return;
-        }
-
-        // Use custom colors from settings if available, otherwise use defaults from _getAlertColor
-        let alertColor = alertSettings.color;
-        
-        // If no custom colors, try to get from _getAlertColor (which uses phenomena/significance)
-        if (!alertColor) {
-            const mockAlert = {
-                name: alertData.name,
-                message: alertData.message || '',
-                properties: alertData.properties || {}
-            };
-            const defaultColors = this._getAlertColor(mockAlert);
-            alertColor = alertSettings.color || defaultColors.fill;
-        }
-
-        // Determine icon based on alert type
-        let icon = 'alert-triangle';
-        let title = 'New Alert';
-        
-        const name = alertData.name?.toLowerCase() || '';
-        const message = alertData.message?.toLowerCase() || '';
-        
-        // Tornado alerts
-        if (name.includes('tornado')) {
-            icon = 'tornado';
-            title = 'Tornado Warning';
-        }
-        // Severe thunderstorm alerts
-        else if (name.includes('severe thunderstorm')) {
-            icon = 'bolt';
-            title = 'Severe Thunderstorm Warning';
-        }
-        // Flash flood alerts
-        else if (name.includes('flash flood')) {
-            icon = 'droplet';
-            title = 'Flash Flood Warning';
-        }
-        // Flood alerts
-        else if (name.includes('flood')) {
-            icon = 'droplet';
-            title = 'Flood Warning';
-        }
-        // Winter alerts
-        else if (name.includes('winter') || name.includes('blizzard') || name.includes('snow')) {
-            icon = 'snowflake';
-            title = 'Winter Weather';
-        }
-        // Wind alerts
-        else if (name.includes('wind')) {
-            icon = 'wind';
-            title = 'Wind Advisory';
-        }
-        // Tsunami/Marine
-        else if (name.includes('tsunami') || name.includes('marine') || name.includes('lakeshore')) {
-            icon = 'wave';
-            title = 'Marine Alert';
-        }
-        // Coastal/Storm Surge
-        else if (name.includes('coastal') || name.includes('storm surge')) {
-            icon = 'waves';
-            title = 'Coastal Alert';
-        }
-        // Hurricane/Tropical
-        else if (name.includes('hurricane') || name.includes('tropical') || name.includes('typhoon')) {
-            icon = 'cloud-storm';
-            title = 'Tropical Alert';
-        }
-        
-        // Don't send notifications for unknown alerts
-        if (alertData.name == "Unknown Alert") return;
-
-        new Notification(
-            title,
-            `A ${alertData.name} has been issued or updated.`,
-            icon,
-            alertColor,
-            8000 // Show for 8 seconds
-        );
-
-    }
-
     _convertWatchToGeoJSON(watch) {
         if (!watch || watch.type !== 'Feature') return null;
         return watch;
@@ -590,12 +315,27 @@ class Layers {
     _getAlertsAtPoint(point) {
         const matches = [];
         for (const alert of this.alerts) {
-            if (!alert?.geometry?.length) continue;
-            // Geometry format: [[[lon, lat], ...]] - already in correct order
-            const polygons = alert.geometry;
+            if (!alert?.geometry?.length) {
+                continue;
+            }
+            // Geometry format: [[[lon, lat], ...]] or [[lon, lat], ...] after API change
+            const geometry = alert.geometry;
             
-            for (const rings of polygons) {
-                if (this._pointInPolygon(point, rings)) {
+            // Detect format and get the actual rings
+            let ringsArray = [];
+            if (geometry.length > 0 && Array.isArray(geometry[0])) {
+                if (geometry[0].length === 2 && typeof geometry[0][0] === 'number') {
+                    // This is a single ring: [[lon, lat], [lon, lat], ...] 
+                    ringsArray = [geometry];  // Wrap as [ring] for _pointInPolygon
+                } else if (Array.isArray(geometry[0][0])) {
+                    // This is multiple rings: [[[lon, lat], ...], [[lon, lat], ...], ...]
+                    ringsArray = geometry;
+                }
+            }
+            
+            for (const ring of ringsArray) {
+                // Each ring needs to be wrapped in an array for _pointInPolygon
+                if (this._pointInPolygon(point, [ring])) {
                     matches.push(alert);
                     break;
                 }
@@ -638,10 +378,21 @@ class Layers {
     }
 
     _pointInPolygon(point, rings) {
-        if (!rings || rings.length === 0) return false;
-        if (!this._pointInRing(point, rings[0])) return false;
+        if (!rings || rings.length === 0) {
+            console.log(`[Layers] Invalid rings for point-in-polygon check`);
+            return false;
+        }
+        console.log(`[Layers] Checking point [${point[0]}, ${point[1]}] against polygon with ${rings.length} rings`);
+        if (!this._pointInRing(point, rings[0])) {
+            console.log(`[Layers] Point is outside outer ring`);
+            return false;
+        }
+        console.log(`[Layers] Point is inside outer ring`);
         for (let i = 1; i < rings.length; i += 1) {
-            if (this._pointInRing(point, rings[i])) return false;
+            if (this._pointInRing(point, rings[i])) {
+                console.log(`[Layers] Point is inside hole ring ${i}, excluding`);
+                return false;
+            }
         }
         return true;
     }
@@ -654,8 +405,10 @@ class Layers {
         }
         
         const point = [event.lngLat.lng, event.lngLat.lat];
+        console.log(`[Layers] Clicked at point: [${point[0]}, ${point[1]}]`);
         const alertMatches = this._getAlertsAtPoint(point);
         const watchMatches = this._getWatchesAtPoint(point);
+        console.log(`[Layers] Found ${alertMatches.length} alerts and ${watchMatches.length} watches at click point`);
         this._showAlertPopup(target, event.lngLat, alertMatches, watchMatches);
     }
 
@@ -719,7 +472,11 @@ class Layers {
                 const is_considerable = alert.message.toLowerCase().includes('considerable');
                 const is_tor_possible = alert.message.toLowerCase().includes('tornado...possible');
 
-                const meta = `${expiry}${is_tor_possible ? ' | Tornado Possible' : ''}`;
+                const meta = `
+                ${expiry}
+                ${is_tor_possible ? ' | Tornado Possible' : ''}
+                ${alert?.alertInfo?.MAX_HAIL_SIZE ? `<br>Hail: ${alert?.alertInfo?.MAX_HAIL_SIZE}` : ''}
+                ${alert?.alertInfo?.MAX_WIND_GUST ? `<br>Wind: ${alert?.alertInfo?.MAX_WIND_GUST}` : ''}`;
 
                 return `
                     <div class="popup-item" data-type="alert" data-index="${index}" style="cursor: pointer;">
@@ -879,6 +636,8 @@ class Layers {
                         <strong>Expires:</strong> <span>${formatDate(alert.expiry)}</span>
                         ${alert.sender ? `<strong>Sender:</strong> <span>${alert.sender}</span>` : ''}
                         ${is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${alert?.alertInfo?.MAX_HAIL_SIZE ? `<strong>Hail:</strong> <span>${alert?.alertInfo?.MAX_HAIL_SIZE}${alert?.alertInfo?.HAIL_THREAT ? ', ' + alert?.alertInfo?.HAIL_THREAT : ''}</span>` : ''}
+                        ${alert?.alertInfo?.MAX_WIND_GUST ? `<strong>Wind:</strong> <span>${alert?.alertInfo?.MAX_WIND_GUST}${alert?.alertInfo?.WIND_THREAT ? ', ' + alert?.alertInfo?.WIND_THREAT : ''}</span>` : ''}
                     </div>
                 </div>
                 ${alert.message ? `
@@ -1046,7 +805,7 @@ class Layers {
         // Build a FeatureCollection with all enabled alerts
         const features = [];
         this.alerts.forEach((alert, index) => {
-            const alertSettings = this._getAlertSettings(alert.name);
+            const alertSettings = this.alertService._getAlertSettings(alert.name);
             if (!alertSettings.enabled) {
                 return;
             }

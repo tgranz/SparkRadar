@@ -12,7 +12,7 @@ See LICENSE for more.
 // N0H, N1H, N2H... > Hydrometer Classification
 // N0K, N1K, N2K... > Specific Differential Phase
 // N0B, N1B, N2B... > Base Reflectivity (Same as L2 REF but much faster)
-// N0G, N1G, N2U... > Base Velocity (Same as L2 VEL but much faster, tilt 1 and 2 end in G, 3 and 4 end in U)
+// N0G, N1G, N2G... > Base Velocity (Same as L2 VEL but much faster)
 // N0C, N1C, N2C... > Correlation Coefficient (Same as L2 CC but lower resolution and much faster)
 // DTA > Storm Total Accumulation
 
@@ -29,6 +29,7 @@ import Menu from "./js/ui/menu.js";
 import Radar from "./js/radar.js";
 import RadarStatus from "./js/ui/radar_status.js";
 import Dialog from './js/ui/dialog.js';
+import AlertList from "./js/ui/alert_list.js";
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -181,6 +182,9 @@ const map = new Map({
   },
 });
 
+// Construct the alert list
+const alertList = new AlertList(map.layers);
+
 // Keybinds
 // TODO: custom keybinds
 window.addEventListener('keydown', (e) => {
@@ -268,16 +272,23 @@ const STATION_CHANGE_DEBOUNCE = 5000; // 5 second debounce after station change
 const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
 var updateTimes = 0;
 
-// Track when stations change
+// Track when stations or products change
 // tbh i dont know why this is here
 const originalSetRadar = setRadar;
 setRadar = async function(station, product, mainOrSplit, options) {
-  if (station && (
+  const stationChanged = station && (
     (mainOrSplit === 'main' && station !== mainRadar.station) ||
     (mainOrSplit === 'split' && station !== splitRadar.station)
-  )) {
+  );
+  
+  const productChanged = product && (
+    (mainOrSplit === 'main' && product !== mainRadar.product) ||
+    (mainOrSplit === 'split' && product !== splitRadar.product)
+  );
+  
+  if (stationChanged || productChanged) {
     lastStationChangeTime[mainOrSplit] = Date.now();
-    lastCheckedRadar[mainOrSplit] = null; // Reset on station change
+    lastCheckedRadar[mainOrSplit] = null; // Reset on station/product change
     baselineCheckCount[mainOrSplit] = 0; // Reset baseline count
   }
   return originalSetRadar(station, product, mainOrSplit, options);
@@ -292,7 +303,8 @@ setInterval(async () => {
 
     // Only check main map if station hasn't changed recently
     if (Date.now() - lastStationChangeTime.main > STATION_CHANGE_DEBOUNCE) {
-      const currentMainRadarKey = `${mainRadar.station}_${mainRadar.product}_${mainRadar.level}`;
+      const mainProduct = map.currentRadarProduct || mainRadar.product;
+      const currentMainRadarKey = `${mainRadar.station}_${mainProduct}_${inferLevelFromProduct(mainProduct)}`;
       const lastMainRadarKey = lastCheckedRadar.main;
       
       if (lastMainRadarKey === currentMainRadarKey) {
@@ -302,10 +314,10 @@ setInterval(async () => {
         // Only check for updates after we've baselined multiple times
         if (baselineCheckCount.main >= BASELINE_CHECKS_REQUIRED) {
           try {
-            const updateAvailable = await radar.isUpdateAvailable(mainRadar.station, mainRadar.product);
+            const updateAvailable = await radar.isUpdateAvailable(mainRadar.station, mainProduct);
             if (updateAvailable) {
               console.log(`[Main Map] Update available for ${currentMainRadarKey}`);
-              await originalSetRadar(null, null, 'main', { gate_limit: -30 });
+              await originalSetRadar(null, mainProduct, 'main', { gate_limit: -30 });
               baselineCheckCount.main = 0; // Reset after update
             }
           } catch (error) {
@@ -321,7 +333,8 @@ setInterval(async () => {
 
     // Only check split map if it exists and station hasn't changed recently
     if (map.isSplit() && Date.now() - lastStationChangeTime.split > STATION_CHANGE_DEBOUNCE) {
-      const currentSplitRadarKey = `${splitRadar.station}_${splitRadar.product}_${splitRadar.level}`;
+      const splitProduct = map.currentRadarProductSplit || splitRadar.product;
+      const currentSplitRadarKey = `${splitRadar.station}_${splitProduct}_${inferLevelFromProduct(splitProduct)}`;
       const lastSplitRadarKey = lastCheckedRadar.split;
       
       if (lastSplitRadarKey === currentSplitRadarKey) {
@@ -331,10 +344,10 @@ setInterval(async () => {
         // Only check for updates after we've baselined multiple times
         if (baselineCheckCount.split >= BASELINE_CHECKS_REQUIRED) {
           try {
-            const updateAvailable = await radar.isUpdateAvailable(splitRadar.station, splitRadar.product);
+            const updateAvailable = await radar.isUpdateAvailable(splitRadar.station, splitProduct);
             if (updateAvailable) {
               console.log(`[Split Map] Update available for ${currentSplitRadarKey}`);
-              await originalSetRadar(null, null, 'split', { gate_limit: -30 });
+              await originalSetRadar(null, splitProduct, 'split', { gate_limit: -30 });
               baselineCheckCount.split = 0; // Reset after update
             }
           } catch (error) {

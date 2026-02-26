@@ -16,6 +16,7 @@ import * as product62Module from './products/62/index.js';
 import * as product78Module from './products/78/index.js';
 import * as product80Module from './products/80/index.js';
 import * as product94Module from './products/94/index.js';
+import * as product99Module from './products/99/index.js';
 import * as product141Module from './products/141/index.js';
 import * as product153Module from './products/153/index.js';
 import * as product154Module from './products/154/index.js';
@@ -49,6 +50,7 @@ const productsRaw = [
     toProduct(product78Module),
     toProduct(product80Module),
     toProduct(product94Module),
+    toProduct(product99Module),
     toProduct(product141Module),
     toProduct(product153Module),
     toProduct(product154Module),

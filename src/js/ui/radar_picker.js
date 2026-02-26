@@ -12,7 +12,7 @@ const productLabels = {
     'N_G': 'Base Velocity',
     'N_C': 'Correlation Coefficient',
     'N_K': 'Specific Differential Phase',
-    'N_H': 'Hydrometeor Classification',
+    'N_H': 'Hydrometer Classification',
     'N_X': 'Differential Reflectivity',
     'REF': 'Raw Base Reflectivity',
     'VEL': 'Raw Base Velocity',
@@ -24,16 +24,16 @@ const productLabels = {
 
 const productEntries = [
     { type: 'header', label: 'Standard Products (Level III)' },
-    { type: 'item', code: 'N_B' },
-    { type: 'item', code: 'N_G' },
-    { type: 'item', code: 'N_C' },
-    { type: 'item', code: 'N_X' },
-    { type: 'item', code: 'N_H' },
-    { type: 'item', code: 'N_K' },
+    { type: 'item', code: 'N_B', hasTiltOptions: true },
+    { type: 'item', code: 'N_G', hasTiltOptions: true },
+    { type: 'item', code: 'N_C', hasTiltOptions: true },
+    { type: 'item', code: 'N_X', hasTiltOptions: true },
+    { type: 'item', code: 'N_K', hasTiltOptions: true },
+    { type: 'item', code: 'N_H', hasTiltOptions: false },
     { type: 'header', label: 'Super-Res Products (Level II)' },
-    { type: 'item', code: 'REF' },
-    { type: 'item', code: 'VEL' },
-    { type: 'item', code: 'CC' },
+    { type: 'item', code: 'REF', hasTiltOptions: false },
+    { type: 'item', code: 'VEL', hasTiltOptions: false },
+    { type: 'item', code: 'CC', hasTiltOptions: false },
     //{ type: 'item', code: 'ZDR' }, <-- doesnt load
     //{ type: 'item', code: 'KDP' }, <-- looks wrong
     //{ type: 'item', code: 'SW' } <-- doesnt load
@@ -85,13 +85,59 @@ class RadarPicker {
 
             if (entry.type === 'item') {
                 const productItem = document.createElement('div');
-                productItem.textContent = productLabels[entry.code] || entry.code;
-                productItem.addEventListener('click', () => {
-                    this.setCurrentProduct(entry.code);
-                    if (typeof onChangeProduct === 'function') {
-                        onChangeProduct(entry.code);
-                    }
-                });
+
+                if (entry.hasTiltOptions) {
+                    const productName = document.createElement('p');
+                    productName.textContent = productLabels[entry.code] || entry.code;
+                    productItem.appendChild(productName);
+
+                    const tiltSelector = document.createElement('select');
+                    tiltSelector.innerHTML = `
+                        <option value="0" selected>Tilt 1</option>
+                        <option value="1">Tilt 2</option>
+                        <option value="2">Tilt 3</option>
+                        <option value="3">Tilt 4</option>
+                    `;
+                    
+                    // Stop click events from bubbling to prevent double-firing
+                    tiltSelector.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                    });
+                    
+                    tiltSelector.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        const selectedTilt = Number(tiltSelector.value);
+                        const baseLabel = productLabels[entry.code] || entry.code;
+                        this.currentProduct.textContent = baseLabel;
+                        if (typeof onChangeProduct === 'function') {
+                            onChangeProduct(entry.code, selectedTilt);
+                        }
+                    });
+                    
+                    productItem.appendChild(tiltSelector);
+                    
+                    // Add click handler to the productName only
+                    productName.addEventListener('click', () => {
+                        const baseLabel = productLabels[entry.code] || entry.code;
+                        this.currentProduct.textContent = baseLabel;
+                        tiltSelector.value = '0'; // Reset dropdown to Tilt 1
+                        if (typeof onChangeProduct === 'function') {
+                            onChangeProduct(entry.code, 0);
+                        }
+                    });
+                    productName.style.cursor = 'pointer';
+                } else {
+                    const productName = document.createElement('p');
+                    productName.textContent = productLabels[entry.code] || entry.code;
+                    productItem.appendChild(productName);
+                    productItem.addEventListener('click', () => {
+                        this.setCurrentProduct(entry.code);
+                        if (typeof onChangeProduct === 'function') {
+                            onChangeProduct(entry.code);
+                        }
+                    });
+                }
+                
                 this.productsList.appendChild(productItem);
             }
         });
@@ -127,7 +173,7 @@ class RadarPicker {
             else minutesOld = 0;
         }
 
-        this.timeAndTilt.innerHTML = `<div class="timeAndTiltSub"><p id="timeElem">${time || '--:--:--'}</p><p>@ ${tilt ?? '--'}</p></div>`;
+        this.timeAndTilt.innerHTML = `<div class="timeAndTiltSub"><p id="timeElem">${time || '--:--:--'}</p><p>• ${tilt ?? '--'}</p></div>`;
 
         const timeElem = this.timeAndTilt.querySelector('#timeElem');
         if (minutesOld != null && minutesOld > 20) {

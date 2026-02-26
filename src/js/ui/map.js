@@ -31,11 +31,12 @@ class Map {
         this.currentMesh = null;
         this.currentMeshBounds = null;
         this.currentRadarProduct = null;
+        this.currentRadarProductSplit = null;
         this.radar = null; // Store reference to radar instance
         this.palettes = new Palettes(); // Store palettes instance
-        this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product) => {
+        this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
             if (typeof this.callbacks.onChangeProduct === 'function') {
-                this.callbacks.onChangeProduct(product.replace('_', this.tilt));
+                this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
             }
         });
         // Color table for radar values (default to REF)
@@ -330,27 +331,27 @@ class Map {
         if (layout == 'vertical') {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
-            this.splitRadarPicker = new RadarPicker('N0G', ['10px', '10px', null, null], (product) => {
+            this.splitRadarPicker = new RadarPicker('N0G', ['10px', '10px', null, null], (product, tiltIndex) => {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProductSplit(product.replace('_', this.tilt));
+                    this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
                 }
             });
-            this.radarPicker = new RadarPicker('N0B', ['10px', 'calc(50% + 10px)', null, null], (product) => {
+            this.radarPicker = new RadarPicker('N0B', ['10px', 'calc(50% + 10px)', null, null], (product, tiltIndex) => {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProduct(product.replace('_', this.tilt));
+                    this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
                 }
             });
         } else {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
-            this.splitRadarPicker = new RadarPicker('N0G', ['calc(50% + 10px)', '10px', null, null], (product) => {
+            this.splitRadarPicker = new RadarPicker('N0G', ['calc(50% + 10px)', '10px', null, null], (product, tiltIndex) => {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProductSplit(product.replace('_', this.tilt));
+                    this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
                 }
             });
-            this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product) => {
+            this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProduct(product.replace('_', this.tilt));
+                    this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
                 }
             });
         }
@@ -431,11 +432,18 @@ class Map {
             this.radarStationHandlers.dual = null;
         }
 
-        // Reset main map handler so it gets re-added on next station update
-        if (this.radarStationHandlers?.main) {
-            this.map.off('move', this.radarStationHandlers.main);
-            this.radarStationHandlers.main = null;
+        // Restore main map overlap handler after closing split map
+        if (!this.radarStationHandlers) {
+            this.radarStationHandlers = { main: null, dual: null };
         }
+        if (this.radarStationHandlers.main) {
+            this.map.off('move', this.radarStationHandlers.main);
+        }
+        this.radarStationHandlers.main = () => {
+            this._hideOverlappingStationMarkers(this.radarMarkers.main, this.map);
+        };
+        this.map.on('move', this.radarStationHandlers.main);
+        this._hideOverlappingStationMarkers(this.radarMarkers.main, this.map);
 
         // Clean up radar markers from split/dual map
         this.radarMarkers.dual.forEach(marker => marker.remove());
@@ -450,11 +458,11 @@ class Map {
         try { this.splitRadarPicker.destroy(); } catch {}
         try { this.radarPicker.destroy(); } catch {}
         this.splitRadarPicker = null;
-        this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product) => {
-                if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProduct(product.replace('_', this.tilt));
-                }
-            });
+        this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
+            if (typeof this.callbacks.onChangeProduct === 'function') {
+                this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
+            }
+        });
 
         const dualContainer = document.getElementById('map-dual');
         if (dualContainer) {
@@ -497,6 +505,22 @@ class Map {
             default:
                 return product.toUpperCase();
         }
+    }
+
+    _buildTiltedProduct(baseProduct, tiltIndex) {
+        if (!baseProduct) return baseProduct;
+        if (!Number.isFinite(tiltIndex)) return baseProduct;
+
+        if (baseProduct.includes('_')) {
+            const tilt = Math.max(0, Math.min(3, Math.floor(tiltIndex)));
+            const suffix = baseProduct.slice(2);
+            if (baseProduct === 'N_G' && tilt >= 2) {
+                return `N${tilt}U`;
+            }
+            return `N${tilt}${suffix}`;
+        }
+
+        return baseProduct;
     }
 
     // Method to update color palette
@@ -1047,7 +1071,11 @@ class Map {
             this.currentMesh = null;
             this.currentMeshBounds = null;
         }
-        this.currentRadarProduct = product;
+        if (isMainLayer) {
+            this.currentRadarProduct = product;
+        } else {
+            this.currentRadarProductSplit = product;
+        }
 
         const vertexData = this._buildVertexData(radarGeoJson);
         this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer);
@@ -1093,7 +1121,11 @@ class Map {
             this.currentMeshBounds = bounds || null;
             this.currentGeojson = null;
         }
-        this.currentRadarProduct = product;
+        if (isMainLayer) {
+            this.currentRadarProduct = product;
+        } else {
+            this.currentRadarProductSplit = product;
+        }
 
         const vertexData = this._buildVertexDataFromMesh(meshData);
         this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer);
@@ -1116,6 +1148,37 @@ class Map {
         styles.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
         el.textContent = icao;
         return el;
+    }
+
+    _hideOverlappingStationMarkers(markerArray, map) {
+        if (!markerArray || markerArray.length === 0 || !map) return;
+
+        // Reset visibility
+        markerArray.forEach(marker => {
+            marker.getElement().style.display = 'block';
+        });
+
+        const markerWidth = 50;
+
+        for (let i = 0; i < markerArray.length; i++) {
+            const marker1 = markerArray[i];
+            if (marker1.getElement().style.display === 'none') continue;
+
+            const point1 = map.project(marker1.getLngLat());
+
+            for (let j = i + 1; j < markerArray.length; j++) {
+                const marker2 = markerArray[j];
+                const point2 = map.project(marker2.getLngLat());
+
+                const dx = point1.x - point2.x;
+                const dy = point1.y - point2.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < markerWidth) {
+                    marker2.getElement().style.display = 'none';
+                }
+            }
+        }
     }
 
     updateRadarStations() {
@@ -1200,50 +1263,17 @@ class Map {
                     });
                 }
 
-                // Hide overlapping markers
-                const hideOverlappingMarkers = (markerArray, map) => {
-                    if (!markerArray || markerArray.length === 0) return;
-                    
-                    // Reset visibility
-                    markerArray.forEach(marker => {
-                        marker.getElement().style.display = 'block';
-                    });
-                    
-                    const markerWidth = 50;
-                    const markerHeight = 25;
-                    
-                    for (let i = 0; i < markerArray.length; i++) {
-                        const marker1 = markerArray[i];
-                        if (marker1.getElement().style.display === 'none') continue;
-                        
-                        const point1 = map.project(marker1.getLngLat());
-                        
-                        for (let j = i + 1; j < markerArray.length; j++) {
-                            const marker2 = markerArray[j];
-                            const point2 = map.project(marker2.getLngLat());
-                            
-                            const dx = point1.x - point2.x;
-                            const dy = point1.y - point2.y;
-                            const distance = Math.sqrt(dx * dx + dy * dy);
-                            
-                            if (distance < markerWidth) {
-                                marker2.getElement().style.display = 'none';
-                            }
-                        }
-                    }
-                };
+                this._hideOverlappingStationMarkers(markers.main, mainMap);
 
-                hideOverlappingMarkers(markers.main, mainMap);
-                
                 if (isSplit) {
-                    hideOverlappingMarkers(markers.dual, dualMap);
+                    this._hideOverlappingStationMarkers(markers.dual, dualMap);
                 }
 
                 // Re-check overlaps on map move
                 const updateOverlapHandler = () => {
-                    hideOverlappingMarkers(markers.main, mainMap);
+                    this._hideOverlappingStationMarkers(markers.main, mainMap);
                     if (isSplit) {
-                        hideOverlappingMarkers(markers.dual, dualMap);
+                        this._hideOverlappingStationMarkers(markers.dual, dualMap);
                     }
                 };
 
