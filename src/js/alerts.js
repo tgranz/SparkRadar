@@ -75,44 +75,73 @@ class AlertService {
         }
 
         // Create EventSource for real-time updates
-        this.eventSource = new EventSource(`${API_BASE_URL}/alerts/subscribe`);
+        this.eventSource = new EventSource(`${API_BASE_URL}/subscribe`);
 
         this.eventSource.onopen = () => {
             console.log('[AlertService] Connected to alert stream');
             this.sseReconnectAttempts = 0;
             this.sseConnected = true;
             this._updateConnectionStatus();
+            this.fetchAlerts();
         };
 
+        this.eventSource.addEventListener('NEW', async (e) => {
+            try {
+                const data = this._normalizeAlert(JSON.parse(e.data));
+                console.log('[AlertService] New alert received:', data.name);
+                this.sseConnected = true;
+                this._updateConnectionStatus();
+
+                this._showAlertNotification(data);
+
+                if (this.onNewAlert) {
+                    this.onNewAlert(data);
+                }
+
+                setTimeout(async () => {
+                    await this.fetchAlerts();
+                }, 500);
+            } catch (error) {
+                console.error('[AlertService] Error processing NEW event:', error);
+            }
+        });
+
+        this.eventSource.addEventListener('UPDATE', async (e) => {
+            try {
+                if (e?.data) {
+                    JSON.parse(e.data);
+                }
+                this.sseConnected = true;
+                this._updateConnectionStatus();
+                setTimeout(async () => {
+                    await this.fetchAlerts();
+                }, 250);
+            } catch (error) {
+                console.error('[AlertService] Error processing UPDATE event:', error);
+            }
+        });
+
+        // Backward compatibility for servers that send default messages
         this.eventSource.onmessage = async (e) => {
             try {
                 const data = JSON.parse(e.data);
-
-                // Handle initial connection status
-                if (data.status === 'connected') {
+                if (data?.status === 'connected') {
                     console.log('[AlertService] Alert subscription established');
                     this.sseConnected = true;
                     this._updateConnectionStatus();
-                    // Fetch all existing alerts on first connection
                     await this.fetchAlerts();
                     return;
                 }
 
-                // Handle new alert notifications
-                if (data.id && data.name) {
-                    console.log('[AlertService] New alert received:', data.name);
+                if (data?.id) {
+                    const normalized = this._normalizeAlert(data);
+                    console.log('[AlertService] New alert received:', normalized.name);
                     this.sseConnected = true;
                     this._updateConnectionStatus();
-                    
-                    // Show notification for the new alert
-                    this._showAlertNotification(data);
-                    
-                    // Notify via callback if set
+                    this._showAlertNotification(normalized);
                     if (this.onNewAlert) {
-                        this.onNewAlert(data);
+                        this.onNewAlert(normalized);
                     }
-                    
-                    // Wait a moment then fetch updated alerts
                     setTimeout(async () => {
                         await this.fetchAlerts();
                     }, 500);
@@ -253,9 +282,10 @@ class AlertService {
             
             const data = await response.json();
             
-            console.log('[AlertService] fetchAlerts response:', { status: data.status, alertCount: data.alerts?.length || 0 });
-            
-            if (data.status === 'OK' && data.alerts) {
+            const alertsPayload = Array.isArray(data) ? data : data.alerts;
+            console.log('[AlertService] fetchAlerts response:', { alertCount: alertsPayload?.length || 0 });
+
+            if (Array.isArray(alertsPayload)) {
                 this.fetchRetryCount = 0; // Reset retry count on success
                 this.lastSuccessfulFetch = new Date();
                 // Update status to ISSUES (polling is working but SSE might not be)
@@ -263,12 +293,14 @@ class AlertService {
                     this._updateConnectionStatus();
                 }
 
+                const normalizedAlerts = alertsPayload.map((alert) => this._normalizeAlert(alert));
+
                 // Notify via callback if set
                 if (this.onAlertsUpdated) {
-                    this.onAlertsUpdated(data.alerts);
+                    this.onAlertsUpdated(normalizedAlerts);
                 }
 
-                return data.alerts;
+                return normalizedAlerts;
             } else {
                 console.warn('[AlertService] fetchAlerts: Invalid response or no alerts', data);
                 return null;
@@ -383,10 +415,12 @@ class AlertService {
      * @param {Object} alertData - Alert data from SSE or API
      */
     _showAlertNotification(alertData) {
+        const alertName = this._getAlertName(alertData);
+
         // Check if notifications are enabled for this alert type
-        const alertSettings = this._getAlertSettings(alertData.name);
+        const alertSettings = this._getAlertSettings(alertName);
         if (!alertSettings.notify) {
-            console.log(`[AlertService] Notifications disabled for ${alertData.name}`);
+            console.log(`[AlertService] Notifications disabled for ${alertName}`);
             return;
         }
 
@@ -407,7 +441,7 @@ class AlertService {
         let icon = 'alert-triangle';
         let title = 'New Alert';
         
-        const name = alertData.name?.toLowerCase() || '';
+        const name = alertName.toLowerCase();
         
         // Tornado alerts
         if (name.includes('tornado')) {
@@ -456,15 +490,45 @@ class AlertService {
         }
         
         // Don't send notifications for unknown alerts
-        if (alertData.name == "Unknown Alert") return;
+        if (alertName === 'Unknown Alert') return;
 
         new Notification(
             title,
-            `A ${alertData.name} has been issued or updated.`,
+            `A ${alertName} has been issued or updated.`,
             icon,
             alertColor,
             8000 // Show for 8 seconds
         );
+    }
+
+    _getAlertName(alertData) {
+        return alertData?.name || alertData?.productName || alertData?.event || 'Unknown Alert';
+    }
+
+    _normalizeAlert(alertData) {
+        if (!alertData || typeof alertData !== 'object') {
+            return alertData;
+        }
+
+        const name = this._getAlertName(alertData);
+        const issued = alertData.receivedAt || alertData.issued || null;
+        const expiry = alertData.expiresAt || alertData.expiry || null;
+        const sender = alertData.nwsOffice || alertData.sender || null;
+        const properties = {
+            ...(alertData.properties || {}),
+            phenomena: alertData.properties?.phenomena ?? alertData.vtec?.phenomena,
+            significance: alertData.properties?.significance ?? alertData.vtec?.significance,
+            product_type: alertData.properties?.product_type ?? alertData.productCode
+        };
+
+        return {
+            ...alertData,
+            name,
+            issued,
+            expiry,
+            sender,
+            properties
+        };
     }
 
     /**

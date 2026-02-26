@@ -15,6 +15,7 @@ menu.innerHTML = `
             <div class="layer-menu-item">
                 <h3>Alerts</h3>
                 <p class="onlineindicator delayed" id="alerts-connection-status">CHECKING...</p>
+                <p class="tag beta">BETA</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-alerts-layer" class="switch" checked>

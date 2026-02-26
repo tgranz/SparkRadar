@@ -63,23 +63,27 @@ export default class AlertList {
 
         // Sort alerts by expiry date (soonest first)
         const sortedAlerts = [...alerts].sort((a, b) => {
-            const aExpiry = Date.parse(a?.expiry) || 0;
-            const bExpiry = Date.parse(b?.expiry) || 0;
+            const aExpiry = Date.parse(a?.expiry || a?.expiresAt) || 0;
+            const bExpiry = Date.parse(b?.expiry || b?.expiresAt) || 0;
             return aExpiry - bExpiry;
         });
 
         sortedAlerts.forEach(alert => {
             var desiredColor = '#ffffff';
 
-            const title = alert?.name || alert?.event || 'Alert';
-            const is_pds = alert.message.toLowerCase().includes('particularly dangerous situation');
-            const is_confirmed = alert.message.toLowerCase().includes('tornado...observed');
-            const is_destructive = alert.message.toLowerCase().includes('destructive') || alert.message.toLowerCase().includes('catastrophic');
-            const is_considerable = alert.message.toLowerCase().includes('considerable');
-            const is_tor_possible = alert.message.toLowerCase().includes('tornado...possible');
+            const title = alert?.name || alert?.productName || alert?.event || 'Alert';
+            const alertMessage = (alert?.message || '').toLowerCase();
+            const is_pds = alert?.properties?.isPds ?? alertMessage.includes('particularly dangerous situation');
+            const is_confirmed = alertMessage.includes('tornado...observed');
+            const is_destructive = alert?.properties?.isDestructive ?? (alertMessage.includes('destructive') || alertMessage.includes('catastrophic'));
+            const is_considerable = alert?.properties?.isConsiderable ?? alertMessage.includes('considerable');
+            const is_tor_possible = alertMessage.includes('tornado...possible');
             const colors = this.layersInstance?._getAlertColor(alert) || { fill: '#facc15', outline: '#facc15' };
 
-            const has_valid_geometry = alert.geometry && Array.isArray(alert.geometry) && alert.geometry.length > 0;
+            const has_valid_geometry = !!(alert?.geometry && (
+                (Array.isArray(alert.geometry) && alert.geometry.length > 0) ||
+                (alert.geometry.type && Array.isArray(alert.geometry.coordinates) && alert.geometry.coordinates.length > 0)
+            ));
 
             // Ignore unknown alerts
             if (title === 'Unknown Alert') return;
@@ -99,7 +103,7 @@ export default class AlertList {
                 <div style="margin-bottom: 20px; padding: 15px; background: ${colors.fill}30; border-left: 4px solid ${colors.fill}; border-radius: 10px;">
                     <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.fill};">${is_pds ? 'PDS ' : ''}${is_confirmed ? 'Confirmed ' : ''}${is_destructive ? 'Destructive ' : ''}${is_considerable ? 'Considerable ' : ''}${title}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
-                        <strong>Expires:</strong> <span>${this.formatDate(alert.expiry)}</span>
+                        <strong>Expires:</strong> <span>${this.formatDate(alert.expiry || alert.expiresAt)}</span>
                         ${is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                         ${alert?.alertInfo?.MAX_HAIL_SIZE ? `<strong>Hail:</strong> <span>${alert?.alertInfo?.MAX_HAIL_SIZE}${alert?.alertInfo?.HAIL_THREAT ? ', ' + alert?.alertInfo?.HAIL_THREAT : ''}</span>` : ''}
                         ${alert?.alertInfo?.MAX_WIND_GUST ? `<strong>Wind:</strong> <span>${alert?.alertInfo?.MAX_WIND_GUST}${alert?.alertInfo?.WIND_THREAT ? ', ' + alert?.alertInfo?.WIND_THREAT : ''}</span>` : ''}
@@ -177,7 +181,15 @@ export default class AlertList {
         let maxLng = -Infinity;
         let maxLat = -Infinity;
 
-        const coordinates = alert.geometry;
+        const geometry = alert.geometry;
+        if (!geometry) {
+            console.warn('Alert has no geometry data');
+            return;
+        }
+
+        const coordinates = geometry.type && Array.isArray(geometry.coordinates)
+            ? geometry.coordinates
+            : geometry;
 
         // Detect whether this is a ring (2D array) or the old 3D array format
         // A coordinate pair is [number, number], a ring is [[number, number], ...]
@@ -186,12 +198,12 @@ export default class AlertList {
         // If first element is an array of arrays, this is multiple rings/polygons
         
         let rings = [];
-        if (coordinates.length > 0 && Array.isArray(coordinates[0])) {
-            if (coordinates[0].length === 2 && typeof coordinates[0][0] === 'number') {
-                // This is a single ring: [[lon, lat], [lon, lat], ...]
+        if (Array.isArray(coordinates) && coordinates.length > 0) {
+            if (geometry.type === 'MultiPolygon') {
+                rings = coordinates.flat();
+            } else if (Array.isArray(coordinates[0]) && coordinates[0].length === 2 && typeof coordinates[0][0] === 'number') {
                 rings = [coordinates];
-            } else if (Array.isArray(coordinates[0][0])) {
-                // This is multiple rings/polygons: [[[lon, lat], ...], [[lon, lat], ...], ...]
+            } else if (Array.isArray(coordinates[0]) && Array.isArray(coordinates[0][0])) {
                 rings = coordinates;
             }
         }

@@ -203,66 +203,103 @@ class Layers {
     }
 
     _convertAlertToGeoJSON(alert) {
-        // Geometry is already in GeoJSON format from the API
-        // Format can be either [[[lon, lat], ...]] (3D - proper polygon) or [[lon, lat], ...] (2D - single ring) after API changes
-        let coordinates = alert.geometry && alert.geometry.length > 0 ? alert.geometry : [[]];
-        
-        // Detect if this is a ring (2D array of coordinates) or a polygon (3D array)
-        // Check: if first element exists, is an array, has length 2, and first element is a number -> it's a coordinate pair [lon, lat]
-        // This means the whole thing is a ring of coordinates
-        if (coordinates.length > 0 && Array.isArray(coordinates[0]) && 
-            coordinates[0].length === 2 && typeof coordinates[0][0] === 'number') {
-            // This is a single ring: [[lon, lat], [lon, lat], ...], wrap it in an array to make it a polygon
-            coordinates = [coordinates];
-        }
-        // Otherwise assume it's already in proper 3D format: [[[lon, lat], ...], [[lon, lat], ...], ...]
-        // No need to transform it
-        
-        // Normalize each ring in the polygon to remove duplicate/problematic points
-        coordinates = coordinates.map(ring => this._normalizePolygonRing(ring));
-        
+        const geometry = this._normalizeAlertGeometry(this._getAlertGeometry(alert));
+        if (!geometry) return null;
+
+        const vtec = alert?.vtec || {};
         return {
             type: 'Feature',
             properties: {
-                name: alert.name,
+                name: this._getAlertName(alert),
                 id: alert.id,
-                sender: alert.sender,
+                sender: alert.sender || alert.nwsOffice,
                 issued: alert.issued,
                 expiry: alert.expiry,
-                phenomena: alert.properties?.phenomena,
-                significance: alert.properties?.significance,
-                productType: alert.properties?.product_type,
+                phenomena: alert.properties?.phenomena ?? vtec.phenomena,
+                significance: alert.properties?.significance ?? vtec.significance,
+                productType: alert.properties?.product_type ?? alert.productCode,
+                productCode: alert.productCode
             },
-            geometry: {
-                type: 'Polygon',
-                coordinates: coordinates
-            }
+            geometry
         };
+    }
+
+    _getAlertGeometry(alert) {
+        const geometry = alert?.geometry;
+        if (!geometry) return null;
+
+        if (geometry.type && Array.isArray(geometry.coordinates)) {
+            return geometry;
+        }
+
+        if (Array.isArray(geometry)) {
+            if (geometry.length > 0 && Array.isArray(geometry[0]) &&
+                geometry[0].length === 2 && typeof geometry[0][0] === 'number') {
+                return { type: 'Polygon', coordinates: [geometry] };
+            }
+
+            if (geometry.length > 0 && Array.isArray(geometry[0]) && Array.isArray(geometry[0][0])) {
+                return { type: 'Polygon', coordinates: geometry };
+            }
+        }
+
+        return null;
+    }
+
+    _normalizeAlertGeometry(geometry) {
+        if (!geometry) return null;
+
+        if (geometry.type === 'Polygon') {
+            return {
+                type: 'Polygon',
+                coordinates: geometry.coordinates.map((ring) => this._normalizePolygonRing(ring))
+            };
+        }
+
+        if (geometry.type === 'MultiPolygon') {
+            return {
+                type: 'MultiPolygon',
+                coordinates: geometry.coordinates.map((polygon) =>
+                    polygon.map((ring) => this._normalizePolygonRing(ring))
+                )
+            };
+        }
+
+        return geometry;
+    }
+
+    _getAlertName(alert) {
+        return alert?.name || alert?.productName || alert?.event || 'Unknown Alert';
+    }
+
+    _getAlertMessage(alert) {
+        return (alert?.message || '').toLowerCase();
     }
 
     _getAlertColor(alert) {
         // Check for custom colors in settings first
-        const alertSettings = this.alertService._getAlertSettings(alert.name);
+        const alertName = this._getAlertName(alert);
+        const alertSettings = this.alertService._getAlertSettings(alertName);
         if (alertSettings.color) {
             return { 
                 fill: alertSettings.color, 
                 outline: alertSettings.color, 
-                name: alert.name 
+                name: alertName 
             };
         }
 
         // Fall back to default colors from ALERT_TYPE_DEFAULTS
-        const defaultColor = buildAlertDefaults()[alert.name];
+        const defaultColor = buildAlertDefaults()[alertName];
         if (defaultColor && defaultColor.color) {
             return { 
                 fill: defaultColor.color, 
                 outline: defaultColor.color, 
-                name: alert.name 
+                name: alertName 
             };
         }
         
         // Final fallback for unknown alert types
-        return { fill: '#facc15', outline: '#facc15', name: alert.name };
+        return { fill: '#facc15', outline: '#facc15', name: alertName };
     }
 
     _getAlertKey(alert, index) {
@@ -273,11 +310,11 @@ class Layers {
     _getAlertSignature(alert) {
         return JSON.stringify({
             id: alert.id,
-            name: alert.name,
+            name: this._getAlertName(alert),
             issued: alert.issued,
             expiry: alert.expiry,
             properties: alert.properties,
-            geometry: alert.geometry
+            geometry: this._getAlertGeometry(alert)
         });
     }
 
@@ -315,29 +352,23 @@ class Layers {
     _getAlertsAtPoint(point) {
         const matches = [];
         for (const alert of this.alerts) {
-            if (!alert?.geometry?.length) {
+            const geometry = this._getAlertGeometry(alert);
+            if (!geometry) {
                 continue;
             }
-            // Geometry format: [[[lon, lat], ...]] or [[lon, lat], ...] after API change
-            const geometry = alert.geometry;
-            
-            // Detect format and get the actual rings
-            let ringsArray = [];
-            if (geometry.length > 0 && Array.isArray(geometry[0])) {
-                if (geometry[0].length === 2 && typeof geometry[0][0] === 'number') {
-                    // This is a single ring: [[lon, lat], [lon, lat], ...] 
-                    ringsArray = [geometry];  // Wrap as [ring] for _pointInPolygon
-                } else if (Array.isArray(geometry[0][0])) {
-                    // This is multiple rings: [[[lon, lat], ...], [[lon, lat], ...], ...]
-                    ringsArray = geometry;
-                }
-            }
-            
-            for (const ring of ringsArray) {
-                // Each ring needs to be wrapped in an array for _pointInPolygon
-                if (this._pointInPolygon(point, [ring])) {
+            if (geometry.type === 'Polygon') {
+                if (this._pointInPolygon(point, geometry.coordinates)) {
                     matches.push(alert);
-                    break;
+                }
+                continue;
+            }
+
+            if (geometry.type === 'MultiPolygon') {
+                for (const rings of geometry.coordinates) {
+                    if (this._pointInPolygon(point, rings)) {
+                        matches.push(alert);
+                        break;
+                    }
                 }
             }
         }
@@ -442,14 +473,15 @@ class Layers {
         if (hasAlerts) {
             const items = alerts.map((alert, index) => {
 
-                const alertIssued = new Date(alert.issued).toLocaleTimeString(undefined, {
+                const issuedAt = alert.issued || alert.receivedAt;
+                const alertIssued = new Date(issuedAt).toLocaleTimeString(undefined, {
                     hour: '2-digit',
                     minute: '2-digit'
                 });
 
                 const alertExpiry = (() => {
                     const now = new Date();
-                    const expiryDate = new Date(alert.expiry);
+                    const expiryDate = new Date(alert.expiry || alert.expiresAt);
                     const diffMs = expiryDate - now;
                     const diffMins = Math.floor(diffMs / 60000);
                     
@@ -462,15 +494,16 @@ class Layers {
                 })();
 
                 const colors = this._getAlertColor(alert);
-                const title = alert.name || 'Alert';
-                const issued = alert.issued ? `Issued: ${alertIssued}` : '';
-                const expiry = alert.expiry ? `Expires: ${alertExpiry}` : '';
+                const title = this._getAlertName(alert);
+                const issued = issuedAt ? `Issued: ${alertIssued}` : '';
+                const expiry = alert.expiry || alert.expiresAt ? `Expires: ${alertExpiry}` : '';
 
-                const is_pds = alert.message.toLowerCase().includes('particularly dangerous situation');
-                const is_confirmed = alert.message.toLowerCase().includes('tornado...observed');
-                const is_destructive = alert.message.toLowerCase().includes('destructive') || alert.message.toLowerCase().includes('catastrophic');
-                const is_considerable = alert.message.toLowerCase().includes('considerable');
-                const is_tor_possible = alert.message.toLowerCase().includes('tornado...possible');
+                const alertMessage = this._getAlertMessage(alert);
+                const is_pds = alert.properties?.isPds ?? alertMessage.includes('particularly dangerous situation');
+                const is_confirmed = alertMessage.includes('tornado...observed');
+                const is_destructive = alert.properties?.isDestructive ?? (alertMessage.includes('destructive') || alertMessage.includes('catastrophic'));
+                const is_considerable = alert.properties?.isConsiderable ?? alertMessage.includes('considerable');
+                const is_tor_possible = alertMessage.includes('tornado...possible');
 
                 const meta = `
                 ${expiry}
@@ -608,12 +641,13 @@ class Layers {
 
     _showAlertDialog(alert) {
         const colors = this._getAlertColor(alert);
-        const title = alert.name || 'Alert';
-        const is_pds = alert.message.toLowerCase().includes('particularly dangerous situation');
-        const is_confirmed = alert.message.toLowerCase().includes('tornado...observed');
-        const is_destructive = alert.message.toLowerCase().includes('destructive') || alert.message.toLowerCase().includes('catastrophic');
-        const is_considerable = alert.message.toLowerCase().includes('considerable');
-        const is_tor_possible = alert.message.toLowerCase().includes('tornado...possible');
+        const title = this._getAlertName(alert);
+        const alertMessage = this._getAlertMessage(alert);
+        const is_pds = alert.properties?.isPds ?? alertMessage.includes('particularly dangerous situation');
+        const is_confirmed = alertMessage.includes('tornado...observed');
+        const is_destructive = alert.properties?.isDestructive ?? (alertMessage.includes('destructive') || alertMessage.includes('catastrophic'));
+        const is_considerable = alert.properties?.isConsiderable ?? alertMessage.includes('considerable');
+        const is_tor_possible = alertMessage.includes('tornado...possible');
         
         const formatDate = (dateStr) => {
             if (!dateStr) return 'N/A';
@@ -632,9 +666,9 @@ class Layers {
                 <div style="margin-bottom: 20px; padding: 15px; background: ${colors.fill}30; border-left: 4px solid ${colors.fill}; border-radius: 10px;">
                     <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.fill};">${is_pds ? 'PDS ' : ''}${is_confirmed ? 'Confirmed ' : ''}${is_destructive ? 'Destructive ' : ''}${is_considerable ? 'Considerable ' : ''}${title}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
-                        <strong>Issued:</strong> <span>${formatDate(alert.issued)}</span>
-                        <strong>Expires:</strong> <span>${formatDate(alert.expiry)}</span>
-                        ${alert.sender ? `<strong>Sender:</strong> <span>${alert.sender}</span>` : ''}
+                        <strong>Issued:</strong> <span>${formatDate(alert.issued || alert.receivedAt)}</span>
+                        <strong>Expires:</strong> <span>${formatDate(alert.expiry || alert.expiresAt)}</span>
+                        ${alert.sender || alert.nwsOffice ? `<strong>Sender:</strong> <span>${alert.sender || alert.nwsOffice}</span>` : ''}
                         ${is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                         ${alert?.alertInfo?.MAX_HAIL_SIZE ? `<strong>Hail:</strong> <span>${alert?.alertInfo?.MAX_HAIL_SIZE}${alert?.alertInfo?.HAIL_THREAT ? ', ' + alert?.alertInfo?.HAIL_THREAT : ''}</span>` : ''}
                         ${alert?.alertInfo?.MAX_WIND_GUST ? `<strong>Wind:</strong> <span>${alert?.alertInfo?.MAX_WIND_GUST}${alert?.alertInfo?.WIND_THREAT ? ', ' + alert?.alertInfo?.WIND_THREAT : ''}</span>` : ''}
@@ -805,12 +839,16 @@ class Layers {
         // Build a FeatureCollection with all enabled alerts
         const features = [];
         this.alerts.forEach((alert, index) => {
-            const alertSettings = this.alertService._getAlertSettings(alert.name);
+            const alertName = this._getAlertName(alert);
+            const alertSettings = this.alertService._getAlertSettings(alertName);
             if (!alertSettings.enabled) {
                 return;
             }
 
             const geojson = this._convertAlertToGeoJSON(alert);
+            if (!geojson) {
+                return;
+            }
             const colors = this._getAlertColor(alert);
             
             // Add color information to properties for data-driven styling
