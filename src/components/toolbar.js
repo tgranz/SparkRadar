@@ -1,4 +1,4 @@
-export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onLayerPickerClick) {    
+export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick) {    
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
 
@@ -36,6 +36,17 @@ export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onL
     toolbar.appendChild(openMenuButton);
     toolbar.appendChild(startSplitLayoutButton);
     toolbar.appendChild(openLayerPickerButton);
+
+    const drawButton = document.createElement('button');
+    drawButton.type = 'button';
+    drawButton.innerHTML = '<i class="ti ti-pencil"></i>';
+    drawButton.title = 'Draw on map';
+    drawButton.addEventListener('click', () => {
+        if (typeof onDrawClick === 'function') {
+            onDrawClick();
+        }
+    });
+    toolbar.appendChild(drawButton);
 
     const loader = document.createElement('div');
     loader.className = 'loader';

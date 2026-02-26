@@ -30,6 +30,7 @@ import Radar from "./js/radar.js";
 import RadarStatus from "./js/ui/radar_status.js";
 import Dialog from './js/ui/dialog.js';
 import AlertList from "./js/ui/alert_list.js";
+import Draw from "./js/ui/draw.js";
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -43,6 +44,11 @@ new Settings(); // Initialize settings to apply theme colors
 // See if there are URL parameters for station
 const urlParams = new URLSearchParams(window.location.search);
 const initialStation = urlParams.get('station') ? urlParams.get('station').toUpperCase() : 'KTLX';
+
+// Function to draw on the map
+function startDraw() {
+  new Draw();
+}
 
 // Function to store and set the current radars
 var mainRadar = {
@@ -200,6 +206,8 @@ window.addEventListener('keydown', (e) => {
     menu.open();
   } else if (e.key === 'l') {
     layerMenu.open();
+  } else if (e.key === 'd') {
+    startDraw();
   } else if (e.key === '1') {
     setRadar(null, 'N0B', 'main') // Reflectivity
   } else if (e.key === '2') {
@@ -254,7 +262,8 @@ const toolbar = createToolbar(
   },
   () => { menu.open(); },
   () => { new RadarStatus(mainRadar.station); },
-  () => { layerMenu.open(); }
+  () => { layerMenu.open(); },
+  () => { startDraw(); }
 );
 
 // Add the toolbar to the page
