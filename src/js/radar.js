@@ -7,7 +7,7 @@ This module handles the radar on a map.
 See LICENSE for more.
 */
 
-import { checkLatestL2RadarFile, checkLatestL3RadarFile, loadLatestL2RadarFile, loadLatestL3RadarFile } from '../parse/fetch.js';
+import { checkLatestL2RadarFile, checkLatestL3RadarFile, loadLatestL2RadarFile, loadLatestL3RadarFile, loadRadarFileFromUrl } from '../parse/fetch.js';
 import { Level2Radar } from '../parse/level2/src/index.js';
 import nexradLevel3Data from '../parse/level3/src/browser.js';
 
@@ -416,19 +416,26 @@ class Radar {
         const isLevel3 = this._isLevel3Layer(layer);
 
         try {
-            const latestBefore = isLevel3
-                ? await checkLatestL3RadarFile(radarStation, layer)
-                : await checkLatestL2RadarFile(radarStation);
-            console.log(`[getRadarLayer] About to fetch layer ${layer}, latest file: ${latestBefore}`);
-            if (isLevel3) {
-                this.latestRadarFiles.L3[layer] = latestBefore;
+            // If loading from URL, skip checking for latest
+            let radarFile;
+            if (options.fromUrl) {
+                console.log(`[getRadarLayer] Loading from URL: ${options.fromUrl}`);
+                radarFile = await loadRadarFileFromUrl(options.fromUrl);
             } else {
-                this.latestRadarFiles.L2 = latestBefore;
-            }
+                const latestBefore = isLevel3
+                    ? await checkLatestL3RadarFile(radarStation, layer)
+                    : await checkLatestL2RadarFile(radarStation);
+                console.log(`[getRadarLayer] About to fetch layer ${layer}, latest file: ${latestBefore}`);
+                if (isLevel3) {
+                    this.latestRadarFiles.L3[layer] = latestBefore;
+                } else {
+                    this.latestRadarFiles.L2 = latestBefore;
+                }
 
-            const radarFile = isLevel3
-                ? await loadLatestL3RadarFile(radarStation, layer)
-                : await loadLatestL2RadarFile(radarStation);
+                radarFile = isLevel3
+                    ? await loadLatestL3RadarFile(radarStation, layer)
+                    : await loadLatestL2RadarFile(radarStation);
+            }
             console.log(`[getRadarLayer] Loaded file: ${radarFile.fileName}`);
             const rawData = radarFile.data;
 

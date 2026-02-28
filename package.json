@@ -15,6 +15,7 @@
   "dependencies": {
     "buffer": "^6.0.3",
     "earcut": "^3.0.2",
+    "node-fetch": "^3.3.2",
     "seek-bzip": "^2.0.0",
     "vite-plugin-node-polyfills": "^0.25.0"
   }

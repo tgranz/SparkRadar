@@ -38,7 +38,7 @@ class Map {
             if (typeof this.callbacks.onChangeProduct === 'function') {
                 this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
             }
-        });
+        }, false);
         // Color table for radar values (default to REF)
         this.currentPalette = 'REF';
         this.colorTable = this.palettes.getPalette('REF');
@@ -335,12 +335,12 @@ class Map {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
                     this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
                 }
-            });
+            }, false);
             this.radarPicker = new RadarPicker('N0B', ['10px', 'calc(50% + 10px)', null, null], (product, tiltIndex) => {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
                     this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
                 }
-            });
+            }, false);
         } else {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
@@ -348,12 +348,12 @@ class Map {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
                     this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
                 }
-            });
+            }, false);
             this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
                     this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
                 }
-            });
+            }, false);
         }
 
         parent.style.setProperty('grid-template-columns', layout === 'vertical' ? '1fr 1fr' : '1fr');
@@ -462,7 +462,7 @@ class Map {
             if (typeof this.callbacks.onChangeProduct === 'function') {
                 this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
             }
-        });
+        }, false);
 
         const dualContainer = document.getElementById('map-dual');
         if (dualContainer) {
@@ -1354,6 +1354,35 @@ class Map {
 
     _handleAlertClick(target, event) {
         return this.layers._handleAlertClick(target, event);
+    }
+
+    rebuildRadarPicker(target = 'main', level2Only = false) {
+        const currentProduct = target === 'main' ? this.currentRadarProduct : this.currentRadarProductSplit;
+        const product = currentProduct || (target === 'main' ? 'N0B' : 'N0G');
+        
+        if (target === 'main') {
+            const coords = this.isSplit() 
+                ? (this.currentLayout === 'vertical' ? ['10px', 'calc(50% + 10px)', null, null] : ['10px', '10px', null, null])
+                : ['10px', '10px', null, null];
+            
+            try { this.radarPicker?.destroy(); } catch {}
+            this.radarPicker = new RadarPicker(product, coords, (prod, tiltIndex) => {
+                if (typeof this.callbacks.onChangeProduct === 'function') {
+                    this.callbacks.onChangeProduct(this._buildTiltedProduct(prod, tiltIndex));
+                }
+            }, level2Only);
+        } else if (target === 'split') {
+            const coords = this.currentLayout === 'vertical' 
+                ? ['10px', '10px', null, null]
+                : ['calc(50% + 10px)', '10px', null, null];
+            
+            try { this.splitRadarPicker?.destroy(); } catch {}
+            this.splitRadarPicker = new RadarPicker(product, coords, (prod, tiltIndex) => {
+                if (typeof this.callbacks.onChangeProductSplit === 'function') {
+                    this.callbacks.onChangeProductSplit(this._buildTiltedProduct(prod, tiltIndex));
+                }
+            }, level2Only);
+        }
     }
 }
 

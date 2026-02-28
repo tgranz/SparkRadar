@@ -14,8 +14,8 @@ const productLabels = {
     'N_K': 'Specific Differential Phase',
     'N_H': 'Hydrometer Classification',
     'N_X': 'Differential Reflectivity',
-    'REF': 'Raw Base Reflectivity',
-    'VEL': 'Raw Base Velocity',
+    'REF': 'Super-Res Base Reflectivity',
+    'VEL': 'Super-Res Base Velocity',
     'CC': 'Super-Res Correlation Coefficient',
     'KDP': 'Super-Res Specific Differential Phase',
     'SW': 'Super-Res Spectrum Width',
@@ -29,18 +29,19 @@ const productEntries = [
     { type: 'item', code: 'N_C', hasTiltOptions: true },
     { type: 'item', code: 'N_X', hasTiltOptions: true },
     { type: 'item', code: 'N_K', hasTiltOptions: true },
-    { type: 'item', code: 'N_H', hasTiltOptions: false },
+    { type: 'item', code: 'N_H', hasTiltOptions: true },
     { type: 'header', label: 'Super-Res Products (Level II)' },
     { type: 'item', code: 'REF', hasTiltOptions: false },
     { type: 'item', code: 'VEL', hasTiltOptions: false },
     { type: 'item', code: 'CC', hasTiltOptions: false },
-    //{ type: 'item', code: 'ZDR' }, <-- doesnt load
+    // { type: 'item', code: 'ZDR' }, <-- Error adding radar layer: Incorrect file type header: AR2V00
     //{ type: 'item', code: 'KDP' }, <-- looks wrong
     //{ type: 'item', code: 'SW' } <-- doesnt load
 ];
 
 class RadarPicker {
-    constructor(currentProduct, coords, onChangeProduct) {
+    constructor(currentProduct, coords, onChangeProduct, level2Only = false) {
+        this.level2Only = level2Only;
         this.picker = document.createElement('div');
         this.picker.classList.add('radar-picker');
         this.picker.style.top = coords[0] || '';
@@ -73,8 +74,18 @@ class RadarPicker {
         // Set the initial product
         this.setCurrentProduct(currentProduct);
 
+        // Filter entries based on level2Only flag
+        const filteredEntries = level2Only
+            ? productEntries.filter(entry => {
+                if (entry.type === 'header') {
+                    return entry.label.includes('Level II');
+                }
+                return entry.type === 'item' && ['REF', 'VEL', 'CC', 'ZDR', 'KDP', 'SW'].includes(entry.code);
+              })
+            : productEntries;
+
         // Create selectors for each product
-        productEntries.forEach((entry) => {
+        filteredEntries.forEach((entry) => {
             if (entry.type === 'header') {
                 const categoryHeader = document.createElement('div');
                 categoryHeader.classList.add('radar-product-category');
@@ -110,7 +121,7 @@ class RadarPicker {
                         const baseLabel = productLabels[entry.code] || entry.code;
                         this.currentProduct.textContent = baseLabel;
                         if (typeof onChangeProduct === 'function') {
-                            onChangeProduct(entry.code, selectedTilt);
+                            onChangeProduct(entry.code, selectedTilt || 0);
                         }
                     });
                     
@@ -133,7 +144,7 @@ class RadarPicker {
                     productItem.addEventListener('click', () => {
                         this.setCurrentProduct(entry.code);
                         if (typeof onChangeProduct === 'function') {
-                            onChangeProduct(entry.code);
+                            onChangeProduct(entry.code, 0);
                         }
                     });
                 }

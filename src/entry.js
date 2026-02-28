@@ -31,6 +31,7 @@ import RadarStatus from "./js/ui/radar_status.js";
 import Dialog from './js/ui/dialog.js';
 import AlertList from "./js/ui/alert_list.js";
 import Draw from "./js/ui/draw.js";
+import ArchiveBrowser from "./js/ui/archive_browser.js";
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -93,6 +94,12 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
         console.error(`Invalid mainOrSplit value: ${mainOrSplit}`);
         return;
     }
+    
+    // If in archive mode and switching products, use the archive URL
+    if (archiveMode[mainOrSplit] && !options.fromUrl) {
+        options = { ...options, fromUrl: archiveMode[mainOrSplit] };
+    }
+    
     try {
       showLoadingAnimation();
       const picker = mainOrSplit === 'split' ? map.splitRadarPicker : map.radarPicker;
@@ -194,6 +201,8 @@ const alertList = new AlertList(map.layers);
 // Keybinds
 // TODO: custom keybinds
 window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; // Ignore if typing in input or textarea
+
   if (e.key === 'm') {
     if (map.isSplit()) {
       map.stopSplit();
@@ -269,8 +278,33 @@ const toolbar = createToolbar(
 // Add the toolbar to the page
 document.body.appendChild(toolbar);
 
+// Function to load radar from archive URL and disable auto-updates
+window.loadRadarFromArchive = async function(url, station) {
+  autoUpdateEnabled = false;
+  archiveMode.main = url;
+  console.log('Auto-updates disabled. Loading archive file...');
+  await setRadar(station, 'REF', 'main', { fromUrl: url, gate_limit: -30 });
+  // Rebuild product picker to show only Level 2 products
+  map.rebuildRadarPicker('main', true);
+};
+
+// Function to re-enable auto-updates
+window.enableAutoUpdates = function() {
+  autoUpdateEnabled = true;
+  archiveMode.main = null;
+  archiveMode.split = null;
+  console.log('Auto-updates re-enabled.');
+  // Rebuild product picker to show all products
+  map.rebuildRadarPicker('main', false);
+  if (map.isSplit()) {
+    map.rebuildRadarPicker('split', false);
+  }
+};
+
 // Add the menu to the page
-const menu = new Menu();
+const menu = new Menu({
+    onArchiveBrowser: () => { new ArchiveBrowser({ onClose: () => menu.close() }); },
+});
 
 // Refresh handler to update radar data with debouncing and station change detection
 let updateInProgress = false;
@@ -280,6 +314,11 @@ let baselineCheckCount = { main: 0, split: 0 }; // Track how many checks we've s
 const STATION_CHANGE_DEBOUNCE = 5000; // 5 second debounce after station change
 const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
 var updateTimes = 0;
+var updateIntervalId = null;
+var autoUpdateEnabled = true;
+
+// Track archive mode
+var archiveMode = { main: null, split: null }; // Stores archive URL when in archive mode
 
 // Track when stations or products change
 // tbh i dont know why this is here
@@ -303,8 +342,8 @@ setRadar = async function(station, product, mainOrSplit, options) {
   return originalSetRadar(station, product, mainOrSplit, options);
 };
 
-setInterval(async () => {
-  if (updateInProgress) return;
+updateIntervalId = setInterval(async () => {
+  if (!autoUpdateEnabled || updateInProgress) return;
   updateInProgress = true;
   updateTimes ++;
   try {

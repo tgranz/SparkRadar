@@ -35,6 +35,7 @@ class Dialog {
 
         const closeBtn = document.createElement('button');
         closeBtn.classList.add('menu-close-btn');
+        closeBtn.classList.add('dialog-close');
         closeBtn.innerHTML = '<i class="ti ti-x"></i>';
         closeBtn.addEventListener('click', () => this.close());
 

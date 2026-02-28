@@ -211,4 +211,59 @@ async function checkLatestL3RadarFile(station, product = null) {
     }
 }
 
-export { checkLatestL2RadarFile, checkLatestL3RadarFile, loadLatestL2RadarFile, loadLatestL3RadarFile };
+async function queryL2Archive(bucketPrefix) {
+    const keys = await listKeysForPrefix(bucketPrefix);
+    const level2 = keys.filter((k) => k.endsWith('_V06'));
+    if (level2.length === 0) {
+        throw new Error(`No radar files found with prefix ${bucketPrefix}`);
+    }
+    level2.sort();
+    return level2.map((key) => {
+        const filename = key.split('/').slice(-1)[0];
+        const parts = filename.split('_');
+        // parts[0] = STATIONYYYYMMDD, parts[1] = HHMMSS, parts[2] = V06
+        const stationAndDate = parts[0];
+        const timeStr = parts[1];
+        
+        // Extract date (last 8 characters of first part)
+        const dateStr = stationAndDate.slice(-8); // YYYYMMDD
+        const yyyy = dateStr.slice(0, 4);
+        const mm = dateStr.slice(4, 6);
+        const dd = dateStr.slice(6, 8);
+        
+        // Extract time
+        const hh = timeStr.slice(0, 2);
+        const min = timeStr.slice(2, 4);
+        const ss = timeStr.slice(4, 6);
+        
+        // Construct ISO timestamp
+        const dateTime = `${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}Z`;
+        
+        return {
+            dateTime,
+            url: `${BUCKET_URL}/${key}`
+        };
+    });
+}
+
+async function loadRadarFileFromUrl(url) {
+    const fileName = url.split('/').pop();
+    console.log(`Fetching radar file from URL: ${fileName}`);
+    const arrayBuffer = await downloadFile(url);
+    return {
+        data: Buffer.from(arrayBuffer),
+        fileName: fileName,
+        url: url
+    };
+}
+
+export { 
+    checkLatestL2RadarFile,
+    checkLatestL3RadarFile,
+    loadLatestL2RadarFile,
+    loadLatestL3RadarFile,
+    queryL2Archive,
+    listKeysForPrefix,
+    loadRadarFileFromUrl,
+    BUCKET_URL
+};

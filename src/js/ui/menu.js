@@ -45,6 +45,7 @@ class Menu {
         // Create menu items
         const menuList = document.createElement('ul');
         const menuItems = [
+            { label: 'Archive Browser (BETA)', icon: 'archive', onClick: () => { this.close(); setTimeout(() => { callbacks.onArchiveBrowser?.(); }, 250); } },
             { label: 'Settings', icon: 'settings', onClick: () => { this.close(); setTimeout(() => { new Settings().showSettingsMenu(); }, 250); } },
             { label: 'About', icon: 'info-circle', onClick: () => { this.close(); setTimeout(() => { about(); }, 250); } },
             { label: 'Help', icon: 'help-circle', onClick: () => { window.location = 'https://wiki.sparkradar.app/'; } },
