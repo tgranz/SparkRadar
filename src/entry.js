@@ -32,6 +32,7 @@ import Dialog from './js/ui/dialog.js';
 import AlertList from "./js/ui/alert_list.js";
 import Draw from "./js/ui/draw.js";
 import ArchiveBrowser from "./js/ui/archive_browser.js";
+import Inspector from "./js/ui/inspector.js";
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -39,8 +40,9 @@ import { hideLoadingAnimation, showLoadingAnimation } from "./js/ui/loader.js";
 import { layerMenu } from "./components/layer_menu.js";
 
 // Set custom colors
+
 import Settings from './js/ui/settings.js';
-new Settings(); // Initialize settings to apply theme colors
+window.settingsInstance = new Settings(); // Expose globally for color customization
 
 // See if there are URL parameters for station
 const urlParams = new URLSearchParams(window.location.search);
@@ -183,13 +185,13 @@ const map = new Map({
   onChangeProductSplit: async (product) => setRadar(null, product, 'split'),
   onSelectStation: async (station) => {
     await setRadar(station, null, 'main');
-    if (map.isSplit()) {
+    if (map.hasSplitMap()) {
       await setRadar(station, null, 'split');
     }
   },
   onSelectStationSplit: async (station) => {
     await setRadar(station, null, 'split');
-    if (map.isSplit()) {
+    if (map.hasSplitMap()) {
       await setRadar(station, null, 'main');
     }
   },
@@ -237,6 +239,10 @@ map.setRadar(radar); // Set radar instance on map for split view
 // Initialize layer menu toggles
 layerMenu.init(map);
 
+// Initialize inspector
+const inspector = new Inspector(map);
+var inspectorEnabled = false;
+
 // Initial map render
 map.map.on('load', async () => {
     // Add radar stations
@@ -272,7 +278,23 @@ const toolbar = createToolbar(
   () => { menu.open(); },
   () => { new RadarStatus(mainRadar.station); },
   () => { layerMenu.open(); },
-  () => { startDraw(); }
+  () => { startDraw(); },
+  () => { 
+    if (map.isSplit()) {
+      map.stopSplit();
+    } else {
+      map.splitGl();
+    }
+  },
+  () => {
+    // Toggle inspector
+    inspectorEnabled = !inspectorEnabled;
+    if (inspectorEnabled) {
+      inspector.enable();
+    } else {
+      inspector.disable();
+    }
+  }
 );
 
 // Add the toolbar to the page
@@ -296,7 +318,7 @@ window.enableAutoUpdates = function() {
   console.log('Auto-updates re-enabled.');
   // Rebuild product picker to show all products
   map.rebuildRadarPicker('main', false);
-  if (map.isSplit()) {
+  if (map.hasSplitMap()) {
     map.rebuildRadarPicker('split', false);
   }
 };
@@ -380,7 +402,7 @@ updateIntervalId = setInterval(async () => {
     }
 
     // Only check split map if it exists and station hasn't changed recently
-    if (map.isSplit() && Date.now() - lastStationChangeTime.split > STATION_CHANGE_DEBOUNCE) {
+    if (map.hasSplitMap() && Date.now() - lastStationChangeTime.split > STATION_CHANGE_DEBOUNCE) {
       const splitProduct = map.currentRadarProductSplit || splitRadar.product;
       const currentSplitRadarKey = `${splitRadar.station}_${splitProduct}_${inferLevelFromProduct(splitProduct)}`;
       const lastSplitRadarKey = lastCheckedRadar.split;
@@ -443,40 +465,3 @@ if (localStorage.getItem('firstUse') !== 'true') {
   `);
   localStorage.setItem('firstUse', 'true');
 }
-
-
-/* Inspector: TODO
-
-let lastInspectValue = undefined;
-    let lastInspectAt = 0;
-    map.map.on('mousemove', (e) => {
-      if (!map.currentGeojson) return;
-      const point = [e.lngLat.lng, e.lngLat.lat];
-      const value = map._findValueAtPoint(map.currentGeojson, point);
-      const now = Date.now();
-      if (value === lastInspectValue && now - lastInspectAt < 250) return;
-      lastInspectValue = value;
-      lastInspectAt = now;
-      if (value === null) {
-        const bounds = map.inspectBounds;
-        if (bounds) {
-          const lng = e.lngLat.lng;
-          const lat = e.lngLat.lat;
-          const outside = lng < bounds[0][0] || lng > bounds[1][0] || lat < bounds[0][1] || lat > bounds[1][1];
-          if (outside) {
-            console.log('[Inspector] val: no data (outside bounds)');
-            return;
-          }
-        }
-        const swappedValue = map._findValueAtPoint(map.currentGeojson, [point[1], point[0]]);
-        if (swappedValue !== null) {
-          console.log(`[Inspector] val: ${swappedValue} (swapped lat/lng)`);
-          return;
-        }
-        console.log('[Inspector] val: no data');
-        return;
-      }
-      console.log(`[Inspector] val: ${value}`);
-    });
-
-*/

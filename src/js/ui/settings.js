@@ -18,75 +18,36 @@ const paletteKeyMap = {
 // Alert type configurations organized by category
 const ALERT_CATEGORIES = {
     'Severe': {
-        "Tornado Warning": { color: '#ff2121' },
         "Tornado Emergency": { color: '#ae21ff' },
         "PDS Tornado Warning": { color: '#ff00ff' },
+        "Tornado Warning": { color: '#ff2121' },
         "Severe Thunderstorm Warning": { color: '#ff9900' },
-        "Severe Weather Statement": { color: '#facc15' },
         "Special Weather Statement": { color: '#facc15' }
-
-    },
-    'Winter': {
-        "Blizzard Warning": { color: '#00d4ff' },
-        "Winter Storm Warning": { color: '#00d4ff' },
-        "Winter Storm Watch": { color: '#00d4ff' },
-        "Winter Weather Advisory": { color: '#00d4ff' },
-        "Snow Squall Warning": { color: '#00d4ff' }
     },
     'Flood': {
+        "Flash Flood Emergency": { color: '#1ed400' },
         "Flash Flood Warning": { color: '#38f852' },
+        "Flash Flood Watch": { color: '#27bd3b' },
         "Flood Warning": { color: '#27beff' },
-        "Flood Watch": { color: '#0284c7' },
-        "Flood Advisory": { color: '#06b6d4' },
-        "Flood Statement": { color: '#06b6d4' }
     },
     'Marine': {
-        "Coastal Flood Advisory": { color: '#65e8ff' },
-        "Coastal Flood Statement": { color: '#65e8ff' },
-        "Coastal Flood Warning": { color: '#17dcff' },
-        "Coastal Flood Watch": { color: '#43cde6' },
-        "Lakeshore Flood Advisory": { color: '#008cff' },
-        "Lakeshore Flood Statement": { color: '#008cff' },
-        "Lakeshore Flood Warning": { color: '#006ac0' },
-        "Lakeshore Flood Watch": { color: '#005ba5' },
-        "Marine Weather Statement": { color: '#06b6d4' },
         "Special Marine Warning": { color: '#1406d4' },
-        "Storm Surge Warning": { color: '#3500af' },
-        "Storm Surge Watch": { color: '#5f1aff' },
-        "Rip Current Statement": { color: '#06b6d4' },
-    },
-    'Tropical': {
-        "Hurricane Warning": { color: '#ff0a84' },
-        "Hurricane Watch": { color: '#bb0048' },
-        "Hurricane Force Wind Warning": { color: '#ff5bad' },
-        "Hurricane Force Wind Watch": { color: '#e069a5' },
-        "Tropical Storm Warning": { color: '#ffc355' },
-        "Tropical Storm Watch": { color: '#e2a73a' },
-        "Typhoon Warning": { color: '#ff0a84' },
-        "Typhoon Watch": { color: '#bb0048' }
+        "Marine Weather Statement": { color: '#06b6d4' },
     },
     'Seismic': {
-        "Tsunami Advisory": { color: '#007a10' },
         "Tsunami Warning": { color: '#00b418' },
-        "Tsunami Watch": { color: '#00b118' },
         "Earthquake Warning": { color: '#b40000' },
         "Volcano Warning": { color: '#ff8800' }
     },
-    'Wind': {
-        "Wind Advisory": { color: '#a4af00' },
-        "Blowing Dust Advisory": { color: '#772a00' },
-        "Blowing Dust Warning": { color: '#551e00' },
-        "Dust Storm Warning": { color: '#c76531' }
-    },
-    'Avalanche': {
-        "Avalanche Advisory": { color: '#9550a7' },
+    'Winter': {
         "Avalanche Warning": { color: '#d52dff' },
-        "Avalanche Watch": { color: '#b23acf' }
+        "Avalanche Watch": { color: '#b23acf' },
+        "Snow Squall Warning": { color: '#00d4ff' }
     },
-    'Hazards': {
-        "Hazardous Materials Warning": { color: '#f700ff' },
-        "Nuclear Power Plant Warning": { color: '#f700ff' },
-        "Radiological Hazard Warning": { color: '#f700ff' }
+    'Miscellaneous': {
+        "Extreme Wind Warning": { color: '#ff00ff' },
+        "Shelter in Place Warning": { color: '#f700ff' },
+        "Dust Storm Warning": { color: '#c76531' }
     }
 };
 
@@ -427,6 +388,8 @@ export default class Settings {
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
             secondaryBorderColor: '#27beff',
+            watchColor: '#38bdf8',
+            mdColor: '#fbbf24',
             ...alertDefaults
         };
 

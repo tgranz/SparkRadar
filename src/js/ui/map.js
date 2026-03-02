@@ -12,9 +12,8 @@ import { createSplitToolbar } from "../../components/split_toolbar.js";
 import Palettes from "../palettes.js";
 import { showLoadingAnimation, hideLoadingAnimation } from "./loader.js";
 import RadarPicker from "./radar_picker.js";
-import Popup from "./popup.js";
-import Dialog from "./dialog.js";
 import Layers from "../layers.js";
+import Radar3D from "../3dradar.js";
 
 class Map {
     // Constructor function
@@ -24,6 +23,10 @@ class Map {
         this.map = new maplibregl.Map(params);
         this.isSyncing = false;
         this.tilt = 0;
+        this.splitType = null;
+        this.splitCanvas = null;
+        this.splitCanvasResizeObserver = null;
+        this.radar3D = null;
 
         // WebGL radar layer tracking
         this.currentRadarLayer = null;
@@ -32,6 +35,9 @@ class Map {
         this.currentMeshBounds = null;
         this.currentRadarProduct = null;
         this.currentRadarProductSplit = null;
+        this.currentGeojsonSplit = null;
+        this.currentMeshSplit = null;
+        this.currentMeshBoundsSplit = null;
         this.radar = null; // Store reference to radar instance
         this.palettes = new Palettes(); // Store palettes instance
         this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
@@ -125,6 +131,10 @@ class Map {
 
     // Function to open dual map view
     splitMap(layout = 'vertical', options = {}) {
+        if (this.isSplit()) {
+            this.stopSplit();
+        }
+
         showLoadingAnimation();
         const mainContainer = this.map.getContainer();
         const parent = mainContainer.parentElement;
@@ -142,8 +152,14 @@ class Map {
         if (!parent) return;
 
         parent.classList.add('split');
+        this.splitType = 'map-map';
+        this.splitCanvas = null;
+        this.radar3D = null;
         this.currentLayout = layout;
-        this.setSplitLayout(layout);
+
+        // Set grid layout early so containers are sized correctly
+        parent.style.setProperty('grid-template-columns', layout === 'horizontal' ? '1fr 1fr' : '1fr');
+        parent.style.setProperty('grid-template-rows', layout === 'vertical' ? '1fr 1fr' : '1fr');
 
         const dualContainer = document.createElement('div');
         dualContainer.id = 'map-dual';
@@ -161,6 +177,9 @@ class Map {
         // Show the split map toolbar
         const splitToolbar = createSplitToolbar(() => this.setSplitLayout(), () => this.stopSplit());
         parent.appendChild(splitToolbar);
+
+        // Create radar pickers now that dualMap exists
+        this._createSplitRadarPickers(layout);
 
         this.dualMap.on('load', async () => {
             // Sync the second map's view with the main map's view
@@ -231,11 +250,10 @@ class Map {
         };
         this.dualMap.on('move', this.moveListeners.dual);
 
-        if (this.layers.alertPopupClickHandlers.dual) {
-            this.dualMap.off('click', this.layers.alertPopupClickHandlers.dual);
+        // Set up click handlers for dual map through the Layers instance
+        if (this.layers?.setupDualMapClickHandlers) {
+            this.layers.setupDualMapClickHandlers();
         }
-        this.layers.alertPopupClickHandlers.dual = (e) => this.layers._handleAlertClick('dual', e);
-        this.dualMap.on('click', this.layers.alertPopupClickHandlers.dual);
 
         // Initialize cursor marker storage
         this.cursorMarkers = { mainMapCursorMarker: null, splitMapCursorMarker: null };
@@ -320,6 +338,60 @@ class Map {
         }
     }
 
+    splitGl(layout = 'vertical') {
+        if (this.isSplit()) {
+            this.stopSplit();
+        }
+
+        showLoadingAnimation();
+        const mainContainer = this.map.getContainer();
+        const parent = mainContainer.parentElement;
+        if (!parent) {
+            hideLoadingAnimation();
+            return;
+        }
+
+        parent.classList.add('split');
+        this.splitType = 'map-canvas';
+        this.currentLayout = layout;
+
+        const dualCanvas = document.createElement('canvas');
+        dualCanvas.id = 'map-dual';
+        dualCanvas.style.width = '100%';
+        dualCanvas.style.height = '100%';
+        dualCanvas.style.display = 'block';
+        parent.appendChild(dualCanvas);
+
+        this.splitCanvas = dualCanvas;
+        this.dualMap = null;
+        this.radar3D = new Radar3D(dualCanvas);
+
+        const syncCanvasSize = () => {
+            if (!this.splitCanvas || !this.radar3D) return;
+            const width = Math.max(1, Math.floor(this.splitCanvas.clientWidth));
+            const height = Math.max(1, Math.floor(this.splitCanvas.clientHeight));
+            if (this.splitCanvas.width !== width || this.splitCanvas.height !== height) {
+                this.splitCanvas.width = width;
+                this.splitCanvas.height = height;
+            }
+            // Render after sizing
+            this.radar3D.render();
+        };
+
+        if (typeof ResizeObserver !== 'undefined') {
+            this.splitCanvasResizeObserver?.disconnect();
+            this.splitCanvasResizeObserver = new ResizeObserver(() => syncCanvasSize());
+            this.splitCanvasResizeObserver.observe(dualCanvas);
+        }
+        syncCanvasSize();
+
+        const splitToolbar = createSplitToolbar(() => this.setSplitLayout(), () => this.stopSplit());
+        parent.appendChild(splitToolbar);
+
+        this.setSplitLayout(layout);
+        hideLoadingAnimation();
+    }
+
     setSplitLayout(layout = null) {
         const nextLayout = this.currentLayout === 'vertical' ? 'horizontal' : 'vertical';
 
@@ -328,7 +400,39 @@ class Map {
         const parent = this.map.getContainer().parentElement;
         if (!parent) return;
 
-        if (layout == 'vertical') {
+        const isMapMapSplit = this.splitType === 'map-map' && !!this.dualMap;
+
+        if (isMapMapSplit) {
+            // Recreate radar pickers for the new layout
+            this._createSplitRadarPickers(layout);
+        } else if (this.splitType === 'map-canvas') {
+            const currentProduct = this.currentRadarProduct || 'N0B';
+            const coords = layout === 'horizontal'
+                ? ['10px', 'calc(50% + 10px)', null, null]
+                : ['10px', '10px', null, null];
+
+            try { this.radarPicker.destroy(); } catch {}
+            try { this.splitRadarPicker?.destroy(); } catch {}
+            this.splitRadarPicker = null;
+            this.radarPicker = new RadarPicker(currentProduct, coords, (product, tiltIndex) => {
+                if (typeof this.callbacks.onChangeProduct === 'function') {
+                    this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
+                }
+            }, false);
+        }
+
+        parent.style.setProperty('grid-template-columns', layout === 'horizontal' ? '1fr 1fr' : '1fr');
+        parent.style.setProperty('grid-template-rows', layout === 'vertical' ? '1fr 1fr' : '1fr');
+
+        this.currentLayout = layout;
+    }
+
+    _createSplitRadarPickers(layout) {
+        const isMapMapSplit = this.splitType === 'map-map' && !!this.dualMap;
+
+        if (!isMapMapSplit) return;
+
+        if (layout === 'horizontal') {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
             this.splitRadarPicker = new RadarPicker('N0G', ['10px', '10px', null, null], (product, tiltIndex) => {
@@ -355,21 +459,22 @@ class Map {
                 }
             }, false);
         }
-
-        parent.style.setProperty('grid-template-columns', layout === 'vertical' ? '1fr 1fr' : '1fr');
-        parent.style.setProperty('grid-template-rows', layout === 'horizontal' ? '1fr 1fr' : '1fr');
-
-        this.currentLayout = layout;
     }
 
     isSplit() {
-        return !!this.dualMap;
+        return !!this.splitType && (!!this.dualMap || !!this.splitCanvas);
+    }
+
+    hasSplitMap() {
+        return this.splitType === 'map-map' && !!this.dualMap;
     }
 
     stopSplit() {
         const mainContainer = this.map.getContainer();
         const parent = mainContainer.parentElement;
         if (!parent) return;
+        const hadSplitMap = this.hasSplitMap();
+        const dualMapRef = this.dualMap;
 
         // Clean up move listeners
         if (this.moveListeners.main) {
@@ -419,15 +524,31 @@ class Map {
         parent.style.removeProperty('grid-template-columns');
         parent.style.removeProperty('grid-template-rows');
 
+        // Clean up layers from split/dual map before removing split map instance
+        if (hadSplitMap) {
+            this.clearAlerts('dual');
+            this.clearWatches('dual');
+            this.layers.clearOutlook('dual');
+        }
+
         if (this.dualMap) {
             this.dualMap.remove();
             this.dualMap = null;
         }
+        if (this.splitCanvas) {
+            this.splitCanvas.remove();
+            this.splitCanvas = null;
+        }
+        if (this.splitCanvasResizeObserver) {
+            this.splitCanvasResizeObserver.disconnect();
+            this.splitCanvasResizeObserver = null;
+        }
+        this.radar3D = null;
 
         // Clean up radar station layers and handlers from split/dual map
         if (this.radarStationHandlers?.dual) {
-            if (this.dualMap) {
-                this.dualMap.off('move', this.radarStationHandlers.dual);
+            if (dualMapRef) {
+                dualMapRef.off('move', this.radarStationHandlers.dual);
             }
             this.radarStationHandlers.dual = null;
         }
@@ -449,11 +570,6 @@ class Map {
         this.radarMarkers.dual.forEach(marker => marker.remove());
         this.radarMarkers.dual = [];
 
-        // Clean up layers from split/dual map
-        this.clearAlerts('dual');
-        this.clearWatches('dual');
-        this.layers.clearOutlook('dual');
-
         // Destroy the split map's radar picker if it exists and rebuild the main radar picker to reset its position
         try { this.splitRadarPicker.destroy(); } catch {}
         try { this.radarPicker.destroy(); } catch {}
@@ -473,6 +589,18 @@ class Map {
         if (splitToolbar) {
             parent.removeChild(splitToolbar);
         }
+
+        this.currentGeojsonSplit = null;
+        this.currentMeshSplit = null;
+        this.currentMeshBoundsSplit = null;
+        this.currentRadarProductSplit = null;
+
+        if (this.currentRadarProduct) {
+            const mainPalette = this._getPaletteForProduct(this.currentRadarProduct);
+            this._updatePalette(mainPalette, true);
+        }
+
+        this.splitType = null;
     }
 
     // Method to set radar instance
@@ -900,6 +1028,42 @@ class Map {
         return null;
     }
 
+    _findValueAtPointInMesh(meshData, meshBounds, point) {
+        if (!meshData || !(meshData instanceof Float32Array) || !meshBounds) {
+            return null;
+        }
+
+        const lng = point[0];
+        const lat = point[1];
+
+        // Check if point is within mesh bounds
+        if (lng < meshBounds[0] || lng > meshBounds[2] || lat < meshBounds[1] || lat > meshBounds[3]) {
+            return null;
+        }
+
+        // Search through mesh quads: 9 floats per quad (lon1, lat1, lon2, lat2, lon3, lat3, lon4, lat4, value)
+        for (let i = 0; i < meshData.length; i += 9) {
+            const lon1 = meshData[i];
+            const lat1 = meshData[i + 1];
+            const lon2 = meshData[i + 2];
+            const lat2 = meshData[i + 3];
+            const lon3 = meshData[i + 4];
+            const lat3 = meshData[i + 5];
+            const lon4 = meshData[i + 6];
+            const lat4 = meshData[i + 7];
+            const rawValue = meshData[i + 8];
+
+            // Check if point is inside this quad using ray casting
+            const ring = [[lon1, lat1], [lon2, lat2], [lon3, lat3], [lon4, lat4]];
+            if (this._pointInRing(point, ring)) {
+                const value = Number.isNaN(rawValue) ? 'rf' : rawValue;
+                return value;
+            }
+        }
+
+        return null;
+    }
+
     _renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer) {
         const vertexCount = vertexData.length / 6;
 
@@ -1070,6 +1234,10 @@ class Map {
             this.currentGeojson = radarGeoJson;
             this.currentMesh = null;
             this.currentMeshBounds = null;
+        } else {
+            this.currentGeojsonSplit = radarGeoJson;
+            this.currentMeshSplit = null;
+            this.currentMeshBoundsSplit = null;
         }
         if (isMainLayer) {
             this.currentRadarProduct = product;
@@ -1120,6 +1288,10 @@ class Map {
             this.currentMesh = meshData;
             this.currentMeshBounds = bounds || null;
             this.currentGeojson = null;
+        } else {
+            this.currentMeshSplit = meshData;
+            this.currentMeshBoundsSplit = bounds || null;
+            this.currentGeojsonSplit = null;
         }
         if (isMainLayer) {
             this.currentRadarProduct = product;
@@ -1190,13 +1362,13 @@ class Map {
                 markers.main.forEach(m => m.remove());
                 markers.main.length = 0;
                 
-                if (this.isSplit()) {
+                if (this.hasSplitMap()) {
                     markers.dual.forEach(m => m.remove());
                     markers.dual.length = 0;
                 }
 
                 const features = data.features;
-                const isSplit = this.isSplit();
+                const isSplit = this.hasSplitMap();
                 const callbacks = this.callbacks;
                 const mainMap = this.map;
                 const dualMap = this.dualMap;
@@ -1362,7 +1534,7 @@ class Map {
         
         if (target === 'main') {
             const coords = this.isSplit() 
-                ? (this.currentLayout === 'vertical' ? ['10px', 'calc(50% + 10px)', null, null] : ['10px', '10px', null, null])
+                ? (this.currentLayout === 'horizontal' ? ['10px', 'calc(50% + 10px)', null, null] : ['10px', '10px', null, null])
                 : ['10px', '10px', null, null];
             
             try { this.radarPicker?.destroy(); } catch {}
@@ -1372,7 +1544,10 @@ class Map {
                 }
             }, level2Only);
         } else if (target === 'split') {
-            const coords = this.currentLayout === 'vertical' 
+            if (!this.hasSplitMap()) {
+                return;
+            }
+            const coords = this.currentLayout === 'horizontal' 
                 ? ['10px', '10px', null, null]
                 : ['calc(50% + 10px)', '10px', null, null];
             

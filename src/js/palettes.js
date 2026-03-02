@@ -414,11 +414,9 @@ class Palettes {
         }
         const palString = this.palettes[name];
         if (Array.isArray(palString)) {
-            console.log(`[Palettes] Getting palette "${name}" - array format`);
             return palString;
         }
         const preview = typeof palString === 'string' ? palString.substring(0, 100) : String(palString);
-        console.log(`[Palettes] Getting palette "${name}" - first 100 chars:`, preview);
         return this.convertPalToArray(palString);
     }
 

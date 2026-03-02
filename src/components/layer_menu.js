@@ -32,7 +32,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Mesoscale Discussions</h3>
-                <p class="tag inprogress">WIP</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-mesoscale-discussions-layer" class="switch">
@@ -185,11 +185,23 @@ document.body.appendChild(menu);
 // Map closing actions
 document.getElementById('close-layer-menu').addEventListener('click', () => {
     menu.classList.add('layer-menu-hidden');
+
+    // Update the button
+    const openLayerPickerButton = document.getElementById('open-layer-picker-button');
+    if (openLayerPickerButton) {
+        openLayerPickerButton.classList.remove('selected');
+    }
 });
 
 document.onkeydown = (e) => {
     if (e.key === 'Escape') {
         menu.classList.add('layer-menu-hidden');
+
+        // Update the button
+        const openLayerPickerButton = document.getElementById('open-layer-picker-button');
+        if (openLayerPickerButton) {
+            openLayerPickerButton.classList.remove('selected');
+        }
     }
 };
 
@@ -202,10 +214,11 @@ function initializeLayerToggles(mapInstance) {
             return {
                 alertsEnabled: settings.alertsEnabled !== undefined ? settings.alertsEnabled : true,
                 watchesEnabled: settings.watchesEnabled !== undefined ? settings.watchesEnabled : true,
+                mesoscaleDiscussionsEnabled: settings.mesoscaleDiscussionsEnabled !== undefined ? settings.mesoscaleDiscussionsEnabled : false,
                 outlookDay: settings.outlookDay || null // 1, 2, 3, or null
             };
         } catch (e) {
-            return { alertsEnabled: true, watchesEnabled: true, outlookDay: null };
+            return { alertsEnabled: true, watchesEnabled: true, mesoscaleDiscussionsEnabled: false, outlookDay: null };
         }
     };
 
@@ -214,6 +227,7 @@ function initializeLayerToggles(mapInstance) {
     // Get UI elements
     const alertsCheckbox = document.getElementById('toggle-alerts-layer');
     const watchesCheckbox = document.getElementById('toggle-watches-layer');
+    const mesoscaleDiscussionsCheckbox = document.getElementById('toggle-mesoscale-discussions-layer');
     const day1OutlookCheckbox = document.getElementById('toggle-day-1-outlook-layer');
     const day2OutlookCheckbox = document.getElementById('toggle-day-2-outlook-layer');
     const day3OutlookCheckbox = document.getElementById('toggle-day-3-outlook-layer');
@@ -225,6 +239,9 @@ function initializeLayerToggles(mapInstance) {
     }
     if (watchesCheckbox) {
         watchesCheckbox.checked = settings.watchesEnabled;
+    }
+    if (mesoscaleDiscussionsCheckbox) {
+        mesoscaleDiscussionsCheckbox.checked = settings.mesoscaleDiscussionsEnabled;
     }
     if (day1OutlookCheckbox) {
         day1OutlookCheckbox.checked = settings.outlookDay === 1;
@@ -304,6 +321,30 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    if (mesoscaleDiscussionsCheckbox) {
+        mesoscaleDiscussionsCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings.mesoscaleDiscussionsEnabled = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            if (isChecked) {
+                // Fetch and display mesoscale discussions
+                mapInstance.layers.fetchMesoscaleDiscussions();
+            } else {
+                // Clear mesoscale discussions from map
+                mapInstance.layers.clearMesoscaleDiscussions('main');
+                if (mapInstance.isSplit()) {
+                    mapInstance.layers.clearMesoscaleDiscussions('dual');
+                }
+            }
+        });
+    }
+
     // Outlook toggle handlers - only one can be active at a time
     const handleOutlookToggle = (day, checkbox) => {
         if (!checkbox) return;
@@ -366,6 +407,9 @@ function initializeLayerToggles(mapInstance) {
         if (watchesCheckbox && watchesCheckbox.checked) {
             mapInstance.layers.fetchWatches();
         }
+        if (mesoscaleDiscussionsCheckbox && mesoscaleDiscussionsCheckbox.checked) {
+            mapInstance.layers.fetchMesoscaleDiscussions();
+        }
         // Fetch outlook if one is enabled
         if (day1OutlookCheckbox && day1OutlookCheckbox.checked) {
             mapInstance.layers.fetchOutlook(1);
@@ -381,6 +425,12 @@ function initializeLayerToggles(mapInstance) {
 const layerMenu = {
     open: function() {
         menu.classList.remove('layer-menu-hidden');
+
+        // Update the button
+        const openLayerPickerButton = document.getElementById('open-layer-picker-button');
+        if (openLayerPickerButton) {
+            openLayerPickerButton.classList.add('selected');
+        }
     },
     init: initializeLayerToggles
 };

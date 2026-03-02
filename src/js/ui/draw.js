@@ -47,92 +47,42 @@ export default class Draw {
     createToolbar() {
         this.toolbar = document.createElement('div');
         this.toolbar.id = 'draw-toolbar';
-        this.toolbar.style.cssText = `
-            position: fixed;
-            top: 52px;
-            left: 10px;
-            z-index: 1001;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(20px);
-            border: 1px solid gray;
-            padding: 10px 0;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            min-width: 50px;
-            align-items: center;
-        `;
 
-        // Color picker section
-        const colorSection = document.createElement('div');
-        colorSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px; align-items: center;';
-
+        // Color picker
         const colorPicker = document.createElement('input');
         colorPicker.type = 'color';
         colorPicker.value = this.currentColor;
-        colorPicker.style.cssText = `
-            width: 30px;
-            height: 30px;
-            border: none;
-            padding: 0;
-            cursor: pointer;
-        `;
+        colorPicker.classList.add('draw-color-picker');
+        
         colorPicker.addEventListener('input', (e) => {
             this.currentColor = e.target.value;
-            // Update custom color button borders
-            colorSection.querySelectorAll('button').forEach(btn => {
-                btn.style.border = '2px solid transparent';
-            });
         });
-        colorSection.appendChild(colorPicker);
-        this.toolbar.appendChild(colorSection);
+        this.toolbar.appendChild(colorPicker);
 
-        // Action buttons
-        const actionsSection = document.createElement('div');
-        actionsSection.style.cssText = 'display: flex; flex-direction: column; gap: 5px; margin-top: 10px;';
+        // Undo button
+        this.undoBtn = document.createElement('button');
+        this.undoBtn.innerHTML = '<i class="ti ti-arrow-back-up"></i>';
+        this.undoBtn.title = 'Undo last stroke (Ctrl+Z)';
+        this.undoBtn.addEventListener('click', () => this.undo());
+        this.toolbar.appendChild(this.undoBtn);
 
         // Clear button
         const clearBtn = document.createElement('button');
         clearBtn.innerHTML = '<i class="ti ti-trash"></i>';
+        clearBtn.style.backgroundColor = '#ff2121';
         clearBtn.title = 'Clear all drawings';
-        clearBtn.style.cssText = `
-            background-color: #ff2121;
-            color: white;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            cursor: pointer;
-            border: none;
-            font-size: 1.2em;
-        `;
         clearBtn.addEventListener('click', () => this.clear());
-        actionsSection.appendChild(clearBtn);
+        this.toolbar.appendChild(clearBtn);
 
         // Close button
         const closeBtn = document.createElement('button');
         closeBtn.innerHTML = '<i class="ti ti-x"></i>';
         closeBtn.title = 'Exit draw mode';
-        closeBtn.style.cssText = `
-            background-color: #666;
-            color: white;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            cursor: pointer;
-            border: none;
-            font-size: 1.2em;
-        `;
         closeBtn.addEventListener('click', () => this.close());
-        actionsSection.appendChild(closeBtn);
+        this.toolbar.appendChild(closeBtn);
 
-        this.toolbar.appendChild(actionsSection);
         document.body.appendChild(this.toolbar);
+        this.updateUndoButtonState();
     }
 
     setupEventListeners() {
@@ -168,6 +118,20 @@ export default class Draw {
             const mouseEvent = new MouseEvent('mouseup', {});
             this.canvas.dispatchEvent(mouseEvent);
         });
+
+        // Keyboard shortcuts
+        this.keydownHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.close();
+            } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                e.preventDefault();
+                this.undo();
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                this.clear();
+            }
+        };
+        document.addEventListener('keydown', this.keydownHandler);
 
         // Resize handler
         this.resizeHandler = () => this.resize();
@@ -233,6 +197,7 @@ export default class Draw {
     stopDrawing() {
         if (this.isDrawing && this.currentPath && this.currentPath.points.length > 0) {
             this.allPaths.push(this.currentPath);
+            this.updateUndoButtonState();
         }
         this.isDrawing = false;
         this.points = [];
@@ -300,6 +265,23 @@ export default class Draw {
         this.allPaths = [];
         this.points = [];
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.updateUndoButtonState();
+    }
+
+    undo() {
+        if (this.allPaths.length > 0) {
+            this.allPaths.pop();
+            this.redrawCanvas();
+            this.updateUndoButtonState();
+        }
+    }
+
+    updateUndoButtonState() {
+        if (this.undoBtn) {
+            this.undoBtn.disabled = this.allPaths.length === 0;
+            this.undoBtn.style.opacity = this.allPaths.length === 0 ? '0.5' : '1';
+            this.undoBtn.style.cursor = this.allPaths.length === 0 ? 'not-allowed' : 'pointer';
+        }
     }
 
     show() {
@@ -309,13 +291,18 @@ export default class Draw {
 
     close() {
         this.canvas.style.display = 'none';
-        this.toolbar.style.display = 'none';
+        this.toolbar.classList.add('draw-toolbar-closing');
+        setTimeout(() => {
+            this.toolbar.style.display = 'none';
+            this.toolbar.classList.remove('draw-toolbar-closing');
+        }, 200);
         this.clear();
     }
 
     destroy() {
         // Clean up event listeners
         window.removeEventListener('resize', this.resizeHandler);
+        document.removeEventListener('keydown', this.keydownHandler);
         
         // Remove DOM elements
         if (this.canvas && this.canvas.parentNode) {

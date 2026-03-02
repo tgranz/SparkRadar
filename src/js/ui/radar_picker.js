@@ -36,7 +36,7 @@ const productEntries = [
     { type: 'item', code: 'CC', hasTiltOptions: false },
     // { type: 'item', code: 'ZDR' }, <-- Error adding radar layer: Incorrect file type header: AR2V00
     //{ type: 'item', code: 'KDP' }, <-- looks wrong
-    //{ type: 'item', code: 'SW' } <-- doesnt load
+    //{ type: 'item', code: 'SW' } <-- blank?
 ];
 
 class RadarPicker {

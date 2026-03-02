@@ -78,7 +78,13 @@ export default class AlertList {
             const is_destructive = alert?.properties?.isDestructive ?? (alertMessage.includes('destructive') || alertMessage.includes('catastrophic'));
             const is_considerable = alert?.properties?.isConsiderable ?? alertMessage.includes('considerable');
             const is_tor_possible = alertMessage.includes('tornado...possible');
-            const colors = this.layersInstance?._getAlertColor(alert) || { fill: '#facc15', outline: '#facc15' };
+            const is_waterspout_possible = alertMessage.includes('waterspout...possible');
+            const colors = this.layersInstance?.alertLayer?._getAlertColor(alert) || { fill: '#facc15', outline: '#facc15' };
+
+            const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
+            const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
+            const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
+            const maxWindGust = windMatch ? windMatch[1].trim() : null;
 
             const has_valid_geometry = !!(alert?.geometry && (
                 (Array.isArray(alert.geometry) && alert.geometry.length > 0) ||
@@ -105,8 +111,9 @@ export default class AlertList {
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Expires:</strong> <span>${this.formatDate(alert.expiry || alert.expiresAt)}</span>
                         ${is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
-                        ${alert?.alertInfo?.MAX_HAIL_SIZE ? `<strong>Hail:</strong> <span>${alert?.alertInfo?.MAX_HAIL_SIZE}${alert?.alertInfo?.HAIL_THREAT ? ', ' + alert?.alertInfo?.HAIL_THREAT : ''}</span>` : ''}
-                        ${alert?.alertInfo?.MAX_WIND_GUST ? `<strong>Wind:</strong> <span>${alert?.alertInfo?.MAX_WIND_GUST}${alert?.alertInfo?.WIND_THREAT ? ', ' + alert?.alertInfo?.WIND_THREAT : ''}</span>` : ''}
+                        ${is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${maxHailSize ? `<strong>Max Hail:</strong> <span>${maxHailSize.toUpperCase()}</span>` : ''}
+                        ${maxWindGust ? `<strong>Max Wind:</strong> <span>${maxWindGust.toUpperCase()}</span>` : ''}
                     </div>
                     <div class="alert-btns">
                         ${has_valid_geometry ? `<button class="alert-btn" data-action="view-map">View on Map</button>` : ''}
@@ -119,8 +126,8 @@ export default class AlertList {
             // Add button event listeners
             const viewProductBtn = item.querySelector('[data-action="view-product"]');
             viewProductBtn.addEventListener('click', () => {
-                if (this.layersInstance?._showAlertDialog) {
-                    this.layersInstance._showAlertDialog(alert);
+                if (this.layersInstance?.alertLayer?._showAlertDialog) {
+                    this.layersInstance.alertLayer._showAlertDialog(alert);
                 } else {
                     console.warn('Layers instance not available for showing alert dialog');
                 }

@@ -1,6 +1,7 @@
 export function createSplitToolbar(onSplitLayoutToggle, onStopSplit) {
     const toolbar = document.createElement('div');
     toolbar.id = 'split-toolbar';
+    toolbar.style.setProperty('flex-direction', 'column');
 
     const stopSplitScreenButton = document.createElement('button');
     stopSplitScreenButton.type = 'button';
@@ -13,7 +14,7 @@ export function createSplitToolbar(onSplitLayoutToggle, onStopSplit) {
 
     const splitScreenLayoutChooser = document.createElement('button');
     splitScreenLayoutChooser.type = 'button';
-    splitScreenLayoutChooser.innerHTML = '<i class="ti ti-columns-2"></i>';
+    splitScreenLayoutChooser.innerHTML = '<i class="ti ti-layout-rows"></i>';
     splitScreenLayoutChooser.addEventListener('click', () => {
         if (typeof onSplitLayoutToggle === 'function') {
             onSplitLayoutToggle();

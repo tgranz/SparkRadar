@@ -1,14 +1,36 @@
-export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick) {    
+export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick) {    
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
+
+    const openLayerPickerButton = document.createElement('button');
+    openLayerPickerButton.type = 'button';
+    openLayerPickerButton.id = 'open-layer-picker-button';
+    openLayerPickerButton.innerHTML = '<i class="ti ti-stack-2"></i>';
+    openLayerPickerButton.style.fontSize = '1.3em'; // this icon looks smaller than the others, so make it bigger
+    openLayerPickerButton.title = 'Open layer menu';
+    openLayerPickerButton.addEventListener('click', () => {
+        if (typeof onLayerPickerClick === 'function') {
+            onLayerPickerClick();
+        }
+    });
 
     const startSplitLayoutButton = document.createElement('button');
     startSplitLayoutButton.type = 'button';
     startSplitLayoutButton.innerHTML = '<i class="ti ti-layout-rows"></i>';
     startSplitLayoutButton.title = 'Dual-radar view';
     startSplitLayoutButton.addEventListener('click', () => {
-        if (typeof onSplitLayout === 'function') {
-            onSplitLayout();
+        if (typeof onSplitMap === 'function') {
+            onSplitMap();
+        }
+    });
+
+    const start3dButton = document.createElement('button');
+    start3dButton.type = 'button';
+    start3dButton.innerHTML = '<i class="ti ti-chart-scatter"></i>';
+    start3dButton.title = '3D radar view';
+    start3dButton.addEventListener('click', () => {
+        if (typeof onSplit3d === 'function') {
+            onSplit3d();
         }
     });
 
@@ -22,21 +44,60 @@ export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onL
         }
     });
 
-    const openLayerPickerButton = document.createElement('button');
-    openLayerPickerButton.type = 'button';
-    openLayerPickerButton.innerHTML = '<i class="ti ti-stack-2"></i>';
-    openLayerPickerButton.style.fontSize = '1.3em'; // this icon looks smaller than the others, so make it bigger
-    openLayerPickerButton.title = 'Open layer menu';
-    openLayerPickerButton.addEventListener('click', () => {
-        if (typeof onLayerPickerClick === 'function') {
-            onLayerPickerClick();
+    toolbar.appendChild(openMenuButton);
+    toolbar.appendChild(openLayerPickerButton);
+    toolbar.appendChild(startSplitLayoutButton);
+    //toolbar.appendChild(start3dButton);
+
+    // Toolbox
+    const toolboxButton = document.createElement('button');
+    toolboxButton.type = 'button';
+    toolboxButton.innerHTML = '<i class="ti ti-tool"></i>';
+    toolboxButton.title = 'Toolbox';
+    toolbar.appendChild(toolboxButton);
+
+    const toolbox = document.createElement('div');
+    toolbox.id = 'toolbar-toolbox';
+    toolbox.classList.add('toolbox-hidden');
+
+    toolboxButton.addEventListener('click', () => {
+        const isHidden = toolbox.classList.contains('toolbox-hidden');
+        const isClosing = toolbox.classList.contains('toolbox-closing');
+
+        if (isHidden || isClosing) {
+            toolbox.classList.remove('toolbox-hidden', 'toolbox-closing');
+            toolbox.classList.add('toolbox-opening');
+            return;
+        }
+
+        toolbox.classList.remove('toolbox-opening');
+        toolbox.classList.add('toolbox-closing');
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            toolbox.classList.remove('toolbox-opening');
+            toolbox.classList.add('toolbox-closing');
         }
     });
 
-    toolbar.appendChild(openMenuButton);
-    toolbar.appendChild(startSplitLayoutButton);
-    toolbar.appendChild(openLayerPickerButton);
+    toolbox.addEventListener('animationend', () => {
+        if (toolbox.classList.contains('toolbox-closing')) {
+            toolbox.classList.remove('toolbox-closing');
+            toolbox.classList.add('toolbox-hidden');
+            toolboxButton.classList.remove('selected');
+        }
 
+        if (toolbox.classList.contains('toolbox-opening')) {
+            toolbox.classList.remove('toolbox-opening');
+            toolboxButton.classList.add('selected');
+        }
+    });
+
+    document.body.appendChild(toolbox);
+
+    const drawDiv = document.createElement('div');
+    
     const drawButton = document.createElement('button');
     drawButton.type = 'button';
     drawButton.innerHTML = '<i class="ti ti-pencil"></i>';
@@ -44,9 +105,45 @@ export function createToolbar(onSplitLayout, onOpenMenu, onRadarStatusClick, onL
     drawButton.addEventListener('click', () => {
         if (typeof onDrawClick === 'function') {
             onDrawClick();
+            const isHidden = toolbox.classList.contains('toolbox-hidden');
+            const isClosing = toolbox.classList.contains('toolbox-closing');
+
+            if (isHidden || isClosing) {
+                toolbox.classList.remove('toolbox-hidden', 'toolbox-closing');
+                toolbox.classList.add('toolbox-opening');
+                return;
+            }
+
+            toolbox.classList.remove('toolbox-opening');
+            toolbox.classList.add('toolbox-closing');
         }
     });
-    toolbar.appendChild(drawButton);
+    const drawLabel = document.createElement('span');
+    drawLabel.textContent = 'Draw';
+
+    drawDiv.appendChild(drawButton);
+    drawDiv.appendChild(drawLabel);
+
+    const inspectorDiv = document.createElement('div');
+
+    const inspectorButton = document.createElement('button');
+    inspectorButton.type = 'button';
+    inspectorButton.id = 'inspector-button';
+    inspectorButton.innerHTML = '<i class="ti ti-viewfinder"></i>';
+    inspectorButton.title = 'Inspector';
+    inspectorButton.addEventListener('click', () => {
+        if (typeof onInspectorClick === 'function') {
+            onInspectorClick();
+        }
+    });
+
+    inspectorDiv.appendChild(inspectorButton);
+    const inspectorLabel = document.createElement('span');
+    inspectorLabel.textContent = 'Inspector';
+    inspectorDiv.appendChild(inspectorLabel);
+
+    toolbox.appendChild(inspectorDiv);
+    toolbox.appendChild(drawDiv);
 
     const loader = document.createElement('div');
     loader.className = 'loader';
