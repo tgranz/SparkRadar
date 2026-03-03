@@ -186,12 +186,6 @@ class AlertLayer {
     }
 
     _handleAlertClick(target, event) {
-        // If a popup is currently open, close it rather than opening another
-        if (this.alertPopups[target]) {
-            this._clearAlertPopup(target);
-            return;
-        }
-        
         const point = [event.lngLat.lng, event.lngLat.lat];
         console.log(`[AlertLayer] Clicked at point: [${point[0]}, ${point[1]}]`);
         const alertMatches = this._getAlertsAtPoint(point);
@@ -295,8 +289,13 @@ class AlertLayer {
         this.alertPopupLocations[target] = lngLat;
         this._updateAlertPopupPosition(target);
 
-        // Add click listeners to popup items
+        // Prevent clicks on the popup container from reaching the map
         const el = popupElement.get();
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // Add click listeners to popup items
         const popupItems = el.querySelectorAll('.popup-item[data-type="alert"]');
         popupItems.forEach(item => {
             item.addEventListener('click', (e) => {

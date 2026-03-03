@@ -13,10 +13,13 @@ import AlertLayer from "./layers/alerts.js";
 import WatchLayer from "./layers/watches.js";
 import MesoscaleDiscussionLayer from "./layers/mesoscale_discussions.js";
 import OutlookLayer from "./layers/outlooks.js";
+import StormCentersLayer from "./layers/storm_centers.js";
 
 class Layers {
     constructor(mapInstance) {
         this.map = mapInstance;
+        this.openPopup = null;  // Track currently open popup
+        this.stormCenterHovered = false;  // Flag set when hovering over storm center marker
 
         // Initialize AlertService
         this.alertService = new AlertService();
@@ -26,9 +29,36 @@ class Layers {
         this.watchLayer = new WatchLayer(mapInstance);
         this.mdLayer = new MesoscaleDiscussionLayer(mapInstance);
         this.outlookLayer = new OutlookLayer(mapInstance);
+        this.stormCentersLayer = new StormCentersLayer(mapInstance);
 
         // Mobile device detection
         this.isMobileDevice = this.alertService.isMobileDevice;
+
+        // Create empty webgl layer as a placeholder
+        this.map.map.on('load', () => {
+            // Add an empty GeoJSON source
+            this.map.map.addSource('empty-source', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'FeatureCollection',
+                    'features': [] // Empty features array
+                }
+            });
+
+            // Add a layer (e.g., a circle layer) using that source
+            this.map.map.addLayer({
+                'id': 'radar-webgl',
+                'type': 'circle',
+                'source': 'empty-source'
+            }, 'Pier');
+        });
+
+        // Now load all layers
+        this.displayAlerts();
+        this.displayWatches();
+        this.displayMesoscaleDiscussions();
+        this.displayOutlook();
+        this.displayStormCenters();
         
         if (this.isMobileDevice) {
             console.log('[Layers] Mobile device detected - performance optimizations enabled (flashing disabled)');
@@ -58,16 +88,41 @@ class Layers {
 
     _setupClickHandlers() {
         const handleClick = (target) => (e) => {
-            const point = [e.lngLat.lng, e.lngLat.lat];
+            // Ignore clicks on UI elements
+            if (e.originalEvent.target !== this.map?.map?.getCanvas()) return;
+            
+            // If hovering over storm center, don't open popup
+            if (this.stormCenterHovered) {
+                return;
+            }
+            
+            // If a popup is already open, close it and don't open a new one
+            if (this.openPopup) {
+                this._closePopup();
+                return;
+            }
+            
+            const lngLat = e.lngLat;
+            const point2d = [lngLat.lng, lngLat.lat];
             
             // Get matches from all layer types
             const alertResult = this.alertLayer._handleAlertClick(target, e);
             const alertMatches = alertResult.alertMatches;
-            const watchMatches = this.watchLayer._getWatchesAtPoint(point);
-            const mdMatches = this.mdLayer._getMesoscaleDiscussionsAtPoint(point);
+            const watchMatches = this.watchLayer._getWatchesAtPoint(point2d);
+            const mdMatches = this.mdLayer._getMesoscaleDiscussionsAtPoint(point2d);
             
-            // Show unified popup if any matches found
-            this._showUnifiedPopup(target, e.lngLat, alertMatches, watchMatches, mdMatches);
+            // Close popup if no matches found
+            if (!alertMatches || alertMatches.length === 0) {
+                if (!watchMatches || watchMatches.length === 0) {
+                    if (!mdMatches || mdMatches.length === 0) {
+                        this._closePopup();
+                        return;
+                    }
+                }
+            }
+            
+            // Show unified popup if any matches found (storm centers handled separately)
+            this._showUnifiedPopup(target, lngLat, alertMatches, watchMatches, mdMatches);
         };
 
         if (this.map?.map) {
@@ -81,16 +136,41 @@ class Layers {
      */
     setupDualMapClickHandlers() {
         const handleClick = (target) => (e) => {
-            const point = [e.lngLat.lng, e.lngLat.lat];
+            // Ignore clicks on UI elements
+            if (e.originalEvent.target !== this.map?.dualMap?.getCanvas()) return;
+            
+            // If hovering over storm center, don't open popup
+            if (this.stormCenterHovered) {
+                return;
+            }
+            
+            // If a popup is already open, close it and don't open a new one
+            if (this.openPopup) {
+                this._closePopup();
+                return;
+            }
+            
+            const lngLat = e.lngLat;
+            const point2d = [lngLat.lng, lngLat.lat];
             
             // Get matches from all layer types
             const alertResult = this.alertLayer._handleAlertClick(target, e);
             const alertMatches = alertResult.alertMatches;
-            const watchMatches = this.watchLayer._getWatchesAtPoint(point);
-            const mdMatches = this.mdLayer._getMesoscaleDiscussionsAtPoint(point);
+            const watchMatches = this.watchLayer._getWatchesAtPoint(point2d);
+            const mdMatches = this.mdLayer._getMesoscaleDiscussionsAtPoint(point2d);
             
-            // Show unified popup if any matches found
-            this._showUnifiedPopup(target, e.lngLat, alertMatches, watchMatches, mdMatches);
+            // Close popup if no matches found
+            if (!alertMatches || alertMatches.length === 0) {
+                if (!watchMatches || watchMatches.length === 0) {
+                    if (!mdMatches || mdMatches.length === 0) {
+                        this._closePopup();
+                        return;
+                    }
+                }
+            }
+            
+            // Show unified popup if any matches found (storm centers handled separately)
+            this._showUnifiedPopup(target, lngLat, alertMatches, watchMatches, mdMatches);
         };
 
         if (this.map?.dualMap) {
@@ -123,6 +203,9 @@ class Layers {
         const hasMDs = mdMatches && mdMatches.length > 0;
         
         if (!hasAlerts && !hasWatches && !hasMDs) return;
+        
+        // Close any open popup before showing a new one
+        this._closePopup();
 
         // Build sections for the popup
         const sections = [];
@@ -141,19 +224,29 @@ class Layers {
 
         const html = sections.join('');
         const popup = new Popup(html);
-        popup.addToMap(map);
-
+        this.openPopup = popup;  // Track the open popup
+        
         const el = popup.get();
         el.style.position = 'absolute';
         el.style.transform = 'translate(-50%, -100%)';
         el.style.pointerEvents = 'auto';
         el.style.zIndex = '2000';
+        
+        // Prevent clicks anywhere in the popup from reaching the map
+        el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+        });
+        
+        popup.addToMap(map);
+        popup.setLngLat(lngLat);
 
         // Set up click listeners for different item types
         const alertItems = el.querySelectorAll('.popup-item[data-type="alert"]');
         alertItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 const index = parseInt(item.dataset.index, 10);
                 if (alertMatches[index]) {
                     this.alertLayer._showAlertDialog(alertMatches[index]);
@@ -165,6 +258,7 @@ class Layers {
         watchItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 const index = parseInt(item.dataset.index, 10);
                 if (watchMatches[index]) {
                     this.watchLayer._showWatchDialog(watchMatches[index]);
@@ -176,6 +270,7 @@ class Layers {
         mdItems.forEach(item => {
             item.addEventListener('click', (e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 const index = parseInt(item.dataset.index, 10);
                 if (mdMatches[index]) {
                     this.mdLayer._showMDDialog(mdMatches[index]);
@@ -183,8 +278,40 @@ class Layers {
             });
         });
 
-        // Show popup using the alert layer (which handles positioning)
-        this.alertLayer.showAlertPopup(target, lngLat, alertMatches, popup);
+        // Position popup at the click location
+        popup.setLngLat(lngLat);
+
+        // Add handlers to update popup position when map moves or resizes
+        const updatePopupPosition = () => {
+            if (this.openPopup === popup) {
+                popup.setLngLat(lngLat);
+            }
+        };
+        
+        map.on('move', updatePopupPosition);
+        map.on('resize', updatePopupPosition);
+        
+        // Store handlers for cleanup
+        this.popupMoveHandler = updatePopupPosition;
+        this.popupMoveMap = map;
+    }
+
+    /**
+     * Close any open popup
+     */
+    _closePopup() {
+        if (this.openPopup) {
+            this.openPopup.removeFromMap();
+            this.openPopup = null;
+        }
+        
+        // Clean up move/resize handlers
+        if (this.popupMoveHandler && this.popupMoveMap) {
+            this.popupMoveMap.off('move', this.popupMoveHandler);
+            this.popupMoveMap.off('resize', this.popupMoveHandler);
+        }
+        this.popupMoveHandler = null;
+        this.popupMoveMap = null;
     }
 
     /**
@@ -227,6 +354,13 @@ class Layers {
      */
     get mesoscaleDiscussions() {
         return this.mdLayer.getMesoscaleDiscussions();
+    }
+
+    /**
+     * Get storm centers array
+     */
+    get stormCenters() {
+        return this.stormCentersLayer.getStormCenters();
     }
 
     /**
@@ -365,6 +499,10 @@ class Layers {
         this.outlookLayer.displayOutlook();
     }
 
+    displayStormCenters() {
+        this.stormCentersLayer.displayStormCenters();
+    }
+
     // Display on dual map methods
     displayAlertsOnDualMap() {
         this.alertLayer.displayAlertsOnDualMap();
@@ -380,6 +518,10 @@ class Layers {
 
     displayOutlookOnDualMap() {
         this.outlookLayer.displayOutlookOnDualMap();
+    }
+
+    displayStormCentersOnDualMap() {
+        this.stormCentersLayer.displayStormCentersOnDualMap();
     }
 
     // Clear methods - delegate to layer classes
@@ -399,9 +541,18 @@ class Layers {
         this.outlookLayer.clearOutlook(target);
     }
 
+    clearStormCenters(target = 'main') {
+        this.stormCentersLayer.clearStormCenters(target);
+    }
+
     // Outlook methods - delegate to OutlookLayer
     async fetchOutlook(day) {
         return await this.outlookLayer.fetchOutlook(day);
+    }
+
+    // Storm Centers methods - delegate to StormCentersLayer
+    async fetchStormCenters() {
+        return await this.stormCentersLayer.fetchStormCenters();
     }
 }
 

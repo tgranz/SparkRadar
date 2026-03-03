@@ -21,13 +21,34 @@ export function waitForRadarLayer(map, target) {
 
     // Otherwise, wait for it to be added
     return new Promise((resolve) => {
-        const onLayerAdd = () => {
+        let resolved = false;
+        const events = ['layeradd', 'styledata', 'data', 'idle'];
+
+        const cleanup = () => {
+            events.forEach((eventName) => {
+                map.off(eventName, onMapUpdate);
+            });
+        };
+
+        const onMapUpdate = () => {
             if (map.getLayer(radarLayerId)) {
-                map.off('layeradd', onLayerAdd);
+                if (resolved) return;
+                resolved = true;
+                cleanup();
                 resolve();
             }
         };
-        map.on('layeradd', onLayerAdd);
+
+        events.forEach((eventName) => {
+            map.on(eventName, onMapUpdate);
+        });
+
+        setTimeout(() => {
+            if (resolved) return;
+            resolved = true;
+            cleanup();
+            resolve();
+        }, 2500);
     });
 }
 

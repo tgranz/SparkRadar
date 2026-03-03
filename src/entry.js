@@ -33,6 +33,7 @@ import AlertList from "./js/ui/alert_list.js";
 import Draw from "./js/ui/draw.js";
 import ArchiveBrowser from "./js/ui/archive_browser.js";
 import Inspector from "./js/ui/inspector.js";
+import Palettes from './js/palettes.js';
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -43,6 +44,10 @@ import { layerMenu } from "./components/layer_menu.js";
 
 import Settings from './js/ui/settings.js';
 window.settingsInstance = new Settings(); // Expose globally for color customization
+
+// Create a global Palettes instance to preserve custom palettes across calls
+const globalPalettes = new Palettes();
+window.globalPalettes = globalPalettes;
 
 // See if there are URL parameters for station
 const urlParams = new URLSearchParams(window.location.search);
@@ -78,6 +83,47 @@ const inferLevelFromProduct = (product) => {
   return 'L3';
 };
 
+// Function to map L3 product codes to palette keys
+const productToPaletteKey = (product) => {
+  if (!product) return 'REF';
+  const upper = product.toUpperCase();
+  
+  // If it's already a palette key, return it
+  if (upper === 'REF' || upper === 'VEL' || upper === 'CC' || upper === 'KDP' || upper === 'SW' || upper === 'ZDR' || upper === 'DHC') {
+    return upper;
+  }
+  
+  // Map L3 product codes to palette keys
+  const productMap = {
+    'N0B': 'REF', 'N1B': 'REF', 'N2B': 'REF', 'N3B': 'REF', // Base Reflectivity
+    'N0G': 'VEL', 'N1G': 'VEL', 'N2G': 'VEL', 'N3G': 'VEL', // Base Velocity
+    'N0C': 'CC', 'N1C': 'CC', 'N2C': 'CC', 'N3C': 'CC',     // Correlation Coefficient
+    'N0K': 'KDP', 'N1K': 'KDP', 'N2K': 'KDP', 'N3K': 'KDP', // Specific Differential Phase
+    'N0H': 'DHC', 'N1H': 'DHC', 'N2H': 'DHC', 'N3H': 'DHC', // Hydrometer Classification
+    'N0W': 'SW', 'N1W': 'SW', 'N2W': 'SW', 'N3W': 'SW',     // Spectrum Width
+    'N0Z': 'ZDR', 'N1Z': 'ZDR', 'N2Z': 'ZDR', 'N3Z': 'ZDR', // Differential Reflectivity
+  };
+  
+  return productMap[upper] || 'REF'; // Default to REF if not found
+};
+
+// Expose to global scope for use in map.js
+window.productToPaletteKey = productToPaletteKey;
+
+const updateColorbarForMap = (mainOrSplit, product) => {
+  const colorbarId = mainOrSplit === 'split' ? 'colorbar-split' : 'colorbar-main';
+  const colorbar = document.getElementById(colorbarId);
+  if (!colorbar || !window.globalPalettes) return;
+
+  const paletteKey = productToPaletteKey(product);
+  const gradientCSS = window.globalPalettes.generateGradientCSS(paletteKey) || window.globalPalettes.generateGradientCSS('REF');
+  if (!gradientCSS) return;
+
+  colorbar.classList.remove('hidden');
+  colorbar.style.backgroundImage = 'none';
+  colorbar.style.background = gradientCSS;
+};
+
 // Function to set the current radar on the map
 async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     if (!map) return;
@@ -87,11 +133,23 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
         if (!product) product = mainRadar.product;
         const level = inferLevelFromProduct(product);
         mainRadar = { station, product, level, options };
+        // Track the current main station
+        map.currentMainStation = station;
+        // Dispatch event for station change
+        document.dispatchEvent(new CustomEvent('stationChanged', {
+            detail: { station, mainOrSplit: 'main' }
+        }));
     } else if (mainOrSplit === 'split') {
         if (!station) station = splitRadar.station;
         if (!product) product = splitRadar.product;
         const level = inferLevelFromProduct(product);
         splitRadar = { station, product, level, options };
+        // Track the current split station
+        map.currentSplitStation = station;
+        // Dispatch event for station change
+        document.dispatchEvent(new CustomEvent('stationChanged', {
+            detail: { station, mainOrSplit: 'split' }
+        }));
     } else {
         console.error(`Invalid mainOrSplit value: ${mainOrSplit}`);
         return;
@@ -101,6 +159,9 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     if (archiveMode[mainOrSplit] && !options.fromUrl) {
         options = { ...options, fromUrl: archiveMode[mainOrSplit] };
     }
+
+    // Immediately sync colorbar for picker-driven product changes on the corresponding map.
+    updateColorbarForMap(mainOrSplit, product);
     
     try {
       showLoadingAnimation();
@@ -137,6 +198,7 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
       });
       if (radarResult?.meshData instanceof Float32Array) {
         map.addWebGlRadarMesh(radarResult.meshData, radarResult.bounds, mainOrSplit, product);
+        updateColorbarForMap(mainOrSplit, product);
         if (mainOrSplit === 'main') {
           map.inspectBounds = radarResult.bounds
             ? [[radarResult.bounds[0], radarResult.bounds[1]], [radarResult.bounds[2], radarResult.bounds[3]]]
@@ -144,6 +206,7 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
         }
       } else if (radarResult?.geojson) {
         map.addWebGlRadarLayer(radarResult.geojson, mainOrSplit, product);
+        updateColorbarForMap(mainOrSplit, product);
         if (mainOrSplit === 'main' && map.currentGeojson) {
           map.inspectBounds = map._computeBounds(map.currentGeojson);
         }
@@ -235,6 +298,9 @@ window.addEventListener('keydown', (e) => {
 // Add the radar to the map
 const radar = new Radar();
 map.setRadar(radar); // Set radar instance on map for split view
+
+// Initialize the current station
+map.currentMainStation = initialStation;
 
 // Initialize layer menu toggles
 layerMenu.init(map);
@@ -335,7 +401,7 @@ let lastCheckedRadar = { main: null, split: null }; // Track last checked radar 
 let baselineCheckCount = { main: 0, split: 0 }; // Track how many checks we've seen stable
 const STATION_CHANGE_DEBOUNCE = 5000; // 5 second debounce after station change
 const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
-var updateTimes = 0;
+var updateTimes = 6;
 var updateIntervalId = null;
 var autoUpdateEnabled = true;
 
@@ -431,15 +497,17 @@ updateIntervalId = setInterval(async () => {
       }
     }
 
-    // Update radar stations every 6 cycles (1.5min)
+    // Update radar stations and outlooks every 6 cycles (1.5min)
     if (updateTimes == 6) {
       map.updateRadarStations();
+      map.fetchOutlooks();
       updateTimes = 0;
     }
 
     // Update alerts and watches
     map.fetchAlerts();
     map.fetchWatches();
+    map.fetchStormCenters();
 
   } finally {
     updateInProgress = false;

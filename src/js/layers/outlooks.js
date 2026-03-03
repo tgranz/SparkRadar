@@ -89,13 +89,13 @@ class OutlookLayer {
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
-        if (map.isStyleLoaded && !map.isStyleLoaded()) return;
         if (!this.outlookData || !this.outlookData.features) return;
 
         const sourceId = target === 'main' ? 'outlook-source' : 'outlook-source-dual';
         const layerId = target === 'main' ? 'outlook-layer' : 'outlook-layer-dual';
         const fillLayerId = `${layerId}-fill`;
         const beforeLayerId = target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
+        const insertBeforeId = map.getLayer(beforeLayerId) ? beforeLayerId : undefined;
 
         // Remove existing layers/sources
         if (map.getLayer(layerId)) {
@@ -123,7 +123,7 @@ class OutlookLayer {
                 'fill-color': ['get', 'fill'],
                 'fill-opacity': 0.3
             }
-        }, beforeLayerId);
+        }, insertBeforeId);
 
         // Add line layer for outlook boundaries
         map.addLayer({
@@ -135,7 +135,7 @@ class OutlookLayer {
                 'line-width': 2,
                 'line-opacity': 1
             }
-        }, beforeLayerId);
+        }, insertBeforeId);
     }
 
     displayOutlook() {

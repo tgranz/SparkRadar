@@ -40,12 +40,13 @@ menu.innerHTML = `
         </div>
 
         <div class="layer-menu-section-header">
-            Storms
+            Radar Features
         </div>
+        
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>TVS Signatures</h3>
-                <p class="tag inprogress">WIP</p>
+                <p class="tag beta">BETA</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-tvs-signatures-layer" class="switch">
@@ -54,7 +55,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Hail Signatures</h3>
-                <p class="tag inprogress">WIP</p>
+                <p class="tag beta">BETA</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-hail-signatures-layer" class="switch">
@@ -215,10 +216,12 @@ function initializeLayerToggles(mapInstance) {
                 alertsEnabled: settings.alertsEnabled !== undefined ? settings.alertsEnabled : true,
                 watchesEnabled: settings.watchesEnabled !== undefined ? settings.watchesEnabled : true,
                 mesoscaleDiscussionsEnabled: settings.mesoscaleDiscussionsEnabled !== undefined ? settings.mesoscaleDiscussionsEnabled : false,
+                tvsSignaturesEnabled: settings.tvsSignaturesEnabled !== undefined ? settings.tvsSignaturesEnabled : false,
+                hailSignaturesEnabled: settings.hailSignaturesEnabled !== undefined ? settings.hailSignaturesEnabled : false,
                 outlookDay: settings.outlookDay || null // 1, 2, 3, or null
             };
         } catch (e) {
-            return { alertsEnabled: true, watchesEnabled: true, mesoscaleDiscussionsEnabled: false, outlookDay: null };
+            return { alertsEnabled: true, watchesEnabled: true, mesoscaleDiscussionsEnabled: false, tvsSignaturesEnabled: false, hailSignaturesEnabled: false, outlookDay: null };
         }
     };
 
@@ -228,6 +231,8 @@ function initializeLayerToggles(mapInstance) {
     const alertsCheckbox = document.getElementById('toggle-alerts-layer');
     const watchesCheckbox = document.getElementById('toggle-watches-layer');
     const mesoscaleDiscussionsCheckbox = document.getElementById('toggle-mesoscale-discussions-layer');
+    const tvsSignaturesCheckbox = document.getElementById('toggle-tvs-signatures-layer');
+    const hailSignaturesCheckbox = document.getElementById('toggle-hail-signatures-layer');
     const day1OutlookCheckbox = document.getElementById('toggle-day-1-outlook-layer');
     const day2OutlookCheckbox = document.getElementById('toggle-day-2-outlook-layer');
     const day3OutlookCheckbox = document.getElementById('toggle-day-3-outlook-layer');
@@ -243,6 +248,12 @@ function initializeLayerToggles(mapInstance) {
     if (mesoscaleDiscussionsCheckbox) {
         mesoscaleDiscussionsCheckbox.checked = settings.mesoscaleDiscussionsEnabled;
     }
+    if (tvsSignaturesCheckbox) {
+        tvsSignaturesCheckbox.checked = settings.tvsSignaturesEnabled;
+    }
+    if (hailSignaturesCheckbox) {
+        hailSignaturesCheckbox.checked = settings.hailSignaturesEnabled;
+    }
     if (day1OutlookCheckbox) {
         day1OutlookCheckbox.checked = settings.outlookDay === 1;
     }
@@ -251,6 +262,14 @@ function initializeLayerToggles(mapInstance) {
     }
     if (day3OutlookCheckbox) {
         day3OutlookCheckbox.checked = settings.outlookDay === 3;
+    }
+
+    // Initialize storm center enabled types based on saved settings
+    if (mapInstance.layers && mapInstance.layers.stormCentersLayer) {
+        mapInstance.layers.stormCentersLayer.setEnabledTypes({
+            tvs: settings.tvsSignaturesEnabled,
+            hail: settings.hailSignaturesEnabled
+        });
     }
 
     // Listen for connection status changes
@@ -345,6 +364,70 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    if (tvsSignaturesCheckbox) {
+        tvsSignaturesCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings.tvsSignaturesEnabled = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            // Update the layer's type filter
+            if (mapInstance.layers && mapInstance.layers.stormCentersLayer) {
+                mapInstance.layers.stormCentersLayer.setEnabledTypes({
+                    tvs: isChecked,
+                    hail: hailSignaturesCheckbox ? hailSignaturesCheckbox.checked : false
+                });
+            }
+
+            if (isChecked || (hailSignaturesCheckbox && hailSignaturesCheckbox.checked)) {
+                // Fetch and display storm centers
+                mapInstance.layers.fetchStormCenters();
+            } else {
+                // Clear storm centers from map
+                mapInstance.layers.clearStormCenters('main');
+                if (mapInstance.isSplit()) {
+                    mapInstance.layers.clearStormCenters('dual');
+                }
+            }
+        });
+    }
+
+    if (hailSignaturesCheckbox) {
+        hailSignaturesCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings.hailSignaturesEnabled = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            // Update the layer's type filter
+            if (mapInstance.layers && mapInstance.layers.stormCentersLayer) {
+                mapInstance.layers.stormCentersLayer.setEnabledTypes({
+                    tvs: tvsSignaturesCheckbox ? tvsSignaturesCheckbox.checked : false,
+                    hail: isChecked
+                });
+            }
+
+            if (isChecked || (tvsSignaturesCheckbox && tvsSignaturesCheckbox.checked)) {
+                // Fetch and display storm centers
+                mapInstance.layers.fetchStormCenters();
+            } else {
+                // Clear storm centers from map
+                mapInstance.layers.clearStormCenters('main');
+                if (mapInstance.isSplit()) {
+                    mapInstance.layers.clearStormCenters('dual');
+                }
+            }
+        });
+    }
+
     // Outlook toggle handlers - only one can be active at a time
     const handleOutlookToggle = (day, checkbox) => {
         if (!checkbox) return;
@@ -410,7 +493,9 @@ function initializeLayerToggles(mapInstance) {
         if (mesoscaleDiscussionsCheckbox && mesoscaleDiscussionsCheckbox.checked) {
             mapInstance.layers.fetchMesoscaleDiscussions();
         }
-        // Fetch outlook if one is enabled
+        if (tvsSignaturesCheckbox && tvsSignaturesCheckbox.checked) {
+            mapInstance.layers.fetchStormCenters();
+        }
         if (day1OutlookCheckbox && day1OutlookCheckbox.checked) {
             mapInstance.layers.fetchOutlook(1);
         } else if (day2OutlookCheckbox && day2OutlookCheckbox.checked) {

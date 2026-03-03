@@ -236,11 +236,12 @@ class MesoscaleDiscussionLayer {
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
-        if (map.isStyleLoaded && !map.isStyleLoaded()) return;
+
 
         const cache = target === 'main' ? this.mdCache.main : this.mdCache.dual;
         const nextKeys = new Set();
         const beforeLayerId = target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
+        const insertBeforeId = map.getLayer(beforeLayerId) ? beforeLayerId : undefined;
 
         const settings = window.settingsInstance;
         const mdColor = settings?.getSetting('mdColor') || '#fbbf24';
@@ -274,7 +275,7 @@ class MesoscaleDiscussionLayer {
                         'line-width': 3,
                         'line-opacity': 1
                     }
-                }, beforeLayerId);
+                }, insertBeforeId);
             }
 
             if (!map.getLayer(`${layerPrefix}-outline-outline`)) {
