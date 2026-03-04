@@ -204,7 +204,7 @@ class Palettes {
         return lines.join('\n');
     }
 
-    convertPalToArray(palString) {
+    convertPalToArray(palString, paletteName = null) {
         const lines = palString.trim().split('\n');
         const parsed = [];
         
@@ -226,6 +226,18 @@ class Palettes {
                 parsed.push({ val, r, g, b, a });
             }
         });
+
+        // Add transparent color at start of REF palettes (before sorting)
+        // Only add if one doesn't already exist
+        if (paletteName === 'REF' && parsed.length > 0) {
+            const hasTransparent = parsed.some(p => p.a === 0 && p.r === 0 && p.g === 0 && p.b === 0);
+            if (!hasTransparent) {
+                // Use a value just before the first color stop to ensure transparency at low values
+                const firstVal = Math.min(...parsed.map(p => p.val));
+                parsed.push({ val: firstVal - 0.1, r: 0, g: 0, b: 0, a: 0 });
+                console.log("[Palettes] Added transparent color stop at val:", firstVal - 0.1);
+            }
+        }
 
         // Sort by value to ensure correct order
         parsed.sort((a, b) => a.val - b.val);
@@ -274,7 +286,7 @@ class Palettes {
 
     const entries = [];
     let scale = 1;
-
+    
     lines.forEach(rawLine => {
         const match = rawLine.match(/^([a-zA-Z]+)\s*:\s*(.*)$/i);
         if (!match) return;
@@ -410,18 +422,39 @@ class Palettes {
     getPalette(name) {
         if (!this.palettes[name]) {
             console.warn(`Palette "${name}" not found, using default.`);
-            return this.convertPalToArray(defaultPalettes["REF"]);
+            return this.convertPalToArray(defaultPalettes["REF"], "REF");
         }
         const palString = this.palettes[name];
         if (Array.isArray(palString)) {
             return palString;
         }
         const preview = typeof palString === 'string' ? palString.substring(0, 100) : String(palString);
-        return this.convertPalToArray(palString);
+        return this.convertPalToArray(palString, name);
     }
 
     storePalette(name, palString) {
-        const storedValue = Array.isArray(palString) ? this._palArrayToString(palString) : palString;
+        let storedValue = Array.isArray(palString) ? this._palArrayToString(palString) : palString;
+        
+        // For REF palettes, add transparent color stop before storing
+        if (name === 'REF' && typeof storedValue === 'string') {
+            const lines = storedValue.trim().split('\n');
+            const parsed = [];
+            
+            lines.forEach(line => {
+                const parts = line.trim().split(/\s+/).map(Number);
+                if (parts.length >= 4 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+                    parsed.push({ val: parts[0], r: parts[1], g: parts[2], b: parts[3], a: parts[4] || 255 });
+                }
+            });
+            
+            if (parsed.length > 0) {
+                const firstVal = Math.min(...parsed.map(p => p.val));
+                const transparentLine = `${(firstVal - 0.1).toFixed(2)} 0 0 0 0`;
+                storedValue = transparentLine + '\n' + storedValue;
+                console.log('[Palettes] Added transparent stop to stored REF palette at val:', firstVal - 0.1);
+            }
+        }
+        
         const preview = typeof storedValue === 'string' ? storedValue.substring(0, 100) : String(storedValue);
         console.log(`[Palettes] Storing palette "${name}" - first 100 chars:`, preview);
         this.palettes[name] = storedValue;

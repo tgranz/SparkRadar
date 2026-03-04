@@ -100,23 +100,19 @@ class StormCentersLayer {
         const tvsColor = '#ff2121'; // red
         const hailColor = '#00ffaf'; // green
 
-        // Register TVS icon (red triangle)
-        if (!icons.has('tvs-triangle') && !map.hasImage('tvs-triangle')) {
-            this._createAndRegisterIcon(map, 'tvs-triangle', tvsColor);
-            icons.add('tvs-triangle');
-        }
+        // Register TVS icon (red, upside-down triangle)
+        this._createAndRegisterIcon(map, 'tvs-triangle', tvsColor, true);
+        icons.add('tvs-triangle');
 
-        // Register Hail icon (green triangle)
-        if (!icons.has('hail-triangle') && !map.hasImage('hail-triangle')) {
-            this._createAndRegisterIcon(map, 'hail-triangle', hailColor);
-            icons.add('hail-triangle');
-        }
+        // Register Hail icon (green, right-side-up triangle)
+        this._createAndRegisterIcon(map, 'hail-triangle', hailColor, false);
+        icons.add('hail-triangle');
     }
 
     /**
      * Create and register a triangle icon
      */
-    _createAndRegisterIcon(map, iconName, color) {
+    _createAndRegisterIcon(map, iconName, color, inverted = false) {
         try {
             const size = 32;
             const canvas = document.createElement('canvas');
@@ -124,30 +120,37 @@ class StormCentersLayer {
             canvas.height = size;
             const ctx = canvas.getContext('2d');
 
+            const points = inverted
+                // Upside-down triangle (pointing down)
+                ? [[2, 2], [size - 2, 2], [size / 2, size - 2]]
+                // Right-side-up triangle (pointing up)
+                : [[size / 2, 2], [size - 2, size - 2], [2, size - 2]];
+
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 5;
             
             ctx.beginPath();
-            ctx.moveTo(2, 2);              // Top left
-            ctx.lineTo(size - 2, 2);       // Top right
-            ctx.lineTo(size / 2, size - 2); // Bottom point
+            ctx.moveTo(points[0][0], points[0][1]);
+            ctx.lineTo(points[1][0], points[1][1]);
+            ctx.lineTo(points[2][0], points[2][1]);
             ctx.closePath();
             ctx.stroke();
 
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.moveTo(2, 2);
-            ctx.lineTo(size - 2, 2);
-            ctx.lineTo(size / 2, size - 2);
+            ctx.moveTo(points[0][0], points[0][1]);
+            ctx.lineTo(points[1][0], points[1][1]);
+            ctx.lineTo(points[2][0], points[2][1]);
             ctx.closePath();
             ctx.stroke();
 
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             
-            if (!map.hasImage(iconName)) {
-                map.addImage(iconName, imageData, { pixelRatio: 1 });
+            if (map.hasImage(iconName)) {
+                map.removeImage(iconName);
             }
+            map.addImage(iconName, imageData, { pixelRatio: 1 });
         } catch (e) {
             console.warn(`[StormCentersLayer] Could not register ${iconName}:`, e);
         }

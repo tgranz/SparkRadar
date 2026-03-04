@@ -48,6 +48,13 @@ const ALERT_CATEGORIES = {
         "Extreme Wind Warning": { color: '#ff00ff' },
         "Shelter in Place Warning": { color: '#f700ff' },
         "Dust Storm Warning": { color: '#c76531' }
+    },
+    'Watches': {
+        "Tornado Watch": { color: '#ff2121' },
+        "Severe Thunderstorm Watch": { color: '#ff9900' }
+    },
+    'Products': {
+        "Mesoscale Discussion": { color: '#fbbf24' }
     }
 };
 
@@ -311,52 +318,58 @@ function generateAlertSettings(settingsInstance, container) {
             header.className = 'settings-control-header';
             header.style.gap = '10px';
             
-            // Checkbox for enabled/disabled
-            const enableCheckbox = document.createElement('input');
-            enableCheckbox.type = 'checkbox';
-            enableCheckbox.className = 'switch';
-            enableCheckbox.id = `${settingKey}-enabled`;
-            enableCheckbox.title = `Enable or disable ${alertType}s`;
-            enableCheckbox.checked = alertSettings.enabled;
-            enableCheckbox.addEventListener('change', () => {
-                const current = settingsInstance.getSetting(settingKey);
-                settingsInstance.setSetting(settingKey, { ...current, enabled: enableCheckbox.checked });
-            });
+            // For "Watches" and "Products" categories, only show color picker (no enabled/notify toggles)
+            const isVisualCategory = category === 'Watches' || category === 'Products';
+            
+            if (!isVisualCategory) {
+                // Checkbox for enabled/disabled
+                const enableCheckbox = document.createElement('input');
+                enableCheckbox.type = 'checkbox';
+                enableCheckbox.className = 'switch';
+                enableCheckbox.id = `${settingKey}-enabled`;
+                enableCheckbox.title = `Enable or disable ${alertType}s`;
+                enableCheckbox.checked = alertSettings.enabled;
+                enableCheckbox.addEventListener('change', () => {
+                    const current = settingsInstance.getSetting(settingKey);
+                    settingsInstance.setSetting(settingKey, { ...current, enabled: enableCheckbox.checked });
+                });
+                header.appendChild(enableCheckbox);
+            }
             
             // Label
             const label = document.createElement('label');
-            label.htmlFor = `${settingKey}-enabled`;
+            label.htmlFor = isVisualCategory ? `${settingKey}-color` : `${settingKey}-enabled`;
             label.style.flex = '1';
             label.textContent = alertType;
+            header.appendChild(label);
             
-            // Notification toggle
-            const notifyCheckbox = document.createElement('input');
-            notifyCheckbox.type = 'checkbox';
-            notifyCheckbox.id = `${settingKey}-notify`;
-            notifyCheckbox.checked = alertSettings.notify;
-            notifyCheckbox.title = `Send notifications when a new ${alertType} is issued`;
-            notifyCheckbox.classList.add('switch');
-            notifyCheckbox.addEventListener('change', () => {
-                const current = settingsInstance.getSetting(settingKey);
-                settingsInstance.setSetting(settingKey, { ...current, notify: notifyCheckbox.checked });
-            });
+            if (!isVisualCategory) {
+                // Notification toggle
+                const notifyCheckbox = document.createElement('input');
+                notifyCheckbox.type = 'checkbox';
+                notifyCheckbox.id = `${settingKey}-notify`;
+                notifyCheckbox.checked = alertSettings.notify;
+                notifyCheckbox.title = `Send notifications when a new ${alertType} is issued`;
+                notifyCheckbox.classList.add('switch');
+                notifyCheckbox.addEventListener('change', () => {
+                    const current = settingsInstance.getSetting(settingKey);
+                    settingsInstance.setSetting(settingKey, { ...current, notify: notifyCheckbox.checked });
+                });
+                header.appendChild(notifyCheckbox);
+            }
             
             // Color picker
             const alertColor = document.createElement('input');
             alertColor.type = 'color';
             alertColor.id = `${settingKey}-color`;
             alertColor.value = alertSettings.color || defaultColors.color;
-            alertColor.title = `Set the color for ${alertType} alerts on the radar`;
+            alertColor.title = `Set the color for ${alertType} on the radar`;
             alertColor.style.width = '40px';
             alertColor.style.height = '32px';
             alertColor.addEventListener('input', () => {
                 const current = settingsInstance.getSetting(settingKey);
                 settingsInstance.setSetting(settingKey, { ...current, color: alertColor.value });
             });
-            
-            header.appendChild(enableCheckbox);
-            header.appendChild(label);
-            header.appendChild(notifyCheckbox);
             header.appendChild(alertColor);
             
             control.appendChild(header);
@@ -388,8 +401,6 @@ export default class Settings {
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
             secondaryBorderColor: '#27beff',
-            watchColor: '#38bdf8',
-            mdColor: '#fbbf24',
             ...alertDefaults
         };
 

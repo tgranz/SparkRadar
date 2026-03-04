@@ -22,7 +22,7 @@ class MesoscaleDiscussionLayer {
         this.settingsChangeListener = (event) => {
             const { key, value } = event.detail;
             console.log(`[MesoscaleDiscussionLayer] Settings changed: ${key} = ${value}`);
-            if (key === 'mdColor') {
+            if (key === 'alert_mesoscale_discussion') {
                 console.log('[MesoscaleDiscussionLayer] Updating MD colors...');
                 this._updateMDColorsOnMaps();
             }
@@ -39,13 +39,13 @@ class MesoscaleDiscussionLayer {
     }
 
     /**
-     * Updates MD layer colors on both maps when the mdColor setting changes
+     * Updates MD layer colors on both maps when the mesoscale discussion color setting changes
      */
     _updateMDColorsOnMaps() {
         const mainMap = this.map?.map;
         const dualMap = this.map?.dualMap;
         const settings = window.settingsInstance;
-        const mdColor = settings?.getSetting('mdColor') || '#fbbf24';
+        const mdColor = settings?.getSetting('alert_mesoscale_discussion')?.color || '#fbbf24';
 
         console.log(`[MesoscaleDiscussionLayer] _updateMDColorsOnMaps called with color: ${mdColor}`);
         console.log(`[MesoscaleDiscussionLayer] mainMap exists: ${!!mainMap}, dualMap exists: ${!!dualMap}`);
@@ -120,13 +120,16 @@ class MesoscaleDiscussionLayer {
     buildMDPopupSection(mesoscaleDiscussions) {
         if (!mesoscaleDiscussions || mesoscaleDiscussions.length === 0) return '';
 
+        const settings = window.settingsInstance;
+        const mdColor = settings?.getSetting('alert_mesoscale_discussion')?.color || '#fbbf24';
+
         const items = mesoscaleDiscussions.map((md, index) => {
             const props = md.properties || {};
             const num = props?.name?.replace('MD ', '') || 'Unknown';
 
             return `
                 <div class="popup-item" data-type="md" data-index="${index}" style="cursor: pointer;">
-                    <div class="popup-dot" style="background-color: #fbbf24;"></div>
+                    <div class="popup-dot" style="background-color: ${mdColor};"></div>
                     <div>
                         <div class="popup-item-title">Mesoscale Discussion</div>
                         <div class="popup-meta">Number ${num}</div>
@@ -149,7 +152,7 @@ class MesoscaleDiscussionLayer {
         const validTime = props.validtime || props.VALIDTIME || '';
         const title = `Mesoscale Discussion ${num}`;
         const settings = window.settingsInstance;
-        const color = settings?.getSetting('mdColor') || '#fbbf24';
+        const color = settings?.getSetting('alert_mesoscale_discussion')?.color || '#fbbf24';
 
         const formatDate = (dateStr) => {
             if (!dateStr) return 'N/A';
@@ -244,7 +247,7 @@ class MesoscaleDiscussionLayer {
         const insertBeforeId = map.getLayer(beforeLayerId) ? beforeLayerId : undefined;
 
         const settings = window.settingsInstance;
-        const mdColor = settings?.getSetting('mdColor') || '#fbbf24';
+        const mdColor = settings?.getSetting('alert_mesoscale_discussion')?.color || '#fbbf24';
         this.mesoscaleDiscussions.forEach((md, index) => {
             const key = `md-${index}`;
             const signature = JSON.stringify(md);

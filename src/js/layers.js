@@ -475,6 +475,18 @@ class Layers {
         }
     }
 
+    async fetchOutlooks() {
+        try {
+            const outlookData = await this.outlookLayer.fetchOutlook(this.currentOutlookDay);
+            if (outlookData) {
+                this.outlookLayer.setOutlookData(outlookData);
+                this.displayOutlook();
+            }
+        } catch (error) {
+            console.error('[Layers] Error fetching outlooks:', error);
+        }
+    }
+
     /**
      * Formats a date for the watch API timestamp parameter
      */

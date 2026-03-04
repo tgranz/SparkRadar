@@ -22,7 +22,7 @@ class WatchLayer {
         this.settingsChangeListener = (event) => {
             const { key, value } = event.detail;
             console.log(`[WatchLayer] Settings changed: ${key} = ${value}`);
-            if (key === 'watchColor') {
+            if (key === 'alert_tornado_watch' || key === 'alert_severe_thunderstorm_watch') {
                 console.log('[WatchLayer] Updating watch colors...');
                 this._updateWatchColorsOnMaps();
             }
@@ -39,31 +39,29 @@ class WatchLayer {
     }
 
     /**
-     * Updates watch layer colors on both maps when the watchColor setting changes
+     * Updates watch layer colors on both maps when watch color settings change
      */
     _updateWatchColorsOnMaps() {
         const mainMap = this.map?.map;
         const dualMap = this.map?.dualMap;
-        const settings = window.settingsInstance;
-        const customColor = settings?.getSetting('watchColor') || '#38bdf8';
 
-        console.log(`[WatchLayer] _updateWatchColorsOnMaps called with color: ${customColor}`);
+        console.log(`[WatchLayer] _updateWatchColorsOnMaps called`);
         console.log(`[WatchLayer] mainMap exists: ${!!mainMap}, dualMap exists: ${!!dualMap}`);
 
         if (mainMap) {
             console.log(`[WatchLayer] Updating main map watch colors, cache size: ${this.watchCache.main.size}`);
-            this._updateWatchColorsOnMap('main', customColor);
+            this._updateWatchColorsOnMap('main');
         }
         if (dualMap) {
             console.log(`[WatchLayer] Updating dual map watch colors, cache size: ${this.watchCache.dual.size}`);
-            this._updateWatchColorsOnMap('dual', customColor);
+            this._updateWatchColorsOnMap('dual');
         }
     }
 
     /**
      * Updates watch layer colors on a specific map
      */
-    _updateWatchColorsOnMap(target, customColor) {
+    _updateWatchColorsOnMap(target) {
         const mainMap = this.map?.map;
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
@@ -72,16 +70,22 @@ class WatchLayer {
         const cache = target === 'main' ? this.watchCache.main : this.watchCache.dual;
         console.log(`[WatchLayer] _updateWatchColorsOnMap for ${target}: cache has ${cache.size} entries`);
 
-        for (const key of cache.keys()) {
+        for (let i = 0; i < this.watches.length; i++) {
+            const watch = this.watches[i];
+            const key = this._getWatchKey(watch, i);
+            const colors = this._getWatchColor(watch);
+            if (!colors) continue;
+
             const layerPrefix = target === 'main' ? `watch-${key}` : `watch-${key}-dual`;
             const fillLayerId = `${layerPrefix}-fill`;
             const outlineLayerId = `${layerPrefix}-outline`;
+            const colorSignature = `${colors.fill}|${colors.outline}`;
 
             console.log(`[WatchLayer] Checking layers: ${fillLayerId}, ${outlineLayerId}`);
             if (map.getLayer(fillLayerId)) {
-                console.log(`[WatchLayer] Found fill layer, updating color to ${customColor}`);
+                console.log(`[WatchLayer] Found fill layer, updating color to ${colors.fill}`);
                 try {
-                    map.setPaintProperty(fillLayerId, 'fill-color', customColor);
+                    map.setPaintProperty(fillLayerId, 'fill-color', colors.fill);
                     console.log(`[WatchLayer] Successfully set paint property for ${fillLayerId}`);
                     const currentColor = map.getPaintProperty(fillLayerId, 'fill-color');
                     console.log(`[WatchLayer] Current fill color: ${JSON.stringify(currentColor)}`);
@@ -92,9 +96,9 @@ class WatchLayer {
                 console.log(`[WatchLayer] Fill layer not found: ${fillLayerId}`);
             }
             if (map.getLayer(outlineLayerId)) {
-                console.log(`[WatchLayer] Found outline layer, updating color to ${customColor}`);
+                console.log(`[WatchLayer] Found outline layer, updating color to ${colors.outline}`);
                 try {
-                    map.setPaintProperty(outlineLayerId, 'line-color', customColor);
+                    map.setPaintProperty(outlineLayerId, 'line-color', colors.outline);
                     console.log(`[WatchLayer] Successfully set paint property for ${outlineLayerId}`);
                     const currentColor = map.getPaintProperty(outlineLayerId, 'line-color');
                     console.log(`[WatchLayer] Current line color: ${JSON.stringify(currentColor)}`);
@@ -103,6 +107,12 @@ class WatchLayer {
                 }
             } else {
                 console.log(`[WatchLayer] Outline layer not found: ${outlineLayerId}`);
+            }
+
+            // Update cache with new color signature
+            const cached = cache.get(key);
+            if (cached) {
+                cached.colorSignature = colorSignature;
             }
         }
     }
@@ -113,19 +123,20 @@ class WatchLayer {
     }
 
     _getWatchColor(watch) {
-        // Use custom color from settings if available
+        // Use custom colors from alert settings if available
         const settings = window.settingsInstance;
-        const customColor = settings?.getSetting('watchColor') || '#38bdf8';
         const watchType = watch?.properties?.type;
         const isPds = !!watch?.properties?.is_pds;
 
         if (watchType === 'TOR') {
-            return { fill: isPds ? customColor : customColor, outline: '#ffb3b3', name: 'Tornado Watch' };
+            const torColor = settings?.getSetting('alert_tornado_watch')?.color || '#ff2121';
+            return { fill: '#00000000', outline: torColor, name: 'Tornado Watch' };
         }
         if (watchType === 'SVR') {
-            return { fill: isPds ? customColor : customColor, outline: '#fde68a', name: 'Severe Thunderstorm Watch' };
+            const svrColor = settings?.getSetting('alert_severe_thunderstorm_watch')?.color || '#ff9900';
+            return { fill: '#00000000', outline: svrColor, name: 'Severe Thunderstorm Watch' };
         }
-        return { fill: customColor, outline: '#bae6fd', name: 'Watch' };
+        return null;
     }
 
     _getWatchKey(watch, index) {
@@ -197,7 +208,7 @@ class WatchLayer {
 
             return `
                 <div class="popup-item" data-type="watch" data-index="${index}" style="cursor: pointer;">
-                    <span class="popup-dot" style="background: ${colors.fill}"></span>
+                    <span class="popup-dot" style="background: ${colors.outline}"></span>
                     <div>
                         <div class="popup-item-title">${title}</div>
                         ${meta ? `<div class=\"popup-meta\">${meta}</div>` : ''}
@@ -236,8 +247,8 @@ class WatchLayer {
 
         const html = `
             <div style="max-width: 600px;">
-                <div style="margin-bottom: 20px; padding: 15px; background: ${colors.fill}30; border-left: 4px solid ${colors.fill}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.fill};">${props.is_pds ? 'PDS ' : ''}${title}</h3>
+                <div style="margin-bottom: 20px; padding: 15px; background: ${colors.outline}30; border-left: 4px solid ${colors.outline}; border-radius: 10px;">
+                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.outline};">${props.is_pds ? 'PDS ' : ''}${title}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Issued:</strong> <span>${formatDate(props.issue)}</span>
                         <strong>Expires:</strong> <span>${formatDate(props.expire)}</span>
@@ -364,7 +375,7 @@ class WatchLayer {
                     source: sourceId,
                     paint: {
                         'line-color': '#000000',
-                        'line-width': 4,
+                        'line-width': 6,
                         'line-opacity': 1
                     }
                 }, `${layerPrefix}-outline`);

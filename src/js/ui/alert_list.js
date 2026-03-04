@@ -31,6 +31,33 @@ export default class AlertList {
         this.list.classList.add('alert-list');
         this.list.style.display = 'none';
 
+        // Add a searchbar and settings shortcut at the top of the list
+        const header = document.createElement('div');
+        header.classList.add('alert-list-header');
+        header.innerHTML = `
+            <input type="text" class="alert-search" placeholder="Search alerts...">
+            <button class="alert-settings-btn"><i class="ti ti-settings"></i></button>
+        `;
+        this.list.appendChild(header);
+
+        const searchInput = header.querySelector('.alert-search');
+        searchInput.addEventListener('input', () => {
+            const query = searchInput.value.toLowerCase();
+            const alertItems = this.list.querySelectorAll('.alert-item');
+            alertItems.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if (text.includes(query)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
+        const mainList = document.createElement('div');
+        mainList.classList.add('alert-main-list');
+        this.list.appendChild(mainList);
+
         document.body.appendChild(this.opener);
         document.body.appendChild(this.list);
 
@@ -44,6 +71,12 @@ export default class AlertList {
         this.opener.addEventListener('click', () => {
             this.toggle();
         });
+
+        this.escListener = document.addEventListener('keydown', (event) => {
+            if (event.key === "Escape") {
+                this.close();
+            }
+        });
     }
 
     _setCount(count) {
@@ -52,9 +85,11 @@ export default class AlertList {
     }
 
     _setAlerts(alerts) {
-        this.list.innerHTML = '';
+        const mainList = this.list.querySelector('.alert-main-list');
+        if (!mainList) return;
+        mainList.innerHTML = '';
         if (!alerts || alerts.length === 0) {
-            this.list.innerHTML = '<div class="alert-item">No active alerts.</div>';
+            mainList.innerHTML = '<div class="alert-item">No active alerts.</div>';
             return;
         }
 
@@ -121,7 +156,7 @@ export default class AlertList {
                     </div>
                 </div>
             `;
-            this.list.appendChild(item);
+            mainList.appendChild(item);
 
             // Add button event listeners
             const viewProductBtn = item.querySelector('[data-action="view-product"]');
@@ -166,6 +201,12 @@ export default class AlertList {
         setTimeout(() => {
             this.list.style.display = 'none';
         }, 300);
+
+        // Remove escape key listener when closing
+        if (this.escListener) {
+            document.removeEventListener('keydown', this.escListener);
+            this.escListener = null;
+        }
     }
 
     toggle() {

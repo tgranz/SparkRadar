@@ -703,6 +703,7 @@ class Map {
         if (!product) return 'REF'; // Default to reflectivity
         
         const lastChar = product.charAt(product.length - 1);
+        console.log(`[Map] _getPaletteForProduct(${product}) -> lastChar='${lastChar}'`);
         
         switch (lastChar) {
             case 'G': // N0G, N1G, N2G, N3G = Base Velocity
@@ -719,8 +720,10 @@ class Map {
             case 'W':
                 return 'SW';
             case 'X':
+            case 'Z':
                 return 'ZDR';
             default:
+                console.log(`[Map] _getPaletteForProduct: unmatched case '${lastChar}', returning '${product.toUpperCase()}'`);
                 return product.toUpperCase();
         }
     }
@@ -1292,13 +1295,20 @@ class Map {
                 colorbar.classList.remove('hidden');
                 const activeProduct = product || (isMainLayer ? this.currentRadarProduct : this.currentRadarProductSplit) || this.currentPalette || 'REF';
                 const paletteKey = this._getPaletteForProduct(activeProduct);
-                const gradientCSS = this.palettes?.generateGradientCSS?.(paletteKey) || this.palettes?.generateGradientCSS?.('REF');
+                console.log(`[WebGL] Generating gradient for palette: ${paletteKey}`);
+                let gradientCSS = this.palettes?.generateGradientCSS?.(paletteKey);
+                console.log(`[WebGL] generateGradientCSS('${paletteKey}') returned:`, gradientCSS ? 'valid CSS' : 'null/undefined');
+                if (!gradientCSS) {
+                    console.warn(`[WebGL] Could not generate gradient for palette ${paletteKey}, trying REF as fallback`);
+                    gradientCSS = this.palettes?.generateGradientCSS?.('REF');
+                    console.log(`[WebGL] generateGradientCSS('REF') returned:`, gradientCSS ? 'valid CSS' : 'null/undefined');
+                }
                 if (gradientCSS) {
                     colorbar.style.backgroundImage = 'none';
                     colorbar.style.background = gradientCSS;
                     console.log(`[WebGL] Updated colorbar ${colorbarId} with palette ${paletteKey}`);
                 } else {
-                    console.warn(`[WebGL] Could not generate gradient for palette ${paletteKey}`);
+                    console.warn(`[WebGL] Could not generate gradient for either ${paletteKey} or REF`);
                 }
             } else {
                 console.warn(`[WebGL] Colorbar element ${colorbarId} not found`);

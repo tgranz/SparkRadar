@@ -1693,3 +1693,24 @@ input[type="color"] {
 #app.split #colorbar-split.hidden {
   display: none;
 }
+
+.alert-list-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  margin-bottom: 20px;
+}
+
+.alert-search {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.9em;
+  font-family: 'Onest', sans-serif;
+  transition: all 0.2s ease;
+  margin-right: 10px;
+}
