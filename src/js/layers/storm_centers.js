@@ -469,13 +469,38 @@ class StormCentersLayer {
         }
     }
 
+    _areStormCentersEnabled() {
+        const tvsCheckbox = document.getElementById('toggle-tvs-signatures-layer');
+        const hailCheckbox = document.getElementById('toggle-hail-signatures-layer');
+
+        if (tvsCheckbox || hailCheckbox) {
+            return !!(tvsCheckbox?.checked || hailCheckbox?.checked);
+        }
+
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            return !!(settings.tvsSignaturesEnabled || settings.hailSignaturesEnabled);
+        } catch {
+            return false;
+        }
+    }
+
+    displayStormCentersOnMap(target = 'main') {
+        if (!this._areStormCentersEnabled()) {
+            this.clearStormCenters(target);
+            return;
+        }
+
+        this._scheduleCenterSync(target);
+    }
+
     /**
      * Display storm centers
      */
     displayStormCenters() {
-        this._scheduleCenterSync('main');
+        this.displayStormCentersOnMap('main');
         if (this.map?.isSplit()) {
-            this._scheduleCenterSync('dual');
+            this.displayStormCentersOnMap('dual');
         }
 
         console.log(`[StormCentersLayer] Displayed ${this.stormCenters.length} storm centers`);
@@ -486,7 +511,7 @@ class StormCentersLayer {
      */
     displayStormCentersOnDualMap() {
         if (!this.map?.dualMap) return;
-        this._scheduleCenterSync('dual');
+        this.displayStormCentersOnMap('dual');
     }
 
     /**
@@ -563,15 +588,18 @@ class StormCentersLayer {
                 this.stormCenters = this._filterCentersForStation(data.features, currentStation);
                 this.displayStormCenters();
                 console.log(`[StormCentersLayer] Fetched ${data.features.length} total storm centers, displaying ${this.stormCenters.length} for station ${currentStation}`);
+                return this.stormCenters;
             } else {
                 console.warn('[StormCentersLayer] No storm centers in response');
                 this.allStormCenters = [];
                 this.stormCenters = [];
+                return [];
             }
         } catch (error) {
             console.error('[StormCentersLayer] Error fetching storm centers:', error);
             this.allStormCenters = [];
             this.stormCenters = [];
+            return [];
         }
     }
 }

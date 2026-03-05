@@ -36,7 +36,6 @@ export default class AlertList {
         header.classList.add('alert-list-header');
         header.innerHTML = `
             <input type="text" class="alert-search" placeholder="Search alerts...">
-            <button class="alert-settings-btn"><i class="ti ti-settings"></i></button>
         `;
         this.list.appendChild(header);
 

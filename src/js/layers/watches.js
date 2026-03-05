@@ -401,10 +401,33 @@ class WatchLayer {
         }
     }
 
+    _areWatchesEnabled() {
+        const checkbox = document.getElementById('toggle-watches-layer');
+        if (checkbox) {
+            return checkbox.checked;
+        }
+
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            return settings.watchesEnabled !== undefined ? settings.watchesEnabled : true;
+        } catch {
+            return true;
+        }
+    }
+
+    displayWatchesOnMap(target = 'main') {
+        if (!this._areWatchesEnabled()) {
+            this.clearWatches(target);
+            return;
+        }
+
+        this._scheduleWatchSync(target);
+    }
+
     displayWatches() {
-        this._scheduleWatchSync('main');
+        this.displayWatchesOnMap('main');
         if (this.map?.isSplit()) {
-            this._scheduleWatchSync('dual');
+            this.displayWatchesOnMap('dual');
         }
 
         console.log(`[WatchLayer] Displayed ${this.watches.length} watches`);
@@ -413,7 +436,7 @@ class WatchLayer {
     displayWatchesOnDualMap() {
         // Only called when dual map is already loaded
         if (!this.map?.dualMap) return;
-        this._scheduleWatchSync('dual');
+        this.displayWatchesOnMap('dual');
     }
 
     clearWatches(target = 'main') {

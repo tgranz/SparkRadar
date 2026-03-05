@@ -8,7 +8,7 @@ See LICENSE for more.
 
 import Dialog from "../ui/dialog.js";
 import { buildAlertDefaults } from "../ui/settings.js";
-import { waitForRadarLayer, normalizePolygonRing, pointInPolygon } from "./layer_utils.js";
+import { waitForRadarLayer, pointInPolygon } from "./layer_utils.js";
 
 class AlertLayer {
     constructor(mapInstance, alertService) {
@@ -44,7 +44,7 @@ class AlertLayer {
     }
 
     _convertAlertToGeoJSON(alert) {
-        const geometry = this._normalizeAlertGeometry(this._getAlertGeometry(alert));
+        const geometry = this._getAlertGeometry(alert);
         if (!geometry) return null;
 
         const vtec = alert?.vtec || {};
@@ -85,28 +85,6 @@ class AlertLayer {
         }
 
         return null;
-    }
-
-    _normalizeAlertGeometry(geometry) {
-        if (!geometry) return null;
-
-        if (geometry.type === 'Polygon') {
-            return {
-                type: 'Polygon',
-                coordinates: geometry.coordinates.map((ring) => normalizePolygonRing(ring))
-            };
-        }
-
-        if (geometry.type === 'MultiPolygon') {
-            return {
-                type: 'MultiPolygon',
-                coordinates: geometry.coordinates.map((polygon) =>
-                    polygon.map((ring) => normalizePolygonRing(ring))
-                )
-            };
-        }
-
-        return geometry;
     }
 
     _getAlertName(alert) {
@@ -567,10 +545,33 @@ class AlertLayer {
         }
     }
 
+    _isAlertsLayerEnabled() {
+        const checkbox = document.getElementById('toggle-alerts-layer');
+        if (checkbox) {
+            return checkbox.checked;
+        }
+
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            return settings.alertsEnabled !== undefined ? settings.alertsEnabled : true;
+        } catch {
+            return true;
+        }
+    }
+
+    displayAlertsOnMap(target = 'main') {
+        if (!this._isAlertsLayerEnabled()) {
+            this.clearAlerts(target);
+            return;
+        }
+
+        this._scheduleAlertSync(target);
+    }
+
     displayAlerts() {
-        this._scheduleAlertSync('main');
+        this.displayAlertsOnMap('main');
         if (this.map?.isSplit()) {
-            this._scheduleAlertSync('dual');
+            this.displayAlertsOnMap('dual');
         }
         
         console.log(`[AlertLayer] Displayed ${this.alerts.length} alerts`);
@@ -579,7 +580,7 @@ class AlertLayer {
     displayAlertsOnDualMap() {
         // Only called when dual map is already loaded
         if (!this.map?.dualMap) return;
-        this._scheduleAlertSync('dual');
+        this.displayAlertsOnMap('dual');
     }
 
     clearAlerts(target = 'main') {

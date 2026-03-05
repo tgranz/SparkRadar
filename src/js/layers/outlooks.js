@@ -34,7 +34,7 @@ class OutlookLayer {
     async fetchOutlook(day) {
         if (![1, 2, 3].includes(day)) {
             console.error('[OutlookLayer] Invalid outlook day:', day);
-            return;
+            return null;
         }
 
         try {
@@ -53,10 +53,12 @@ class OutlookLayer {
             if (data?.features) {
                 this.currentOutlookDay = day;
                 this.outlookData = data;
-                this.displayOutlook();
+                return data;
             }
+            return null;
         } catch (error) {
             console.error('[OutlookLayer] Error fetching outlook:', error);
+            return null;
         }
     }
 
@@ -138,10 +140,40 @@ class OutlookLayer {
         }, insertBeforeId);
     }
 
+    _getEnabledOutlookDay() {
+        const day1Checkbox = document.getElementById('toggle-day-1-outlook-layer');
+        const day2Checkbox = document.getElementById('toggle-day-2-outlook-layer');
+        const day3Checkbox = document.getElementById('toggle-day-3-outlook-layer');
+
+        if (day1Checkbox || day2Checkbox || day3Checkbox) {
+            if (day1Checkbox?.checked) return 1;
+            if (day2Checkbox?.checked) return 2;
+            if (day3Checkbox?.checked) return 3;
+            return null;
+        }
+
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            return [1, 2, 3].includes(settings.outlookDay) ? settings.outlookDay : null;
+        } catch {
+            return null;
+        }
+    }
+
+    displayOutlookOnMap(target = 'main') {
+        const enabledDay = this._getEnabledOutlookDay();
+        if (!enabledDay || !this.outlookData || this.currentOutlookDay !== enabledDay) {
+            this.clearOutlook(target);
+            return;
+        }
+
+        this._scheduleOutlookSync(target);
+    }
+
     displayOutlook() {
-        this._scheduleOutlookSync('main');
+        this.displayOutlookOnMap('main');
         if (this.map?.isSplit()) {
-            this._scheduleOutlookSync('dual');
+            this.displayOutlookOnMap('dual');
         }
         
         console.log(`[OutlookLayer] Displayed Day ${this.currentOutlookDay} outlook with ${this.outlookData?.features?.length || 0} features`);
@@ -171,8 +203,7 @@ class OutlookLayer {
     displayOutlookOnDualMap() {
         // Only called when dual map is already loaded
         if (!this.map?.dualMap) return;
-        if (!this.outlookData) return;
-        this._scheduleOutlookSync('dual');
+        this.displayOutlookOnMap('dual');
     }
 }
 

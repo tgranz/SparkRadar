@@ -449,9 +449,10 @@ class Palettes {
             
             if (parsed.length > 0) {
                 const firstVal = Math.min(...parsed.map(p => p.val));
-                const transparentLine = `${(firstVal - 0.1).toFixed(2)} 0 0 0 0`;
+                const firstColor = parsed.find(p => p.val === firstVal);
+                const transparentLine = `${(firstVal - 10).toFixed(2)} ${firstColor.r} ${firstColor.g} ${firstColor.b} 0`;
                 storedValue = transparentLine + '\n' + storedValue;
-                console.log('[Palettes] Added transparent stop to stored REF palette at val:', firstVal - 0.1);
+                console.log('[Palettes] Added transparent stop to stored REF palette at val:', firstVal - 10);
             }
         }
         

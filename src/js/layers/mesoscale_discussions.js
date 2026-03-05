@@ -329,10 +329,33 @@ class MesoscaleDiscussionLayer {
         }
     }
 
+    _areMesoscaleDiscussionsEnabled() {
+        const checkbox = document.getElementById('toggle-mesoscale-discussions-layer');
+        if (checkbox) {
+            return checkbox.checked;
+        }
+
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            return settings.mesoscaleDiscussionsEnabled !== undefined ? settings.mesoscaleDiscussionsEnabled : false;
+        } catch {
+            return false;
+        }
+    }
+
+    displayMesoscaleDiscussionsOnMap(target = 'main') {
+        if (!this._areMesoscaleDiscussionsEnabled()) {
+            this.clearMesoscaleDiscussions(target);
+            return;
+        }
+
+        this._scheduleMDSync(target);
+    }
+
     displayMesoscaleDiscussions() {
-        this._scheduleMDSync('main');
+        this.displayMesoscaleDiscussionsOnMap('main');
         if (this.map?.isSplit()) {
-            this._scheduleMDSync('dual');
+            this.displayMesoscaleDiscussionsOnMap('dual');
         }
 
         console.log(`[MesoscaleDiscussionLayer] Displayed ${this.mesoscaleDiscussions.length} mesoscale discussions`);
@@ -354,7 +377,7 @@ class MesoscaleDiscussionLayer {
     displayMesoscaleDiscussionsOnDualMap() {
         // Only called when dual map is already loaded
         if (!this.map?.dualMap) return;
-        this._scheduleMDSync('dual');
+        this.displayMesoscaleDiscussionsOnMap('dual');
     }
 }
 

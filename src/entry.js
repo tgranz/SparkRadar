@@ -401,7 +401,7 @@ let lastCheckedRadar = { main: null, split: null }; // Track last checked radar 
 let baselineCheckCount = { main: 0, split: 0 }; // Track how many checks we've seen stable
 const STATION_CHANGE_DEBOUNCE = 5000; // 5 second debounce after station change
 const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
-var updateTimes = 6;
+var updateTimes = 12;
 var updateIntervalId = null;
 var autoUpdateEnabled = true;
 
@@ -497,8 +497,9 @@ updateIntervalId = setInterval(async () => {
       }
     }
 
-    // Update radar stations and outlooks every 6 cycles (1.5min)
-    if (updateTimes == 6) {
+    // Update radar stations and outlooks every 12 cycles (2mins)
+    if (updateTimes >= 12) {
+      console.log("Running secondary updates...");
       map.updateRadarStations();
       map.fetchOutlooks();
       updateTimes = 0;
@@ -509,11 +510,23 @@ updateIntervalId = setInterval(async () => {
     map.fetchWatches();
     map.fetchStormCenters();
 
+    console.log("UPDATETIMES:", updateTimes);
+
   } finally {
     updateInProgress = false;
   }
-}, 15 * 1000); // Run updates every 15 seconds
+}, 10 * 1000); // Run updates every 10 seconds
 
+// Post a notice to users opening the console
+setTimeout(() => {
+  console.log("%cDO NOT PASTE ANYTHING HERE!", "font-size: 32px; font-weight: bold; color: red;");
+  console.log("%cIf you don't know what you are doing you can easily wipe all of your settings or cause the page to fail to load.", "font-size: 16px;");
+
+  setInterval(() => {
+    console.log("%cDO NOT PASTE ANYTHING HERE!", "font-size: 32px; font-weight: bold; color: red;");
+    console.log("%cIf you don't know what you are doing you can easily wipe all of your settings or cause the page to fail to load.", "font-size: 16px;");
+  }, 15 * 1000);
+}, 5000);
 
 // Show welcome dialog if first time
 if (localStorage.getItem('firstUse') !== 'true') {

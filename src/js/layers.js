@@ -67,6 +67,7 @@ class Layers {
         // Set up AlertService callbacks
         this.alertService.onAlertsUpdated = (alerts) => {
             this.alertLayer.setAlerts(alerts);
+            this._setLayerCache('alerts', alerts);
             this.displayAlerts();
             document.dispatchEvent(new CustomEvent('alertsUpdated', {
                 detail: { count: alerts.length, alerts }
@@ -75,6 +76,7 @@ class Layers {
         
         this.alertService.onWatchesUpdated = (watches) => {
             this.watchLayer.setWatches(watches);
+            this._setLayerCache('watches', watches);
             this.displayWatches();
         };
         
@@ -84,6 +86,21 @@ class Layers {
 
         // Set up unified click handler for all layer types
         this._setupClickHandlers();
+    }
+
+    _getWindowLayerCache() {
+        if (!window.cache) {
+            window.cache = {};
+        }
+        if (!window.cache.layers) {
+            window.cache.layers = {};
+        }
+        return window.cache.layers;
+    }
+
+    _setLayerCache(layerName, payload) {
+        const layerCache = this._getWindowLayerCache();
+        layerCache[layerName] = payload;
     }
 
     _setupClickHandlers() {
@@ -425,7 +442,12 @@ class Layers {
      * Fetches alerts from the API
      */
     async fetchAlerts(retryCount = 0) {
-        return await this.alertService.fetchAlerts(retryCount);
+        const alerts = await this.alertService.fetchAlerts(retryCount);
+        if (Array.isArray(alerts)) {
+            this._setLayerCache('alerts', alerts);
+            this.displayAlerts();
+        }
+        return alerts;
     }
 
     /**
@@ -433,10 +455,15 @@ class Layers {
      */
     async fetchWatches() {
         const watches = await this.alertService.fetchWatches();
-        if (watches) {
+        if (Array.isArray(watches)) {
             this.watchLayer.setWatches(watches);
+            this._setLayerCache('watches', watches);
             this.displayWatches();
+            return watches;
         }
+        this._setLayerCache('watches', []);
+        this.displayWatches();
+        return watches;
     }
 
     /**
@@ -461,29 +488,44 @@ class Layers {
             }
 
             const data = await response.json();
-            if (data && data.features && Array.isArray(data.features) && data.features[0].properties.name != 'NoArea') {
+            if (data && Array.isArray(data.features) && data.features.length > 0 && data.features[0].properties?.name !== 'NoArea') {
                 this.mdLayer.setMesoscaleDiscussions(data.features);
+                this._setLayerCache('mesoscaleDiscussions', data.features);
                 this.displayMesoscaleDiscussions();
                 console.log(`[Layers] Fetched ${data.features.length} mesoscale discussions`);
+                return data.features;
             } else {
                 console.warn('[Layers] No mesoscale discussions in response');
                 this.mdLayer.setMesoscaleDiscussions([]);
+                this._setLayerCache('mesoscaleDiscussions', []);
+                this.displayMesoscaleDiscussions();
+                return [];
             }
         } catch (error) {
             console.error('[Layers] Error fetching mesoscale discussions:', error);
             this.mdLayer.setMesoscaleDiscussions([]);
+            this._setLayerCache('mesoscaleDiscussions', []);
+            this.displayMesoscaleDiscussions();
+            return [];
         }
     }
 
     async fetchOutlooks() {
         try {
-            const outlookData = await this.outlookLayer.fetchOutlook(this.currentOutlookDay);
-            if (outlookData) {
-                this.outlookLayer.setOutlookData(outlookData);
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            const activeDay = [1, 2, 3].includes(settings.outlookDay) ? settings.outlookDay : this.currentOutlookDay;
+            if (!activeDay) {
+                this._setLayerCache('outlook', null);
                 this.displayOutlook();
+                return null;
             }
+
+            return await this.fetchOutlook(activeDay);
         } catch (error) {
             console.error('[Layers] Error fetching outlooks:', error);
+            this._setLayerCache('outlook', null);
+            this.displayOutlook();
+            return null;
         }
     }
 
@@ -496,44 +538,79 @@ class Layers {
 
     // Display methods - delegate to layer classes
     displayAlerts() {
-        this.alertLayer.displayAlerts();
+        this.displayAlertsOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayAlertsOnMap('dual');
+        }
     }
 
     displayWatches() {
-        this.watchLayer.displayWatches();
+        this.displayWatchesOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayWatchesOnMap('dual');
+        }
     }
 
     displayMesoscaleDiscussions() {
-        this.mdLayer.displayMesoscaleDiscussions();
+        this.displayMesoscaleDiscussionsOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayMesoscaleDiscussionsOnMap('dual');
+        }
     }
 
     displayOutlook() {
-        this.outlookLayer.displayOutlook();
+        this.displayOutlookOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayOutlookOnMap('dual');
+        }
     }
 
     displayStormCenters() {
-        this.stormCentersLayer.displayStormCenters();
+        this.displayStormCentersOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayStormCentersOnMap('dual');
+        }
+    }
+
+    displayAlertsOnMap(target = 'main') {
+        this.alertLayer.displayAlertsOnMap(target);
+    }
+
+    displayWatchesOnMap(target = 'main') {
+        this.watchLayer.displayWatchesOnMap(target);
+    }
+
+    displayMesoscaleDiscussionsOnMap(target = 'main') {
+        this.mdLayer.displayMesoscaleDiscussionsOnMap(target);
+    }
+
+    displayOutlookOnMap(target = 'main') {
+        this.outlookLayer.displayOutlookOnMap(target);
+    }
+
+    displayStormCentersOnMap(target = 'main') {
+        this.stormCentersLayer.displayStormCentersOnMap(target);
     }
 
     // Display on dual map methods
     displayAlertsOnDualMap() {
-        this.alertLayer.displayAlertsOnDualMap();
+        this.displayAlertsOnMap('dual');
     }
 
     displayWatchesOnDualMap() {
-        this.watchLayer.displayWatchesOnDualMap();
+        this.displayWatchesOnMap('dual');
     }
 
     displayMesoscaleDiscussionsOnDualMap() {
-        this.mdLayer.displayMesoscaleDiscussionsOnDualMap();
+        this.displayMesoscaleDiscussionsOnMap('dual');
     }
 
     displayOutlookOnDualMap() {
-        this.outlookLayer.displayOutlookOnDualMap();
+        this.displayOutlookOnMap('dual');
     }
 
     displayStormCentersOnDualMap() {
-        this.stormCentersLayer.displayStormCentersOnDualMap();
+        this.displayStormCentersOnMap('dual');
     }
 
     // Clear methods - delegate to layer classes
@@ -559,12 +636,23 @@ class Layers {
 
     // Outlook methods - delegate to OutlookLayer
     async fetchOutlook(day) {
-        return await this.outlookLayer.fetchOutlook(day);
+        const outlookData = await this.outlookLayer.fetchOutlook(day);
+        if (outlookData?.features) {
+            this._setLayerCache('outlook', outlookData);
+            this.displayOutlook();
+        } else {
+            this._setLayerCache('outlook', null);
+            this.displayOutlook();
+        }
+        return outlookData;
     }
 
     // Storm Centers methods - delegate to StormCentersLayer
     async fetchStormCenters() {
-        return await this.stormCentersLayer.fetchStormCenters();
+        const result = await this.stormCentersLayer.fetchStormCenters();
+        this._setLayerCache('stormCenters', this.stormCentersLayer.getStormCenters());
+        this.displayStormCenters();
+        return result;
     }
 }
 

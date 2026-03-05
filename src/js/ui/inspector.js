@@ -129,7 +129,7 @@ export default class Inspector {
             case 'N1H':
             case 'N2H':
             case 'N3H':
-            return '';
+            return 'TYPE';
             case 'SW':
             return 'm/s';
             default:
@@ -251,12 +251,37 @@ export default class Inspector {
         let displayValue = '--';
         let displayUnit = '';
         let circleColor = 'black';
-        
+
+        // If we are looking at DHC we show the precip type instead of a value
         if (value !== null) {
+
+            const dhcMapping = {
+                10: 'Biological',
+                20: 'Clutter',
+                30: "Ice crystals",
+                40: 'Dry snow',
+                50: 'Wet snow',
+                60: 'Rain',
+                70: 'Heavy rain',
+                80: 'Big drops',
+                90: 'Graupel',
+                100: 'Hail + rain',
+                110: 'Large hail',
+                120: 'Giant hail',
+                130: 'RF',
+                140: 'Unknown'
+            };
+
             const unit = this._getProductUnit(currentProduct);
-            const valueStr = value === 'rf' ? 'RF' : value.toFixed(1);
+            let valueStr = '';
+
+            if (unit === 'TYPE') {
+                valueStr = dhcMapping[value] || `Unknown (${value})`;
+            } else {
+                valueStr = value === 'rf' ? 'RF' : value.toFixed(1);
+            }
             displayValue = valueStr;
-            displayUnit = unit;
+            displayUnit = unit === 'TYPE' ? value.toFixed(0) : unit;
             
             // Get color for this value using the product's palette
             const colorArray = this._colorForProductValue(currentProduct, value);
