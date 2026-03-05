@@ -1,6 +1,18 @@
-export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick) {    
+export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick) {    
+    // Create main toolbar
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
+
+    // Create main toolbar buttons
+    const openMenuButton = document.createElement('button');
+    openMenuButton.type = 'button';
+    openMenuButton.innerHTML = '<i class="ti ti-menu-2"></i>';
+    openMenuButton.title = 'Open menu';
+    openMenuButton.addEventListener('click', () => {
+        if (typeof onOpenMenu === 'function') {
+            onOpenMenu();
+        }
+    });
 
     const openLayerPickerButton = document.createElement('button');
     openLayerPickerButton.type = 'button';
@@ -34,31 +46,16 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
         }
     });
 
-    const openMenuButton = document.createElement('button');
-    openMenuButton.type = 'button';
-    openMenuButton.innerHTML = '<i class="ti ti-menu-2"></i>';
-    openMenuButton.title = 'Open menu';
-    openMenuButton.addEventListener('click', () => {
-        if (typeof onOpenMenu === 'function') {
-            onOpenMenu();
-        }
-    });
-
-    toolbar.appendChild(openMenuButton);
-    toolbar.appendChild(openLayerPickerButton);
-    toolbar.appendChild(startSplitLayoutButton);
-    //toolbar.appendChild(start3dButton);
-
-    // Toolbox
-    const toolboxButton = document.createElement('button');
-    toolboxButton.type = 'button';
-    toolboxButton.innerHTML = '<i class="ti ti-tool"></i>';
-    toolboxButton.title = 'Toolbox';
-    toolbar.appendChild(toolboxButton);
-
+    // Create toolbox container and button
     const toolbox = document.createElement('div');
     toolbox.id = 'toolbar-toolbox';
     toolbox.classList.add('toolbox-hidden');
+
+    const toolboxButton = document.createElement('button');
+    toolboxButton.type = 'button';
+    toolboxButton.id = 'toolbox-button';
+    toolboxButton.innerHTML = '<i class="ti ti-tool"></i>';
+    toolboxButton.title = 'Tools';
 
     toolboxButton.addEventListener('click', () => {
         const isHidden = toolbox.classList.contains('toolbox-hidden');
@@ -94,10 +91,18 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
         }
     });
 
-    document.body.appendChild(toolbox);
+    // Create tool buttons (inside toolbox)
+    const finderButton = document.createElement('button');
+    finderButton.type = 'button';
+    finderButton.innerHTML = '<i class="ti ti-search"></i>';
+    finderButton.title = 'Finder';
+    finderButton.addEventListener('click', () => {
+        if (typeof onFinderClick === 'function') {
+            onFinderClick();
+        }
+    });
 
     const drawDiv = document.createElement('div');
-    
     const drawButton = document.createElement('button');
     drawButton.type = 'button';
     drawButton.innerHTML = '<i class="ti ti-pencil"></i>';
@@ -120,12 +125,10 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     });
     const drawLabel = document.createElement('span');
     drawLabel.textContent = 'Draw';
-
     drawDiv.appendChild(drawButton);
     drawDiv.appendChild(drawLabel);
 
     const inspectorDiv = document.createElement('div');
-
     const inspectorButton = document.createElement('button');
     inspectorButton.type = 'button';
     inspectorButton.id = 'inspector-button';
@@ -136,57 +139,67 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
             onInspectorClick();
         }
     });
-
-    inspectorDiv.appendChild(inspectorButton);
     const inspectorLabel = document.createElement('span');
     inspectorLabel.textContent = 'Inspector';
+    inspectorDiv.appendChild(inspectorButton);
     inspectorDiv.appendChild(inspectorLabel);
 
-    toolbox.appendChild(inspectorDiv);
-    toolbox.appendChild(drawDiv);
-
+    // Create bottom UI elements
     const loader = document.createElement('div');
     loader.className = 'loader';
     loader.id = 'toolbar-loader';
-    toolbar.appendChild(loader);
 
     const spacer = document.createElement('div');
     spacer.className = 'toolbar-spacer';
-    toolbar.appendChild(spacer); // push everything to the left
 
     const stationInfoDiv = document.createElement('div');
     stationInfoDiv.id = 'toolbar-station-info';
     stationInfoDiv.textContent = '';
-    document.body.appendChild(stationInfoDiv);
 
-    if (window.innerWidth <= 450) {
-        stationInfoDiv.id = 'toolbar-station-info-mobile';
-    } else {
-        stationInfoDiv.id = 'toolbar-station-info';
-    }
+    const stationInfo = document.createElement('div');
+    stationInfo.textContent = '';
+    stationInfo.id = 'toolbar-station';
 
-    window.onresize = () => {
-        if (window.innerWidth <= 450) {
+    const vcpInfo = document.createElement('div');
+    vcpInfo.id = 'toolbar-vcp';
+    vcpInfo.textContent = 'VCP --';
+
+    // Handle responsive station info layout
+    const updateStationInfoLayout = () => {
+        if (window.innerWidth <= 550) {
             stationInfoDiv.id = 'toolbar-station-info-mobile';
         } else {
             stationInfoDiv.id = 'toolbar-station-info';
         }
     };
+    updateStationInfoLayout();
+    window.addEventListener('resize', updateStationInfoLayout);
 
-    const stationInfo = document.createElement('div');
-    stationInfo.textContent = '';
-    stationInfo.id = 'toolbar-station';
-    stationInfoDiv.appendChild(stationInfo);
+    // Add station info click handler
     stationInfoDiv.addEventListener('click', () => {
         if (typeof onRadarStatusClick === 'function') {
             onRadarStatusClick();
         }
     });
 
-    const vcpInfo = document.createElement('div');
-    vcpInfo.id = 'toolbar-vcp';
-    vcpInfo.textContent = 'VCP --';
+    // Assemble toolbar hierarchy
+    toolbar.appendChild(openMenuButton);
+    toolbar.appendChild(openLayerPickerButton);
+    toolbar.appendChild(startSplitLayoutButton);
+    toolbar.appendChild(toolboxButton);
+    toolbar.appendChild(finderButton);
+    toolbar.appendChild(loader);
+    toolbar.appendChild(spacer);
+
+    // Assemble toolbox
+    toolbox.appendChild(inspectorDiv);
+    toolbox.appendChild(drawDiv);
+    document.body.appendChild(toolbox);
+
+    // Assemble station info
+    stationInfoDiv.appendChild(stationInfo);
     stationInfoDiv.appendChild(vcpInfo);
+    document.body.appendChild(stationInfoDiv);
 
     return toolbar;
 }

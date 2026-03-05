@@ -126,7 +126,7 @@ export default class Draw {
             } else if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
                 e.preventDefault();
                 this.undo();
-            } else if (e.key === 'Backspace') {
+            } else if (e.key === 'Backspace' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
                 e.preventDefault();
                 this.clear();
             }

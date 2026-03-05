@@ -243,8 +243,9 @@ class MesoscaleDiscussionLayer {
 
         const cache = target === 'main' ? this.mdCache.main : this.mdCache.dual;
         const nextKeys = new Set();
-        const beforeLayerId = target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
-        const insertBeforeId = map.getLayer(beforeLayerId) ? beforeLayerId : undefined;
+        // Insert before alert fill layer so MD appears below alerts but above radar
+        const alertFillLayerId = target === 'main' ? 'alerts-combined-fill' : 'alerts-combined-fill';
+        const insertBeforeId = map.getLayer(alertFillLayerId) ? alertFillLayerId : (target === 'main' ? 'radar-webgl' : 'radar-webgl-dual');
 
         const settings = window.settingsInstance;
         const mdColor = settings?.getSetting('alert_mesoscale_discussion')?.color || '#fbbf24';

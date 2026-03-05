@@ -1710,6 +1710,10 @@ class Map {
         return this.layers.fetchOutlooks();
     }
 
+    async fetchDiscussions() {
+        return this.layers.fetchMesoscaleDiscussions();
+    }
+
     subscribeToAlerts() {
         return this.layers.subscribeToAlerts();
     }

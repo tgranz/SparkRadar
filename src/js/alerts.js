@@ -494,7 +494,7 @@ class AlertService {
 
         new Notification(
             title,
-            `A ${alertName} has been issued or updated.`,
+            `A new ${alertName} has been issued.`,
             icon,
             alertColor,
             8000 // Show for 8 seconds

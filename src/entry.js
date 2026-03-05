@@ -34,6 +34,7 @@ import Draw from "./js/ui/draw.js";
 import ArchiveBrowser from "./js/ui/archive_browser.js";
 import Inspector from "./js/ui/inspector.js";
 import Palettes from './js/palettes.js';
+import Finder from './js/ui/finder.js';
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -282,6 +283,8 @@ window.addEventListener('keydown', (e) => {
     layerMenu.open();
   } else if (e.key === 'd') {
     startDraw();
+  } else if (e.key === 'f') {
+    new Finder().open();
   } else if (e.key === '1') {
     setRadar(null, 'N0B', 'main') // Reflectivity
   } else if (e.key === '2') {
@@ -360,7 +363,8 @@ const toolbar = createToolbar(
     } else {
       inspector.disable();
     }
-  }
+  },
+  () => { new Finder().open(); }
 );
 
 // Add the toolbar to the page
@@ -502,6 +506,7 @@ updateIntervalId = setInterval(async () => {
       console.log("Running secondary updates...");
       map.updateRadarStations();
       map.fetchOutlooks();
+      map.fetchDiscussions();
       updateTimes = 0;
     }
 

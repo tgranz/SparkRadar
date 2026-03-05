@@ -56,9 +56,26 @@ class Layers {
         // Now load all layers
         this.displayAlerts();
         this.displayWatches();
-        this.displayMesoscaleDiscussions();
-        this.displayOutlook();
-        this.displayStormCenters();
+        
+        // Check localStorage for other layers that user may have previously enabled
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            
+            if (settings.mesoscaleDiscussionsEnabled) {
+                this.fetchMesoscaleDiscussions();
+            }
+            
+            if (settings.outlookEnabled) {
+                const day = settings.outlookDay || 1;
+                this.fetchOutlook(day);
+            }
+            
+            if (settings.stormCentersEnabled) {
+                this.fetchStormCenters();
+            }
+        } catch (error) {
+            console.error('Error loading initial layer settings:', error);
+        }
         
         if (this.isMobileDevice) {
             console.log('[Layers] Mobile device detected - performance optimizations enabled (flashing disabled)');
