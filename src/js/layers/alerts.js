@@ -9,6 +9,7 @@ See LICENSE for more.
 import Dialog from "../ui/dialog.js";
 import { buildAlertDefaults } from "../ui/settings.js";
 import { waitForRadarLayer, pointInPolygon } from "./layer_utils.js";
+import { renderAlert } from "../alert_utils.js";
 
 class AlertLayer {
     constructor(mapInstance, alertService) {
@@ -28,6 +29,11 @@ class AlertLayer {
         // Mobile device detection
         this.isMobileDevice = this.alertService.isMobileDevice;
 
+        // Flash animation for new alerts
+        this.flashAnimationFrames = { main: null, dual: null };
+        this.alertRefreshIntervals = { main: null, dual: null };
+        this._injectFlashCSS();
+
         // Set up alert click handlers
         this.alertPopupClickHandlers.main = (e) => this._handleAlertClick('main', e);
         if (this.map?.map) {
@@ -41,6 +47,85 @@ class AlertLayer {
 
     getAlerts() {
         return this.alerts;
+    }
+
+    _injectFlashCSS() {
+        // Inject CSS keyframes for alert flash animation
+        if (document.getElementById('alert-flash-animation')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'alert-flash-animation';
+        style.textContent = `
+            @keyframes alert-pulse {
+                0% { opacity: 1; }
+                50% { opacity: 0.3; }
+                100% { opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    _isAlertNew(alert) {
+        const issuedAt = alert.issued || alert.receivedAt;
+        if (!issuedAt) return false;
+        
+        const now = Date.now();
+        const issued = new Date(issuedAt).getTime();
+        const ageMs = now - issued;
+        
+        // Consider alerts issued within the last 60 seconds as "new"
+        return ageMs >= 0 && ageMs < 60000;
+    }
+
+    _refreshAlertNewStatus(target) {
+        const mainMap = this.map?.map;
+        const dualMap = this.map?.dualMap;
+        const map = target === 'main' ? mainMap : dualMap;
+        if (!map) return;
+
+        const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
+        const source = map.getSource(sourceId);
+        if (!source) return;
+
+        // Rebuild the feature collection with updated isNew status
+        const features = [];
+        let hasNewAlerts = false;
+        
+        this.alerts.forEach((alert, index) => {
+            const alertSettings = renderAlert(alert);
+            if (!alertSettings.enabled) {
+                return;
+            }
+
+            const geojson = this._convertAlertToGeoJSON(alert);
+            if (!geojson) {
+                return;
+            }
+            
+            const colors = this._getAlertColor(alert);
+            const isNew = this._isAlertNew(alert);
+            
+            geojson.properties.fillColor = colors.fill;
+            geojson.properties.outlineColor = colors.outline;
+            geojson.properties.alertIndex = index;
+            geojson.properties.isNew = isNew ? 1 : 0;
+            
+            if (isNew) hasNewAlerts = true;
+            
+            features.push(geojson);
+        });
+
+        // Update the source with the new data
+        source.setData({
+            type: 'FeatureCollection',
+            features: features
+        });
+
+        // If no more new alerts, stop the animation
+        if (!hasNewAlerts) {
+            console.log(`[AlertLayer] No more new alerts on ${target}, stopping flash animation`);
+            this._stopFlashAnimation(target);
+        }
     }
 
     _convertAlertToGeoJSON(alert) {
@@ -88,7 +173,7 @@ class AlertLayer {
     }
 
     _getAlertName(alert) {
-        return alert?.name || alert?.productName || alert?.event || 'Unknown Alert';
+        return renderAlert(alert)?.name || "Unknown Alert";
     }
 
     _getAlertMessage(alert) {
@@ -97,28 +182,13 @@ class AlertLayer {
 
     _getAlertColor(alert) {
         // Check for custom colors in settings first
-        const alertName = this._getAlertName(alert);
-        const alertSettings = this.alertService._getAlertSettings(alertName);
-        if (alertSettings.color) {
-            return { 
-                fill: alertSettings.color, 
-                outline: alertSettings.color, 
-                name: alertName 
-            };
-        }
-
-        // Fall back to default colors from ALERT_TYPE_DEFAULTS
-        const defaultColor = buildAlertDefaults()[alertName];
-        if (defaultColor && defaultColor.color) {
-            return { 
-                fill: defaultColor.color, 
-                outline: defaultColor.color, 
-                name: alertName 
-            };
+        const rendered = renderAlert(alert);
+        if (rendered && rendered.color) {
+            return { fill: rendered.color, outline: rendered.color, name: rendered.name };
         }
         
-        // Final fallback for unknown alert types
-        return { fill: '#facc15', outline: '#facc15', name: alertName };
+        // Fallback for unknown alert types
+        return { fill: '#facc15', outline: '#facc15', name: this._getAlertName(alert) };
     }
 
     _getAlertKey(alert, index) {
@@ -214,32 +284,22 @@ class AlertLayer {
             const issued = issuedAt ? `Issued: ${alertIssued}` : '';
             const expiry = alert.expiry || alert.expiresAt ? `Expires: ${alertExpiry}` : '';
 
-            const alertMessage = this._getAlertMessage(alert);
-            const is_pds = alert.properties?.isPds ?? alertMessage.includes('particularly dangerous situation');
-            const is_confirmed = alertMessage.includes('tornado...observed');
-            const is_destructive = alert.properties?.isDestructive ?? (alertMessage.includes('destructive') || alertMessage.includes('catastrophic'));
-            const is_considerable = alert.properties?.isConsiderable ?? alertMessage.includes('considerable');
-            const is_tor_possible = alertMessage.includes('tornado...possible');
-            const is_waterspout_possible = alertMessage.includes('waterspout...possible');
-
-            const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
-            const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
-            const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
-            const maxWindGust = windMatch ? windMatch[1].trim() : null;
+            const rendered = renderAlert(alert);
 
             const meta = `
             ${expiry}
-            ${is_tor_possible ? ' | <b>Tornado Possible</b>' : ''}
-            ${is_waterspout_possible ? ' | <b>Waterspout Possible</b>' : ''}
-            ${maxWindGust ? `<br>Wind: ${maxWindGust.toUpperCase()}` : ''}
-            ${maxHailSize ? ` | Hail: ${maxHailSize.toUpperCase()}` : ''}
+            ${rendered.props.is_tor_possible ? ' | <b>Tornado Possible</b>' : ''}
+            ${rendered.props.is_waterspout_possible ? ' | <b>Waterspout Possible</b>' : ''}
+            ${rendered.props.max_wind_gust ? `<br>Wind: ${rendered.props.max_wind_gust.toUpperCase()}` : ''}
+            ${rendered.props.max_hail_size ? ` | Hail: ${rendered.props.max_hail_size.toUpperCase()}` : ''}
+            ${(rendered.props.is_emergency && rendered.name.includes("Tornado")) ? '<br><b>TORNADO EMERGENCY</b>' : rendered.props.is_pds ? '<br><b>PARTICULARLY DANGEROUS SITUATION</b>' : ''}
             `.trim();
 
             return `
                 <div class="popup-item" data-type="alert" data-index="${index}" style="cursor: pointer;">
                     <span class="popup-dot" style="background: ${colors.fill}"></span>
                     <div>
-                        <div class="popup-item-title">${is_pds ? 'PDS ' : ''}${is_confirmed ? 'Confirmed ' : ''}${is_destructive ? 'Destructive ' : ''}${is_considerable ? 'Considerable ' : ''}${title}</div>
+                        <div class="popup-item-title">${rendered.name}</div>
                         ${meta ? `<div class=\"popup-meta\">${meta}</div>` : ''}
                     </div>
                 </div>
@@ -334,20 +394,7 @@ class AlertLayer {
             return sizeMap[size.toUpperCase()] || size;
         }
 
-        const colors = this._getAlertColor(alert);
-        const title = this._getAlertName(alert);
-        const alertMessage = this._getAlertMessage(alert);
-        const is_pds = alert.properties?.isPds ?? alertMessage.includes('particularly dangerous situation');
-        const is_confirmed = alertMessage.includes('tornado...observed');
-        const is_destructive = alert.properties?.isDestructive ?? (alertMessage.includes('destructive') || alertMessage.includes('catastrophic'));
-        const is_considerable = alert.properties?.isConsiderable ?? alertMessage.includes('considerable');
-        const is_tor_possible = alertMessage.includes('tornado...possible');
-        const is_waterspout_possible = alertMessage.includes('waterspout...possible');
-
-        const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
-        const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
-        const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
-        const maxWindGust = windMatch ? windMatch[1].trim() : null;
+        const rendered = renderAlert(alert);
         
         const formatDate = (dateStr) => {
             if (!dateStr) return 'N/A';
@@ -363,16 +410,16 @@ class AlertLayer {
 
         const html = `
             <div style="max-width: 600px;">
-                <div style="margin-bottom: 20px; padding: 15px; background: ${colors.fill}30; border-left: 4px solid ${colors.fill}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.fill};">${is_pds ? 'PDS ' : ''}${is_confirmed ? 'Confirmed ' : ''}${is_destructive ? 'Destructive ' : ''}${is_considerable ? 'Considerable ' : ''}${title}</h3>
+                <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
+                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.name}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Issued:</strong> <span>${formatDate(alert.issued || alert.receivedAt)}</span>
                         <strong>Expires:</strong> <span>${formatDate(alert.expiry || alert.expiresAt)}</span>
                         ${alert.sender || alert.nwsOffice ? `<strong>Sender:</strong> <span>${alert.sender || alert.nwsOffice}</span>` : ''}
-                        ${is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
-                        ${is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
-                        ${maxHailSize ? `<strong>Max Hail:</strong> <span>${maxHailSize.toUpperCase()} (${expandHailSize(maxHailSize)})</span>` : ''}
-                        ${maxWindGust ? `<strong>Max Wind:</strong> <span>${maxWindGust.toUpperCase()}</span>` : ''}
+                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()} (${expandHailSize(rendered.props.max_hail_size)})</span>` : ''}
+                        ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
                     </div>
                 </div>
                 ${alert.message ? `
@@ -383,7 +430,7 @@ class AlertLayer {
             </div>
         `;
 
-        new Dialog(title, 'alert-triangle', html, {}, true);
+        new Dialog(rendered.name, 'alert-triangle', html, {}, true);
     }
 
     _scheduleAlertSync(target) {
@@ -465,7 +512,7 @@ class AlertLayer {
         const features = [];
         this.alerts.forEach((alert, index) => {
             const alertName = this._getAlertName(alert);
-            const alertSettings = this.alertService._getAlertSettings(alertName);
+            const alertSettings = renderAlert(alert);
             if (!alertSettings.enabled) {
                 return;
             }
@@ -480,6 +527,7 @@ class AlertLayer {
             geojson.properties.fillColor = colors.fill;
             geojson.properties.outlineColor = colors.outline;
             geojson.properties.alertIndex = index;
+            geojson.properties.isNew = this._isAlertNew(alert) ? 1 : 0;
             
             features.push(geojson);
         });
@@ -537,12 +585,70 @@ class AlertLayer {
                 id: fillLayerId,
                 type: 'fill',
                 source: sourceId,
+                filter: ['!=', ['get', 'isNew'], 1],
                 paint: {
                     'fill-color': ['get', 'fillColor'],
                     'fill-opacity': 0.4
                 }
             }, beforeLayerId);
+        } else {
+            map.setFilter(fillLayerId, ['!=', ['get', 'isNew'], 1]);
         }
+
+        // Create separate layers for new (flashing) alerts
+        const newFillLayerId = `${sourceId}-fill-new`;
+        const newOutlineLayerId = `${sourceId}-outline-new`;
+        const newOutlineOutlineLayerId = `${sourceId}-outline-outline-new`;
+
+        if (!map.getLayer(newOutlineOutlineLayerId)) {
+            map.addLayer({
+                id: newOutlineOutlineLayerId,
+                type: 'line',
+                source: sourceId,
+                filter: ['==', ['get', 'isNew'], 1],
+                paint: {
+                    'line-color': '#000000',
+                    'line-width': 6,
+                    'line-opacity': 1
+                }
+            }, 'Pier road');
+        } else {
+            map.setFilter(newOutlineOutlineLayerId, ['==', ['get', 'isNew'], 1]);
+        }
+
+        if (!map.getLayer(newOutlineLayerId)) {
+            map.addLayer({
+                id: newOutlineLayerId,
+                type: 'line',
+                source: sourceId,
+                filter: ['==', ['get', 'isNew'], 1],
+                paint: {
+                    'line-color': ['get', 'outlineColor'],
+                    'line-width': 2,
+                    'line-opacity': 1
+                }
+            }, 'Pier road');
+        } else {
+            map.setFilter(newOutlineLayerId, ['==', ['get', 'isNew'], 1]);
+        }
+
+        if (!map.getLayer(newFillLayerId)) {
+            map.addLayer({
+                id: newFillLayerId,
+                type: 'fill',
+                source: sourceId,
+                filter: ['==', ['get', 'isNew'], 1],
+                paint: {
+                    'fill-color': ['get', 'fillColor'],
+                    'fill-opacity': 0.4
+                }
+            }, beforeLayerId);
+        } else {
+            map.setFilter(newFillLayerId, ['==', ['get', 'isNew'], 1]);
+        }
+
+        // Start flash animation for new alerts
+        this._startFlashAnimation(target);
     }
 
     _isAlertsLayerEnabled() {
@@ -591,13 +697,19 @@ class AlertLayer {
             return;
         }
 
+        // Stop flash animation
+        this._stopFlashAnimation(target);
+
         // Remove the combined alert layers and source
         const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
         const fillLayerId = `${sourceId}-fill`;
         const outlineLayerId = `${sourceId}-outline`;
         const outlineOutlineLayerId = `${sourceId}-outline-outline`;
+        const newFillLayerId = `${sourceId}-fill-new`;
+        const newOutlineLayerId = `${sourceId}-outline-new`;
+        const newOutlineOutlineLayerId = `${sourceId}-outline-outline-new`;
 
-        // Remove layers in reverse order
+        // Remove layers in reverse order (including new alert layers)
         if (map.getLayer(fillLayerId)) {
             map.removeLayer(fillLayerId);
         }
@@ -607,6 +719,15 @@ class AlertLayer {
         if (map.getLayer(outlineOutlineLayerId)) {
             map.removeLayer(outlineOutlineLayerId);
         }
+        if (map.getLayer(newFillLayerId)) {
+            map.removeLayer(newFillLayerId);
+        }
+        if (map.getLayer(newOutlineLayerId)) {
+            map.removeLayer(newOutlineLayerId);
+        }
+        if (map.getLayer(newOutlineOutlineLayerId)) {
+            map.removeLayer(newOutlineOutlineLayerId);
+        }
 
         // Remove source
         if (map.getSource(sourceId)) {
@@ -614,6 +735,88 @@ class AlertLayer {
         }
 
         this._clearAlertPopup(target);
+    }
+
+    _startFlashAnimation(target) {
+        const mainMap = this.map?.map;
+        const dualMap = this.map?.dualMap;
+        const map = target === 'main' ? mainMap : dualMap;
+        if (!map) return;
+
+        // Clear existing animation and interval
+        this._stopFlashAnimation(target);
+
+        const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
+        const newFillLayerId = `${sourceId}-fill-new`;
+        const newOutlineLayerId = `${sourceId}-outline-new`;
+
+        if (!map.getLayer(newFillLayerId)) return;
+
+        let startTime = Date.now();
+        const duration = 1000; // 1 second pulse cycle
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const cycle = (elapsed % duration) / duration;
+            
+            // Pulse between normal and white using sine wave
+            const phase = Math.sin(cycle * Math.PI * 2) * 0.5 + 0.5;
+            
+            // Interpolate between alert color and white
+            const fillColorExpression = [
+                'interpolate',
+                ['linear'],
+                ['literal', phase],
+                0,
+                ['get', 'fillColor'],
+                1,
+                '#ffffff'
+            ];
+
+            const outlineColorExpression = [
+                'interpolate',
+                ['linear'],
+                ['literal', phase],
+                0,
+                ['get', 'outlineColor'],
+                1,
+                '#ffffff'
+            ];
+
+            try {
+                if (map.getLayer(newFillLayerId)) {
+                    map.setPaintProperty(newFillLayerId, 'fill-color', fillColorExpression);
+                }
+                if (map.getLayer(newOutlineLayerId)) {
+                    map.setPaintProperty(newOutlineLayerId, 'line-color', outlineColorExpression);
+                }
+            } catch (e) {
+                console.warn('[AlertLayer] Flash animation error:', e);
+                this._stopFlashAnimation(target);
+                return;
+            }
+
+            this.flashAnimationFrames[target] = requestAnimationFrame(animate);
+        };
+
+        animate();
+
+        // Start periodic refresh to update which alerts are still "new"
+        this.alertRefreshIntervals[target] = setInterval(() => {
+            this._refreshAlertNewStatus(target);
+        }, 10000); // Check every 10 seconds
+    }
+
+    _stopFlashAnimation(target) {
+        if (this.flashAnimationFrames[target]) {
+            cancelAnimationFrame(this.flashAnimationFrames[target]);
+            this.flashAnimationFrames[target] = null;
+        }
+        
+        if (this.alertRefreshIntervals[target]) {
+            clearInterval(this.alertRefreshIntervals[target]);
+            this.alertRefreshIntervals[target] = null;
+        }
     }
 }
 

@@ -8,7 +8,7 @@ See LICENSE for more.
 */
 
 import Notification from "./ui/notification.js";
-import { buildAlertDefaults } from "./ui/settings.js";
+import { renderAlert } from "./alert_utils.js";
 
 /**
  * AlertService manages alert data fetching via SSE and polling
@@ -415,94 +415,22 @@ class AlertService {
      * @param {Object} alertData - Alert data from SSE or API
      */
     _showAlertNotification(alertData) {
-        const alertName = this._getAlertName(alertData);
-
-        // Check if notifications are enabled for this alert type
-        const alertSettings = this._getAlertSettings(alertName);
-        if (!alertSettings.notify) {
-            console.log(`[AlertService] Notifications disabled for ${alertName}`);
-            return;
-        }
-
-        // Use custom colors from settings if available
-        let alertColor = alertSettings.color;
-        
-        // If no custom colors, try to get from defaults
-        if (!alertColor) {
-            const defaultColor = buildAlertDefaults()[alertData.name];
-            if (defaultColor && defaultColor.color) {
-                alertColor = defaultColor.color;
-            } else {
-                alertColor = '#facc15'; // Fallback yellow
-            }
-        }
-
-        // Determine icon based on alert type
-        let icon = 'alert-triangle';
-        let title = 'New Alert';
-        
-        const name = alertName.toLowerCase();
-        
-        // Tornado alerts
-        if (name.includes('tornado')) {
-            icon = 'tornado';
-            title = 'Tornado Warning';
-        }
-        // Severe thunderstorm alerts
-        else if (name.includes('severe thunderstorm')) {
-            icon = 'bolt';
-            title = 'Severe Thunderstorm Warning';
-        }
-        // Flash flood alerts
-        else if (name.includes('flash flood')) {
-            icon = 'droplet';
-            title = 'Flash Flood Warning';
-        }
-        // Flood alerts
-        else if (name.includes('flood')) {
-            icon = 'droplet';
-            title = 'Flood Warning';
-        }
-        // Winter alerts
-        else if (name.includes('winter') || name.includes('blizzard') || name.includes('snow')) {
-            icon = 'snowflake';
-            title = 'Winter Weather';
-        }
-        // Wind alerts
-        else if (name.includes('wind')) {
-            icon = 'wind';
-            title = 'Wind Advisory';
-        }
-        // Tsunami/Marine
-        else if (name.includes('tsunami') || name.includes('marine') || name.includes('lakeshore')) {
-            icon = 'wave';
-            title = 'Marine Alert';
-        }
-        // Coastal/Storm Surge
-        else if (name.includes('coastal') || name.includes('storm surge')) {
-            icon = 'waves';
-            title = 'Coastal Alert';
-        }
-        // Hurricane/Tropical
-        else if (name.includes('hurricane') || name.includes('tropical') || name.includes('typhoon')) {
-            icon = 'cloud-storm';
-            title = 'Tropical Alert';
-        }
-        
+        const rendered = renderAlert(alertData);
+                
         // Don't send notifications for unknown alerts
-        if (alertName === 'Unknown Alert') return;
+        if (rendered.name === 'Unknown Alert') return;
 
         new Notification(
-            title,
-            `A new ${alertName} has been issued.`,
-            icon,
-            alertColor,
+            "New Alert",
+            `A new ${rendered.name} has been issued.`,
+            rendered.notif.icon,
+            rendered.color,
             8000 // Show for 8 seconds
         );
     }
 
     _getAlertName(alertData) {
-        return alertData?.name || alertData?.productName || alertData?.event || 'Unknown Alert';
+        return renderAlert(alertData)?.name || alertData?.productName || alertData?.properties?.product_type || "Unknown Alert";
     }
 
     _normalizeAlert(alertData) {
@@ -529,45 +457,6 @@ class AlertService {
             sender,
             properties
         };
-    }
-
-    /**
-     * Gets alert settings from localStorage
-     * @param {string} alertName - Name of the alert type
-     * @returns {Object} Alert settings (enabled, notify, color)
-     */
-    _getAlertSettings(alertName) {
-        try {
-            // Convert alert name to settings key format
-            // e.g., "Severe Thunderstorm Warning" -> "alert_severe_thunderstorm_warning"
-            const settingKey = `alert_${alertName.replace(/\s+/g, '_').toLowerCase()}`;
-            
-            // Try to get from localStorage settings
-            const storedSettings = localStorage.getItem('settings');
-            if (storedSettings) {
-                const parsed = JSON.parse(storedSettings);
-                if (parsed[settingKey]) {
-                    const value = parsed[settingKey];
-                    if (value && typeof value === 'object') {
-                        if (!value.color && (value.fillColor || value.borderColor)) {
-                            value.color = value.fillColor || value.borderColor;
-                        }
-                        return value;
-                    }
-                    return parsed[settingKey];
-                }
-            }
-            
-            // Return defaults if not found
-            return {
-                enabled: true,
-                notify: true,
-                color: null
-            };
-        } catch (error) {
-            console.error('[AlertService] Error getting alert settings:', error);
-            return { enabled: true, notify: true, color: null };
-        }
     }
 }
 

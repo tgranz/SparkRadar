@@ -1,4 +1,4 @@
-import Layers from "../layers.js";
+import { renderAlert } from '../alert_utils.js';
 
 export default class AlertList {
     constructor(layersInstance = null) {
@@ -105,20 +105,7 @@ export default class AlertList {
         sortedAlerts.forEach(alert => {
             var desiredColor = '#ffffff';
 
-            const title = alert?.name || alert?.productName || alert?.event || 'Alert';
-            const alertMessage = (alert?.message || '').toLowerCase();
-            const is_pds = alert?.properties?.isPds ?? alertMessage.includes('particularly dangerous situation');
-            const is_confirmed = alertMessage.includes('tornado...observed');
-            const is_destructive = alert?.properties?.isDestructive ?? (alertMessage.includes('destructive') || alertMessage.includes('catastrophic'));
-            const is_considerable = alert?.properties?.isConsiderable ?? alertMessage.includes('considerable');
-            const is_tor_possible = alertMessage.includes('tornado...possible');
-            const is_waterspout_possible = alertMessage.includes('waterspout...possible');
-            const colors = this.layersInstance?.alertLayer?._getAlertColor(alert) || { fill: '#facc15', outline: '#facc15' };
-
-            const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
-            const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
-            const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
-            const maxWindGust = windMatch ? windMatch[1].trim() : null;
+            const rendered = renderAlert(alert);
 
             const has_valid_geometry = !!(alert?.geometry && (
                 (Array.isArray(alert.geometry) && alert.geometry.length > 0) ||
@@ -126,13 +113,15 @@ export default class AlertList {
             ));
 
             // Ignore unknown alerts
-            if (title === 'Unknown Alert') return;
+            if (rendered.name === 'Unknown Alert') return;
 
-            if (is_pds) {
+            if (rendered.props.is_emergency) {
+                desiredColor = "#ad00ad"
+            } else if (rendered.props.is_pds) {
                 desiredColor = '#ff00ff';
-            } else if (title.toLowerCase().includes('tornado')) {
+            } else if (rendered.name.toLowerCase().includes('tornado')) {
                 desiredColor = '#ff2121';
-            } else if (title.toLowerCase().includes('severe thunderstorm')) {
+            } else if (rendered.name.toLowerCase().includes('severe thunderstorm')) {
                 desiredColor = '#ff7f00';
             }
 
@@ -140,14 +129,14 @@ export default class AlertList {
             item.classList.add('alert-item', 'alert-list-item');
     
             item.innerHTML = `
-                <div style="margin-bottom: 20px; padding: 15px; background: ${colors.fill}30; border-left: 4px solid ${colors.fill}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.fill};">${is_pds ? 'PDS ' : ''}${is_confirmed ? 'Confirmed ' : ''}${is_destructive ? 'Destructive ' : ''}${is_considerable ? 'Considerable ' : ''}${title}</h3>
+                <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
+                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.props.is_pds ? 'PDS ' : ''}${rendered.props.is_tor_observed ? 'Confirmed ' : ''}${rendered.props.damagelevel === 'destructive' ? 'Destructive ' : ''}${rendered.props.damagelevel === 'considerable' ? 'Considerable ' : ''}${rendered.name}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Expires:</strong> <span>${this.formatDate(alert.expiry || alert.expiresAt)}</span>
-                        ${is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
-                        ${is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
-                        ${maxHailSize ? `<strong>Max Hail:</strong> <span>${maxHailSize.toUpperCase()}</span>` : ''}
-                        ${maxWindGust ? `<strong>Max Wind:</strong> <span>${maxWindGust.toUpperCase()}</span>` : ''}
+                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()}</span>` : ''}
+                        ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
                     </div>
                     <div class="alert-btns">
                         ${has_valid_geometry ? `<button class="alert-btn" data-action="view-map">View on Map</button>` : ''}
@@ -177,15 +166,17 @@ export default class AlertList {
 
             // Ensure most severe alert colors take precedence
             if (desiredColor == '#ff2121') {
-                if (this.opener.style.color != '#ff00ff') {
+                if (this.opener.style.color != '#ff00ff' && this.opener.style.color != '#ad00ad') {
                     this.opener.style.color = '#ff2121';
                 }
             } else if (desiredColor == '#ff7f00') {
-                if (this.opener.style.color != '#ff2121' && this.opener.style.color != '#ff00ff') {
+                if (this.opener.style.color != '#ff2121' && this.opener.style.color != '#ff00ff' && this.opener.style.color != '#ad00ad') {
                     this.opener.style.color = '#ff7f00';
                 }
-            } else if (desiredColor == '#ff00ff') {
+            } else if (desiredColor == '#ff00ff' && this.opener.style.color != '#ff2121' && this.opener.style.color != '#ad00ad') {
                 this.opener.style.color = '#ff00ff';
+            } else if (desiredColor == '#ad00ad') {
+                this.opener.style.color = '#ad00ad';
             }
         });
     }
