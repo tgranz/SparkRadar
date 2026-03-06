@@ -284,7 +284,7 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'd') {
     startDraw();
   } else if (e.key === 'f') {
-    new Finder().open();
+    new Finder(map).open();
   } else if (e.key === '1') {
     setRadar(null, 'N0B', 'main') // Reflectivity
   } else if (e.key === '2') {
@@ -364,7 +364,7 @@ const toolbar = createToolbar(
       inspector.disable();
     }
   },
-  () => { new Finder().open(); }
+  () => { new Finder(map).open(); }
 );
 
 // Add the toolbar to the page

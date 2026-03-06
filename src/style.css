@@ -1803,6 +1803,11 @@ input[type="color"] {
   box-shadow: 0 0 10px rgba(39, 190, 255, 0.3);
 }
 
+.finder-results {
+  height: 100%;
+  overflow-y: auto;
+}
+
 .finder-result {
   display: flex;
   flex-direction: row;

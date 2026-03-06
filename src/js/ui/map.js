@@ -14,6 +14,7 @@ import { showLoadingAnimation, hideLoadingAnimation } from "./loader.js";
 import RadarPicker from "./radar_picker.js";
 import Layers from "../layers.js";
 import Radar3D from "../3dradar.js";
+import Notification from './notification.js';
 
 class Map {
     // Constructor function
@@ -27,6 +28,7 @@ class Map {
         this.splitCanvas = null;
         this.splitCanvasResizeObserver = null;
         this.radar3D = null;
+        this.firstPaletteError = true;
 
         // Radar station tracking
         this.currentMainStation = null;
@@ -1309,6 +1311,16 @@ class Map {
                     console.log(`[WebGL] Updated colorbar ${colorbarId} with palette ${paletteKey}`);
                 } else {
                     console.warn(`[WebGL] Could not generate gradient for either ${paletteKey} or REF`);
+                    if (this.firstPaletteError) {
+                        new Notification(
+                            'Palette error',
+                            'The current radar color palette could not be loaded. This is usually because the uploaded file could not be parsed. If you believe this is a mistake, please open an issue here: https://github.com/tgranz/SparkRadar/issues; otherwise, upload a valid palette file.',
+                            'xbox-x',
+                            '#ff2121',
+                            30000
+                        );
+                    }
+                    this.firstPaletteError = true;
                 }
             } else {
                 console.warn(`[WebGL] Colorbar element ${colorbarId} not found`);

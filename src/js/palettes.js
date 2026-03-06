@@ -201,7 +201,7 @@ class Palettes {
                 }
             }
         }
-        return lines.join('\n');
+        return lines.join('\n').replace('	', ' '); // Replace tabs with spaces if present
     }
 
     convertPalToArray(palString, paletteName = null) {

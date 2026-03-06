@@ -38,9 +38,7 @@ export function getAlertSettings(alertName) {
 
 export function renderAlert(alert) {
     const name = alert?.productName?.toLowerCase() || null;
-    let icon = 'exclamation-triangle';
-
-    console.log(alert);
+    let icon = 'alert-triangle';
 
     // Find the icon
     if (name.includes('tornado')) icon = 'tornado';
@@ -52,7 +50,7 @@ export function renderAlert(alert) {
     else if (name.includes('tsunami') || name.includes('marine') || name.includes('lakeshore')) icon = 'wave';
     else if (name.includes('coastal') || name.includes('storm surge')) icon = 'waves';
     else if (name.includes('hurricane') || name.includes('tropical') || name.includes('typhoon')) icon = 'cloud-storm';
-    else icon = 'exclamation-triangle';
+    else icon = 'alert-triangle';
 
     // Check props
     const alertMessage = alert?.message || "";
