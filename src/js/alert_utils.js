@@ -65,6 +65,9 @@ export function renderAlert(alert) {
     const maxWindGust = windMatch ? windMatch[1].trim() : null;
     const is_confirmed_tor = alertMessage.includes('tornado...observed');
 
+    // Store original product name for settings lookup
+    const originalProductName = alert?.productName.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
+
     // Now re-render the title
     if (alert?.productName.toLowerCase() == "tornado warning") {
         if (is_emergency) {
@@ -92,8 +95,9 @@ export function renderAlert(alert) {
         }
     }
 
-    // Get alert settings
-    const alertSettings = getAlertSettings(alert?.productName);
+    // Get alert settings using original product name
+    const alertSettings = getAlertSettings(originalProductName);
+    console.error("ORIGINAL PRODUCT NAME:", originalProductName);
 
     return {
         name: alert?.productName || "Unknown Alert",
