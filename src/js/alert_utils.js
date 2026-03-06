@@ -1,3 +1,6 @@
+import { buildAlertDefaults } from "./ui/settings";
+
+
 export function getAlertSettings(alertName) {
     try {
         // Convert alert name to settings key format
@@ -19,12 +22,14 @@ export function getAlertSettings(alertName) {
                 return parsed[settingKey];
             }
         }
+
+        const defaults = buildAlertDefaults();
         
         // Return defaults if not found
         return {
             enabled: true,
             notify: true,
-            color: null
+            color: defaults[alertName]?.color || null
         };
     } catch (error) {
         return { enabled: true, notify: true, color: null };
@@ -48,9 +53,6 @@ export function renderAlert(alert) {
     else if (name.includes('coastal') || name.includes('storm surge')) icon = 'waves';
     else if (name.includes('hurricane') || name.includes('tropical') || name.includes('typhoon')) icon = 'cloud-storm';
     else icon = 'exclamation-triangle';
-
-    // Check if notifications are enabled for this alert
-    const alertSettings = getAlertSettings(alert?.productName);
 
     // Check props
     const alertMessage = alert?.message || "";
@@ -91,6 +93,9 @@ export function renderAlert(alert) {
             alert.productName = "Considerable Severe Thunderstorm Warning";
         }
     }
+
+    // Get alert settings
+    const alertSettings = getAlertSettings(alert?.productName);
 
     return {
         name: alert?.productName || "Unknown Alert",
