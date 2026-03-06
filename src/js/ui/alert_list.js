@@ -92,8 +92,14 @@ export default class AlertList {
             return;
         }
 
-        // Reset opener text color
-        this.opener.style.color = '#ffffff';
+        const severityColorMap = {
+            0: '#ffffff',
+            1: '#ff7f00',
+            2: '#ff2121',
+            3: '#ff00ff',
+            4: '#ad00ad'
+        };
+        let highestSeverity = 0;
 
         // Sort alerts by expiry date (soonest first)
         const sortedAlerts = [...alerts].sort((a, b) => {
@@ -103,7 +109,8 @@ export default class AlertList {
         });
 
         sortedAlerts.forEach(alert => {
-            var desiredColor = '#ffffff';
+            let desiredColor = '#ffffff';
+            let desiredSeverity = 0;
 
             const rendered = renderAlert(alert);
 
@@ -116,21 +123,27 @@ export default class AlertList {
             if (rendered.name === 'Unknown Alert') return;
 
             if (rendered.props.is_emergency) {
-                desiredColor = "#ad00ad"
+                desiredColor = '#ad00ad';
+                desiredSeverity = 4;
             } else if (rendered.props.is_pds) {
                 desiredColor = '#ff00ff';
+                desiredSeverity = 3;
             } else if (rendered.name.toLowerCase().includes('tornado')) {
                 desiredColor = '#ff2121';
+                desiredSeverity = 2;
             } else if (rendered.name.toLowerCase().includes('severe thunderstorm')) {
                 desiredColor = '#ff7f00';
+                desiredSeverity = 1;
             }
+
+            highestSeverity = Math.max(highestSeverity, desiredSeverity);
 
             const item = document.createElement('div');
             item.classList.add('alert-item', 'alert-list-item');
     
             item.innerHTML = `
                 <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.props.is_pds ? 'PDS ' : ''}${rendered.props.is_tor_observed ? 'Confirmed ' : ''}${rendered.props.damagelevel === 'destructive' ? 'Destructive ' : ''}${rendered.props.damagelevel === 'considerable' ? 'Considerable ' : ''}${rendered.name}</h3>
+                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.name}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Expires:</strong> <span>${this.formatDate(alert.expiry || alert.expiresAt)}</span>
                         ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
@@ -164,21 +177,9 @@ export default class AlertList {
                 });
             }
 
-            // Ensure most severe alert colors take precedence
-            if (desiredColor == '#ff2121') {
-                if (this.opener.style.color != '#ff00ff' && this.opener.style.color != '#ad00ad') {
-                    this.opener.style.color = '#ff2121';
-                }
-            } else if (desiredColor == '#ff7f00') {
-                if (this.opener.style.color != '#ff2121' && this.opener.style.color != '#ff00ff' && this.opener.style.color != '#ad00ad') {
-                    this.opener.style.color = '#ff7f00';
-                }
-            } else if (desiredColor == '#ff00ff' && this.opener.style.color != '#ff2121' && this.opener.style.color != '#ad00ad') {
-                this.opener.style.color = '#ff00ff';
-            } else if (desiredColor == '#ad00ad') {
-                this.opener.style.color = '#ad00ad';
-            }
         });
+
+        this.opener.style.color = severityColorMap[highestSeverity] || '#ffffff';
     }
 
     open() {
