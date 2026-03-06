@@ -120,6 +120,23 @@ class Layers {
         layerCache[layerName] = payload;
     }
 
+    _getPopupLayerSettings() {
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            return {
+                alertsEnabled: settings.alertsEnabled !== false,
+                watchesEnabled: settings.watchesEnabled !== false,
+                mesoscaleDiscussionsEnabled: settings.mesoscaleDiscussionsEnabled === true
+            };
+        } catch {
+            return {
+                alertsEnabled: true,
+                watchesEnabled: true,
+                mesoscaleDiscussionsEnabled: false
+            };
+        }
+    }
+
     _setupClickHandlers() {
         const handleClick = (target) => (e) => {
             // Ignore clicks on UI elements
@@ -231,10 +248,15 @@ class Layers {
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
 
+        const layerSettings = this._getPopupLayerSettings();
+        const filteredAlertMatches = layerSettings.alertsEnabled ? (alertMatches || []) : [];
+        const filteredWatchMatches = layerSettings.watchesEnabled ? (watchMatches || []) : [];
+        const filteredMdMatches = layerSettings.mesoscaleDiscussionsEnabled ? (mdMatches || []) : [];
+
         // Check if we have any matches
-        const hasAlerts = alertMatches && alertMatches.length > 0;
-        const hasWatches = watchMatches && watchMatches.length > 0;
-        const hasMDs = mdMatches && mdMatches.length > 0;
+        const hasAlerts = filteredAlertMatches.length > 0;
+        const hasWatches = filteredWatchMatches.length > 0;
+        const hasMDs = filteredMdMatches.length > 0;
         
         if (!hasAlerts && !hasWatches && !hasMDs) return;
         
@@ -245,15 +267,15 @@ class Layers {
         const sections = [];
 
         if (hasAlerts) {
-            sections.push(this.alertLayer.buildAlertPopupSection(alertMatches));
+            sections.push(this.alertLayer.buildAlertPopupSection(filteredAlertMatches));
         }
 
         if (hasMDs) {
-            sections.push(this.mdLayer.buildMDPopupSection(mdMatches));
+            sections.push(this.mdLayer.buildMDPopupSection(filteredMdMatches));
         }
 
         if (hasWatches) {
-            sections.push(this.watchLayer.buildWatchPopupSection(watchMatches));
+            sections.push(this.watchLayer.buildWatchPopupSection(filteredWatchMatches));
         }
 
         const html = sections.join('');
@@ -282,8 +304,8 @@ class Layers {
                 e.stopPropagation();
                 e.preventDefault();
                 const index = parseInt(item.dataset.index, 10);
-                if (alertMatches[index]) {
-                    this.alertLayer._showAlertDialog(alertMatches[index]);
+                if (filteredAlertMatches[index]) {
+                    this.alertLayer._showAlertDialog(filteredAlertMatches[index]);
                 }
             });
         });
@@ -294,8 +316,8 @@ class Layers {
                 e.stopPropagation();
                 e.preventDefault();
                 const index = parseInt(item.dataset.index, 10);
-                if (watchMatches[index]) {
-                    this.watchLayer._showWatchDialog(watchMatches[index]);
+                if (filteredWatchMatches[index]) {
+                    this.watchLayer._showWatchDialog(filteredWatchMatches[index]);
                 }
             });
         });
@@ -306,8 +328,8 @@ class Layers {
                 e.stopPropagation();
                 e.preventDefault();
                 const index = parseInt(item.dataset.index, 10);
-                if (mdMatches[index]) {
-                    this.mdLayer._showMDDialog(mdMatches[index]);
+                if (filteredMdMatches[index]) {
+                    this.mdLayer._showMDDialog(filteredMdMatches[index]);
                 }
             });
         });

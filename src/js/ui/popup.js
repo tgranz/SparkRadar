@@ -7,7 +7,11 @@ export default class Popup {
 
     const popup = document.createElement('div');
     popup.classList.add('popup');
-    popup.innerHTML = htmlContent;
+
+    const popupInner = document.createElement('div');
+    popupInner.classList.add('popup-inner');
+    popupInner.innerHTML = htmlContent;
+    popup.appendChild(popupInner);
 
     this.popup = popup;
   }

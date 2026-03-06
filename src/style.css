@@ -895,10 +895,20 @@ button:hover {
   border-radius: 10px;
   padding: 10px;
   max-width: 260px;
+  max-height: 250px;
   font-size: 12px;
   line-height: 1.35;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
   pointer-events: auto;
+}
+
+.popup-inner {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .popup::after {
