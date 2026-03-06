@@ -97,7 +97,6 @@ export function renderAlert(alert) {
 
     // Get alert settings using original product name
     const alertSettings = getAlertSettings(originalProductName);
-    console.error("ORIGINAL PRODUCT NAME:", originalProductName);
 
     return {
         name: alert?.productName || "Unknown Alert",
