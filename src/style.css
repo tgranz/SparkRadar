@@ -1786,15 +1786,39 @@ input[type="color"] {
 .finder-wrapper input {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
-  width: calc(100% - 32px);
+  width: 100%;
   color: white;
   padding: 10px 15px;
   border-radius: 10px;
   font-size: 1em;
   font-family: 'Onest', sans-serif;
   transition: all 0.2s ease;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   outline: none;
+}
+
+.finder-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.finder-close-btn {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  font-size: 1.2em;
+  transition: 0.2s;
+}
+
+.finder-close-btn:hover {
+  border-color: var(--primary-color);
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .finder-wrapper input:focus {

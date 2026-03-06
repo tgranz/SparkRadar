@@ -32,6 +32,16 @@ function buildResultItem(icon, text) {
     return resultItem;
 }
 
+function buildCloseButton() {
+    const closeButton = document.createElement('button');
+    closeButton.type = 'button';
+    closeButton.classList.add('finder-close-btn');
+    closeButton.setAttribute('aria-label', 'Close finder');
+    closeButton.title = 'Close';
+    closeButton.innerHTML = '<i class="ti ti-x"></i>';
+    return closeButton;
+}
+
 export default class Finder {
     constructor(map) {
         this.map = map;
@@ -39,12 +49,32 @@ export default class Finder {
         this.typingTimeout = null;
         this.searchSequence = 0;
         this.isFirstElement = true;
+        this.handleCloseClick = () => this.close();
 
         if (document.getElementById('finder')) {
             console.warn('[Finder] Finder instance already exists. Reusing existing instance.');
             this.wrapper = document.getElementById('finder');
+            this.searchRow = this.wrapper.querySelector('.finder-search-row');
             this.searchInput = this.wrapper.querySelector('input[type="text"]');
             this.resultsContainer = this.wrapper.querySelector('.finder-results');
+            this.closeButton = this.wrapper.querySelector('.finder-close-btn');
+
+            if (!this.searchRow && this.searchInput) {
+                this.searchRow = document.createElement('div');
+                this.searchRow.classList.add('finder-search-row');
+                this.searchInput.parentNode?.insertBefore(this.searchRow, this.searchInput);
+                this.searchRow.appendChild(this.searchInput);
+            }
+
+            if (!this.closeButton && this.searchRow) {
+                this.closeButton = buildCloseButton();
+                this.searchRow.appendChild(this.closeButton);
+            }
+
+            if (this.closeButton) {
+                this.closeButton.removeEventListener('click', this.handleCloseClick);
+                this.closeButton.addEventListener('click', this.handleCloseClick);
+            }
             return;
         }
 
@@ -56,7 +86,16 @@ export default class Finder {
         this.searchInput = document.createElement('input');
         this.searchInput.type = 'text';
         this.searchInput.placeholder = 'Search anything';
-        this.wrapper.appendChild(this.searchInput);
+
+        this.searchRow = document.createElement('div');
+        this.searchRow.classList.add('finder-search-row');
+        this.searchRow.appendChild(this.searchInput);
+
+        this.closeButton = buildCloseButton();
+        this.closeButton.addEventListener('click', this.handleCloseClick);
+        this.searchRow.appendChild(this.closeButton);
+
+        this.wrapper.appendChild(this.searchRow);
 
         this.resultsContainer = document.createElement('div');
         this.resultsContainer.classList.add('finder-results');
