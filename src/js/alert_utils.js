@@ -43,13 +43,13 @@ export function renderAlert(alert) {
     // Find the icon
     if (name.includes('tornado')) icon = 'tornado';
     else if (name.includes('severe thunderstorm')) icon = 'bolt';
-    else if (name.includes('flash flood')) icon = 'droplet';
-    else if (name.includes('flood')) icon = 'droplet';
+    else if (name.includes('flash flood')) icon = 'ripple-up';
+    else if (name.includes('flood')) icon = 'ripple';
     else if (name.includes('winter') || name.includes('blizzard') || name.includes('snow')) icon = 'snowflake';
     else if (name.includes('wind')) icon = 'wind';
-    else if (name.includes('tsunami') || name.includes('marine') || name.includes('lakeshore')) icon = 'wave';
-    else if (name.includes('coastal') || name.includes('storm surge')) icon = 'waves';
-    else if (name.includes('hurricane') || name.includes('tropical') || name.includes('typhoon')) icon = 'cloud-storm';
+    else if (name.includes('tsunami') || name.includes('marine') || name.includes('lakeshore')) icon = 'ripple';
+    else if (name.includes('coastal') || name.includes('storm surge')) icon = 'ripple';
+    else if (name.includes('hurricane') || name.includes('tropical') || name.includes('typhoon')) icon = 'storm';
     else icon = 'alert-triangle';
 
     // Check props

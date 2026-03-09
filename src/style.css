@@ -181,7 +181,7 @@ button:hover {
   position: fixed;
   top: 50%;
   left: 50%;
-  max-width: 500px;
+  max-width: 600px;
   width: calc(100% - 60px);
   max-height: calc(100% - 60px);
   height: auto;
@@ -341,9 +341,22 @@ button:hover {
 }
 
 .radar-picker-current-product {
-  text-align: center;
   color: var(--primary-color);
   font-weight: bold;
+}
+
+.radar-picker-current-product-code {
+  font-size: 0.8em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.radar-picker-product {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 10px;
+  align-items: center;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -450,6 +463,11 @@ button:hover {
   pointer-events: auto;
   transform: translate(-50%, -50%) translateY(0);
   visibility: visible;
+}
+
+.settings-subheader {
+  text-align: left;
+  padding: 10px;
 }
 
 /* Settings Page Responsive Layout */
@@ -723,10 +741,18 @@ button:hover {
 
   .settings-nav-mobile-header {
     display: flex;
+    align-items: center;
+    justify-content: left;
+    gap: 10px;
+    height: auto;
+    padding: 10px;
   }
 
   .settings-nav-toggle {
     display: block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   .settings-nav-list {
@@ -739,6 +765,7 @@ button:hover {
   .settings-nav.nav-open .settings-nav-list {
     display: block;
     max-height: 100vh;
+    padding-top: 0px;
   }
 
   .settings-nav-item {
@@ -872,6 +899,7 @@ button:hover {
   z-index: 10000;
   opacity: 0;
   animation: fadeInOut 5s forwards;
+  pointer-events: none;
 }
 
 @keyframes fadeInOut {
@@ -1227,6 +1255,38 @@ input[type="color"] {
   transition: background-color 0.2s ease;
   font-weight: bold;
   font-size: 1.1em;
+}
+
+.alert-list-opener.pds {
+  animation: openerPds 1.5s infinite;
+}
+
+@keyframes openerPds {
+  0% {
+    color: #ff00ff;
+  }
+  50% {
+    color: #ff2121;
+  }
+  100% {
+    color: #ff00ff;
+  }
+}
+
+.alert-list-opener.emergency {
+  animation: openerEmergency 1.5s infinite;
+}
+
+@keyframes openerEmergency {
+  0% {
+    color: #ad00ad;
+  }
+  50% {
+    color: #ff00ff;
+  }
+  100% {
+    color: #ad00ad;
+  }
 }
 
 @keyframes slideInFromLeft {
@@ -1588,6 +1648,7 @@ input[type="color"] {
   max-width: 400px;
   justify-content: space-evenly;
   display: flex;
+  flex-wrap: wrap;
   opacity: 1;
   transform: translateY(0);
 }
@@ -1636,6 +1697,7 @@ input[type="color"] {
 
 #toolbar-toolbox span {
   font-size: 0.8em;
+  text-align: center;
 }
 
 #simpleanalytics-badge {
@@ -1859,4 +1921,108 @@ input[type="color"] {
 .finder-result:hover {
   background: rgba(0, 0, 0, 0.5);
   border-color: var(--primary-color);
+}
+
+select {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 1em;
+  font-family: 'Onest', sans-serif;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+select:hover {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: var(--primary-color);
+}
+
+#anim-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 1em;
+  z-index: 1001;
+  min-width: 320px;
+  max-width: 400px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#anim-container.anim-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(20px);
+}
+
+.anim-top {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.anim-controls {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.anim-controls button {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 1.1em;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.anim-controls button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: var(--primary-color);
+}
+
+#anim-container input[type="range"] {
+  width: 100%;
+  margin: 0;
+  cursor: pointer;
+}
+
+@media (max-width: 1000px) {
+  #anim-container {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    min-width: unset;
+    width: auto;
+  }
+  
+  #anim-container.anim-hidden {
+    transform: translateY(20px);
+  }
+}
+
+.anim-controls-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-direction: row;
 }

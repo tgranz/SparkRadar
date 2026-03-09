@@ -35,6 +35,7 @@ import ArchiveBrowser from "./js/ui/archive_browser.js";
 import Inspector from "./js/ui/inspector.js";
 import Palettes from './js/palettes.js';
 import Finder from './js/ui/finder.js';
+import AnimationController from './js/ui/radar_animation.js';
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -53,6 +54,27 @@ window.globalPalettes = globalPalettes;
 // See if there are URL parameters for station
 const urlParams = new URLSearchParams(window.location.search);
 const initialStation = urlParams.get('station') ? urlParams.get('station').toUpperCase() : 'KTLX';
+
+// Helper function to format VCP display
+function formatVcpDisplay(vcp) {
+  if (!Number.isFinite(vcp)) return '';
+  
+  const format = window.settingsInstance?.getSetting('vcpDisplayFormat') || 'descriptive';
+  
+  if (format === 'concise') {
+    return `VCP ${vcp}`;
+  }
+  
+  // Descriptive format
+  let description = 'Convective precip mode'; // Default
+  if (vcp === 31 || vcp === 34 || vcp === 35) {
+    description = 'Clean air mode';
+  } else if (vcp === 215) {
+    description = 'General precip mode';
+  }
+  
+  return `VCP ${vcp}: ${description}`;
+}
 
 // Function to draw on the map
 function startDraw() {
@@ -73,6 +95,9 @@ var splitRadar = {
     level: 'L3',
     options: { gate_limit: -30 }
 }
+
+// Track current VCP for refresh when settings change
+var currentVcp = null;
 
 // Function to infer radar level from product code, also sets the VCP
 const inferLevelFromProduct = (product) => {
@@ -175,19 +200,10 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
             picker.setTimeAndTilt(timeString, `${tilt.toFixed(1)}°`, timeIso);
           }
           if (mainOrSplit === 'main') {
+            currentVcp = vcp; // Store current VCP for settings refresh
             const vcpElement = document.getElementById('toolbar-vcp');
             if (vcpElement) {
-              if (Number.isFinite(vcp)) {
-                if (vcp == 31 || vcp == 34 || vcp == 35) {
-                  vcpElement.textContent = `VCP ${vcp}: Clean air mode`;
-                } else if (vcp == 215) {
-                  vcpElement.textContent = `VCP ${vcp}: General precip mode`;
-                } else {
-                  vcpElement.textContent = `VCP ${vcp}: Convective precip mode`;
-                }
-              } else {
-                vcpElement.textContent = '';
-              }
+              vcpElement.textContent = formatVcpDisplay(vcp);
             }
 
             const stationElement = document.getElementById('toolbar-station');
@@ -219,6 +235,9 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     }
 }
 
+// Expose setRadar globally for animation controller
+window.setRadar = setRadar;
+
 // Construct the map
 // Detect mobile for performance optimizations
 const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(navigator.userAgent) || 
@@ -227,6 +246,8 @@ const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|
 if (isMobile) {
     console.log('[SparkRadar] Mobile device detected - enabling performance optimizations');
 }
+
+//Map style (bad): https://tgranz.github.io/maps/bold.json
 
 const map = new Map({
     container: "map",
@@ -302,6 +323,41 @@ window.addEventListener('keydown', (e) => {
 const radar = new Radar();
 map.setRadar(radar); // Set radar instance on map for split view
 
+// Apply cache limits from settings and keep them in sync with settings changes.
+try {
+  const cacheMaxSlots = Number(window.settingsInstance?.getSetting('cacheMaxSlots'));
+  const cacheMaxSizeGB = Number(window.settingsInstance?.getSetting('cacheMaxSizeGB'));
+  radar.setCacheLimits({
+    maxSlots: Number.isFinite(cacheMaxSlots) ? cacheMaxSlots : 6,
+    maxSizeGB: Number.isFinite(cacheMaxSizeGB) ? cacheMaxSizeGB : 0.5,
+  });
+} catch {
+  // Ignore settings sync issues and keep defaults.
+}
+
+document.addEventListener('settingsChanged', (event) => {
+  const { key, value } = event?.detail || {};
+  if (key === 'cacheMaxSlots' && Number.isFinite(Number(value))) {
+    radar.setCacheSize(Number(value));
+  }
+  if (key === 'cacheMaxSizeGB' && Number.isFinite(Number(value))) {
+    radar.setCacheMaxSizeGB(Number(value));
+  }
+  if (key === 'vcpDisplayFormat') {
+    // Update VCP display when format changes
+    const vcpElement = document.getElementById('toolbar-vcp');
+    if (vcpElement && currentVcp !== null) {
+      vcpElement.textContent = formatVcpDisplay(currentVcp);
+    }
+  }
+});
+
+// Make radar instance globally accessible for debugging
+if (typeof window !== 'undefined') {
+  window.radarInstance = radar;
+  window.radarCache = radar.cache;
+}
+
 // Initialize the current station
 map.currentMainStation = initialStation;
 
@@ -323,6 +379,13 @@ map.map.on('load', async () => {
     // Subscribe to real-time alert updates via SSE
     map.subscribeToAlerts();
 });
+
+// Build the animation controller and expose it globally
+const animationController = new AnimationController();
+window.animationController = animationController;
+
+// Initialize animation controller with radar and map instances
+animationController.initialize(radar, map);
 
 // Build the main toolbar
 const toolbar = createToolbar(
@@ -364,7 +427,16 @@ const toolbar = createToolbar(
       inspector.disable();
     }
   },
-  () => { new Finder(map).open(); }
+  () => { new Finder(map).open(); },
+  () => {
+    // Start radar animation
+    animationController.start(
+      mainRadar.station,
+      mainRadar.product,
+      mainRadar.level,
+      'main'
+    );
+  }
 );
 
 // Add the toolbar to the page

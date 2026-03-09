@@ -1,4 +1,6 @@
-export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick) {    
+import Toast from "../js/ui/toast";
+
+export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick) {    
     // Create main toolbar
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
@@ -133,7 +135,7 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     inspectorButton.type = 'button';
     inspectorButton.id = 'inspector-button';
     inspectorButton.innerHTML = '<i class="ti ti-viewfinder"></i>';
-    inspectorButton.title = 'Inspector';
+    inspectorButton.title = 'Inspect radar gates';
     inspectorButton.addEventListener('click', () => {
         if (typeof onInspectorClick === 'function') {
             onInspectorClick();
@@ -143,6 +145,51 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     inspectorLabel.textContent = 'Inspector';
     inspectorDiv.appendChild(inspectorButton);
     inspectorDiv.appendChild(inspectorLabel);
+    
+    const animationDiv = document.createElement('div');
+    const animationButton = document.createElement('button');
+    animationButton.type = 'button';
+    animationButton.id = 'animation-button';
+    animationButton.innerHTML = '<i class="ti ti-player-play"></i>';
+    animationButton.title = 'Animate past scans';
+    animationButton.addEventListener('click', () => {
+        if (typeof onAnimationClick === 'function') {
+            onAnimationClick();
+            const isHidden = toolbox.classList.contains('toolbox-hidden');
+            const isClosing = toolbox.classList.contains('toolbox-closing');
+
+            if (isHidden || isClosing) {
+                toolbox.classList.remove('toolbox-hidden', 'toolbox-closing');
+                toolbox.classList.add('toolbox-opening');
+                return;
+            }
+
+            toolbox.classList.remove('toolbox-opening');
+            toolbox.classList.add('toolbox-closing');
+        }
+    });
+    const animationLabel = document.createElement('span');
+    animationLabel.textContent = 'Animate';
+    animationDiv.appendChild(animationButton);
+    animationDiv.appendChild(animationLabel);
+    
+    const clearCacheDiv = document.createElement('div');
+    const clearCacheButton = document.createElement('button');
+    clearCacheButton.type = 'button';
+    clearCacheButton.id = 'clear-cache-button';
+    clearCacheButton.innerHTML = '<i class="ti ti-forbid-2"></i>';
+    clearCacheButton.title = 'Clear Cache';
+    clearCacheButton.addEventListener('click', () => {
+        // Clear cache by user request
+        if (typeof window !== 'undefined' && window.radarInstance?.clearCache) {
+            window.radarInstance.clearCache();
+            new Toast('Radar cache cleared.').show();
+        }
+    });
+    const clearCacheLabel = document.createElement('span');
+    clearCacheLabel.textContent = 'Clear Cache';
+    clearCacheDiv.appendChild(clearCacheButton);
+    clearCacheDiv.appendChild(clearCacheLabel);
 
     // Create bottom UI elements
     const loader = document.createElement('div');
@@ -194,6 +241,8 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     // Assemble toolbox
     toolbox.appendChild(inspectorDiv);
     toolbox.appendChild(drawDiv);
+    toolbox.appendChild(animationDiv);
+    toolbox.appendChild(clearCacheDiv);
     document.body.appendChild(toolbox);
 
     // Assemble station info

@@ -54,7 +54,7 @@ const ALERT_CATEGORIES = {
         "Severe Thunderstorm Watch": { color: '#ff9900' }
     },
     'Products': {
-        "Mesoscale Discussion": { color: '#fbbf24' }
+        "Mesoscale Discussion": { color: '#000000' }
     }
 };
 
@@ -137,6 +137,11 @@ function initSettings(settingsInstance) {
 }
 
 function loadSection(section, settingsInstance) {
+    if (settingsInstance?.cacheStatsInterval) {
+        clearInterval(settingsInstance.cacheStatsInterval);
+        settingsInstance.cacheStatsInterval = null;
+    }
+
     const content = document.querySelector('.settings-content');
     const sectionTemplate = document.querySelector(`.settings-section[data-section="${section}"]`);
 
@@ -152,6 +157,54 @@ function bindSectionControls(settingsInstance, content) {
     }
 
     const palettes = new Palettes();
+    const syncAnimationFrameControl = () => {
+        const frameInput = content.querySelector('#animation-frame-count');
+        if (!frameInput) return;
+
+        const cacheMaxSlots = Number(settingsInstance.getSetting('cacheMaxSlots'));
+        const fallbackMax = Number(frameInput.dataset.fallbackMax || frameInput.max || 40);
+        const effectiveMax = Number.isFinite(cacheMaxSlots) ? Math.max(3, cacheMaxSlots) : fallbackMax;
+
+        frameInput.max = String(effectiveMax);
+
+        const currentFrames = Number(settingsInstance.getSetting('animationFrameCount'));
+        const clampedFrames = Math.max(3, Math.min(effectiveMax, Number.isFinite(currentFrames) ? currentFrames : 15));
+
+        if (String(frameInput.value) !== String(clampedFrames)) {
+            frameInput.value = String(clampedFrames);
+        }
+
+        const frameLabel = content.querySelector('.settings-control-value[data-for="animation-frame-count"]');
+        if (frameLabel) {
+            frameLabel.textContent = String(clampedFrames);
+        }
+
+        if (clampedFrames !== currentFrames) {
+            settingsInstance.setSetting('animationFrameCount', clampedFrames);
+        }
+    };
+
+    const refreshCacheStatsUi = () => {
+        const usageSizeEl = content.querySelector('#cache-usage-size');
+        const usageDetailsEl = content.querySelector('#cache-usage-details');
+
+        if (!usageSizeEl && !usageDetailsEl) return;
+
+        const radar = typeof window !== 'undefined' ? window.radarInstance : null;
+        if (!radar?.getCacheStats) {
+            if (usageSizeEl) usageSizeEl.textContent = 'Unavailable';
+            if (usageDetailsEl) usageDetailsEl.textContent = 'Radar cache stats are unavailable until radar initializes.';
+            return;
+        }
+
+        const stats = radar.getCacheStats();
+        if (usageSizeEl) {
+            usageSizeEl.textContent = `${stats.totalSize} / ${stats.maxSize}`;
+        }
+        if (usageDetailsEl) {
+            usageDetailsEl.textContent = `Entries: ${stats.slots}/${stats.maxSlots} | Hit rate: ${stats.hitRate} | Hits: ${stats.hits} | Misses: ${stats.misses}`;
+        }
+    };
     
     // Apply gradient previews to palette upload buttons
     Object.entries(paletteKeyMap).forEach(([key, paletteName]) => {
@@ -218,6 +271,17 @@ function bindSectionControls(settingsInstance, content) {
             return;
         }
 
+        if (input.tagName === 'SELECT') {
+            const currentValue = settingsInstance.getSetting(key);
+            if (typeof currentValue === 'string') {
+                input.value = currentValue;
+            }
+            input.addEventListener('change', () => {
+                settingsInstance.setSetting(key, input.value);
+            });
+            return;
+        }
+
         const currentValue = settingsInstance.getSetting(key);
         if (typeof currentValue !== 'undefined') {
             input.value = currentValue;
@@ -233,8 +297,28 @@ function bindSectionControls(settingsInstance, content) {
                 valueLabel.textContent = input.value;
             }
             settingsInstance.setSetting(key, Number(input.value));
+
+            if (key === 'cacheMaxSlots' && window.radarInstance?.setCacheSize) {
+                window.radarInstance.setCacheSize(Number(input.value));
+                refreshCacheStatsUi();
+            }
+            if (key === 'cacheMaxSlots') {
+                syncAnimationFrameControl();
+            }
+            if (key === 'cacheMaxSizeGB' && window.radarInstance?.setCacheMaxSizeGB) {
+                window.radarInstance.setCacheMaxSizeGB(Number(input.value));
+                refreshCacheStatsUi();
+            }
         });
     });
+
+    syncAnimationFrameControl();
+
+    // Initialize and periodically refresh cache usage stats in Radar section.
+    refreshCacheStatsUi();
+    if (content.querySelector('#cache-usage-size')) {
+        settingsInstance.cacheStatsInterval = setInterval(refreshCacheStatsUi, 1500);
+    }
 }
 
 function handlePaletteUpload(settingKey, settingsInstance) {
@@ -264,6 +348,12 @@ function handlePaletteUpload(settingKey, settingsInstance) {
             palettes.storePalette(paletteName, simplifiedPalette);
             
             console.log(`Palette "${paletteName}" uploaded and stored successfully`);
+
+            // Clear radar data cache so subsequent loads re-process with fresh palette state
+            if (typeof window !== 'undefined' && window.radarInstance?.clearCache) {
+                window.radarInstance.clearCache();
+                new Toast('Radar cache cleared after palette update.').show();
+            }
             
             // Update button background with gradient preview
             const button = document.querySelector(`[data-setting="${settingKey}"]`);
@@ -397,6 +487,10 @@ export default class Settings {
             showTimeAndTilt: true,
             reflectivityGateFilter: -10,
             enableSplitCursorMarker: true,
+            vcpDisplayFormat: 'descriptive',
+            cacheMaxSlots: 12,
+            cacheMaxSizeGB: 0.5,
+            animationFrameCount: 15,
             primaryColor: '#27beff',
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
@@ -408,6 +502,8 @@ export default class Settings {
             ...this.defaults,
             ...this.loadSettings(),
         };
+
+        this._normalizeSettings();
 
         this.applyThemeColors();
     }
@@ -481,6 +577,19 @@ export default class Settings {
         root.style.setProperty('--secondary-border-color', this._withAlpha(secondaryBorder, 0.2));
     }
 
+    _normalizeSettings() {
+        const cacheSlots = Number(this.settings.cacheMaxSlots);
+        const effectiveMax = Number.isFinite(cacheSlots) ? Math.max(3, Math.round(cacheSlots)) : 40;
+
+        const animationFrames = Number(this.settings.animationFrameCount);
+        if (!Number.isFinite(animationFrames)) {
+            this.settings.animationFrameCount = Math.min(15, effectiveMax);
+            return;
+        }
+
+        this.settings.animationFrameCount = Math.max(3, Math.min(effectiveMax, Math.round(animationFrames)));
+    }
+
     _withAlpha(hexColor, alpha) {
         if (typeof hexColor !== 'string') return `rgba(39, 190, 255, ${alpha})`;
         const trimmed = hexColor.trim();
@@ -535,6 +644,10 @@ export default class Settings {
     }
 
     closeSettings() {
+        if (this.cacheStatsInterval) {
+            clearInterval(this.cacheStatsInterval);
+            this.cacheStatsInterval = null;
+        }
         this.menu.classList.add('menu-hidden');
         document.removeEventListener('keydown', this.escListener);
         setTimeout(() => {

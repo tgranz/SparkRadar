@@ -15,7 +15,6 @@ menu.innerHTML = `
             <div class="layer-menu-item">
                 <h3>Alerts</h3>
                 <p class="onlineindicator delayed" id="alerts-connection-status">CHECKING...</p>
-                <p class="tag beta">BETA</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-alerts-layer" class="switch" checked>
@@ -32,7 +31,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Mesoscale Discussions</h3>
-                <p class="tag beta">BETA</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-mesoscale-discussions-layer" class="switch">

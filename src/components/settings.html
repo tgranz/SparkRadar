@@ -51,6 +51,18 @@
     </section>
     <section class="settings-section" data-section="customization">
       <h2>Customization</h2>
+      <h3 class="settings-subheader">Data presentations</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="vcp-display-format">VCP Display Format</label>
+          <select id="vcp-display-format" name="vcp-display-format" data-setting="vcpDisplayFormat">
+            <option value="concise">Concise</option>
+            <option value="descriptive">Descriptive</option>
+          </select>
+        </div>
+        <p class="settings-control-help">Choose between concise ("VCP ##") or descriptive ("VCP ##: description"). Changing requires page refresh.</p>
+      </div>
+      <h3 class="settings-subheader" style="margin-top: 10px;">Theming</h3>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="primary-color">Primary Color</label>
@@ -79,6 +91,8 @@
     </section>
     <section class="settings-section" data-section="radar">
       <h2>Radar</h2>
+      <br>
+      <h3 class="settings-subheader">General</h3>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="reflectivity-gate-filter">Reflectivity Gate Filter</label>
@@ -87,6 +101,16 @@
         <input type="range" id="reflectivity-gate-filter" name="reflectivity-gate-filter" min="-30" max="50" step="0.5" value="-10" data-setting="reflectivityGateFilter">
         <p class="settings-control-help">Reflectivity gates ("pixels") with dBz values below this threshold will be hidden. Turn up to increase performance, or down to view more radar clutter.</p>
       </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="animation-frame-count">Animation Frames</label>
+          <span class="settings-control-value" data-for="animation-frame-count"></span>
+        </div>
+        <input type="range" id="animation-frame-count" name="animation-frame-count" min="3" max="40" step="1" value="15" data-fallback-max="40" data-setting="animationFrameCount">
+        <p class="settings-control-help">Animate this many frames in the animate tool. The maximum number of frames is limited to the cache slot limit below. SparkRadar recommends 6-12 frames. Reload the page for changes to take effect.</p>
+      </div>
+      <br>
+      <h3 class="settings-subheader">Customization</h3>
       <div class="settings-control palette-pickers">
         <div class="settings-control-header">
           <label for="color-palettes">Color Palettes</label>
@@ -100,6 +124,32 @@
         <input type="button" id="color-palettes-sw" name="color-palettes-sw" value="Spectrum Width" data-setting="uploadPaletteSW">
         <input type="button" id="color-palettes-dhc" name="color-palettes-dhc" value="Digital Hydrometer Classification" data-setting="uploadPaletteDHC">
         <p class="settings-control-help">Palettes are .pal files that tell the radar how to color the radar mesh.</p>
+      </div>
+      <br>
+      <h3 class="settings-subheader">Radar Cache <i class="tag beta">ADVANCED</i></h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="cache-max-slots">Cache Max Slots</label>
+          <span class="settings-control-value" data-for="cache-max-slots"></span>
+        </div>
+        <input type="range" id="cache-max-slots" name="cache-max-slots" min="1" max="120" step="1" value="12" data-setting="cacheMaxSlots">
+        <p class="settings-control-help">Maximum number of radar layers to keep in memory. Any given radar layer is defined by a radial scan at a given station, tilt, time, and product. Set to 1 to essentially disable caching.</p>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="cache-max-size-gb">Cache Max Size (GB)</label>
+          <span class="settings-control-value" data-for="cache-max-size-gb"></span>
+        </div>
+        <input type="range" id="cache-max-size-gb" name="cache-max-size-gb" min="0" max="8" step="0.05" value="0.5" data-setting="cacheMaxSizeGB">
+        <p class="settings-control-help">Use up to this much memory for radar cache. Set to 0 to disable and only use cache slot limits.</p>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label>Cache Statistics</label>
+          <span id="cache-usage-size" class="settings-control-value">--</span>
+        </div>
+        <p id="cache-usage-details" class="settings-control-help">Loading cache usage...</p>
+        <p id="cache-recommendation" class="settings-control-help">Recommended: 12-64 slots, 0.5-2 GB</p>
       </div>
     </section>
     <section class="settings-section" data-section="alerts">

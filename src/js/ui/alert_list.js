@@ -101,11 +101,11 @@ export default class AlertList {
         };
         let highestSeverity = 0;
 
-        // Sort alerts by expiry date (soonest first)
+        // Sort alerts by issued date (most recent first)
         const sortedAlerts = [...alerts].sort((a, b) => {
-            const aExpiry = Date.parse(a?.expiry || a?.expiresAt) || 0;
-            const bExpiry = Date.parse(b?.expiry || b?.expiresAt) || 0;
-            return aExpiry - bExpiry;
+            const aIssued = Date.parse(a?.issued || a?.issuedAt) || 0;
+            const bIssued = Date.parse(b?.issued || b?.issuedAt) || 0;
+            return bIssued - aIssued;
         });
 
         sortedAlerts.forEach(alert => {
@@ -179,7 +179,19 @@ export default class AlertList {
 
         });
 
-        this.opener.style.color = severityColorMap[highestSeverity] || '#ffffff';
+        if (highestSeverity === 3) {
+            this.opener.classList.add('pds');
+            this.opener.classList.remove('emergency');
+            this.opener.style.color = '';
+        } else if (highestSeverity === 4) {
+            this.opener.classList.add('emergency');
+            this.opener.classList.remove('pds');
+            this.opener.style.color = '';
+        } else {
+            this.opener.classList.remove('pds');
+            this.opener.classList.remove('emergency');
+            this.opener.style.color = severityColorMap[highestSeverity] || '#ffffff';
+        }
     }
 
     open() {

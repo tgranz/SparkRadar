@@ -44,6 +44,8 @@ class Map {
         this.currentGeojsonSplit = null;
         this.currentMeshSplit = null;
         this.currentMeshBoundsSplit = null;
+        // Cache mesh->vertexData by palette to speed up repeated cached renders
+        this.meshVertexCache = new WeakMap();
         this.radar = null; // Store reference to radar instance
         this.palettes = new Palettes(); // Store palettes instance
         this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
@@ -93,6 +95,8 @@ class Map {
         document.addEventListener('paletteUpdated', (e) => {
             const { paletteName } = e.detail;
             console.log(`[Map] paletteUpdated event: ${paletteName}, currentPalette: ${this.currentPalette}`);
+            // Palette content changed; drop prebuilt mesh vertex buffers so colors are rebuilt.
+            this.meshVertexCache = new WeakMap();
             // If the updated palette matches the current palette, reload it
             if (paletteName && this.currentPalette && paletteName === this.currentPalette) {
                 console.log('[Map] Reloading current palette...');
@@ -1001,6 +1005,32 @@ class Map {
         return new Float32Array(data);
     }
 
+    _getMeshVertexCacheKey() {
+        // Reflectivity gate filter changes geometry visibility for REF only, so include it in key.
+        if (this.currentPalette === 'REF') {
+            return `${this.currentPalette}|gate:${this.reflectivityGateFilter}`;
+        }
+        return `${this.currentPalette}|gate:na`;
+    }
+
+    _getOrBuildVertexDataFromMesh(meshData) {
+        let perMeshCache = this.meshVertexCache.get(meshData);
+        if (!perMeshCache) {
+            perMeshCache = new globalThis.Map();
+            this.meshVertexCache.set(meshData, perMeshCache);
+        }
+
+        const cacheKey = this._getMeshVertexCacheKey();
+        const cachedVertexData = perMeshCache.get(cacheKey);
+        if (cachedVertexData) {
+            return cachedVertexData;
+        }
+
+        const vertexData = this._buildVertexDataFromMesh(meshData);
+        perMeshCache.set(cacheKey, vertexData);
+        return vertexData;
+    }
+
     _computeBounds(geojson) {
         let minLng = Infinity;
         let minLat = Infinity;
@@ -1449,7 +1479,7 @@ class Map {
             this.currentRadarProductSplit = product;
         }
 
-        const vertexData = this._buildVertexDataFromMesh(meshData);
+        const vertexData = this._getOrBuildVertexDataFromMesh(meshData);
         this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product);
     }
 

@@ -54,11 +54,22 @@ class RadarPicker {
         this.header.onclick = () => this.toggle();
         this.picker.appendChild(this.header);
 
-            // Build a current product
-            this.currentProduct = document.createElement('div');
-            this.currentProduct.classList.add('radar-picker-current-product');
-            this.currentProduct.textContent = currentProduct || 'Select Product';
-            this.header.appendChild(this.currentProduct);
+            // Build a product object
+            const productDiv = document.createElement('div');
+            productDiv.classList.add('radar-picker-product');
+            this.header.appendChild(productDiv);
+
+                // Build a current product name element
+                this.currentProduct = document.createElement('div');
+                this.currentProduct.classList.add('radar-picker-current-product');
+                this.currentProduct.textContent = currentProduct || 'Select Product';
+                productDiv.appendChild(this.currentProduct);
+
+                // Build a current product code element
+                this.currentProductCode = document.createElement('div');
+                this.currentProductCode.classList.add('radar-picker-current-product-code');
+                this.currentProductCode.textContent = currentProduct || '';
+                productDiv.appendChild(this.currentProductCode);
 
             // Build a time and tilt element
             this.timeAndTilt = document.createElement('div');
@@ -132,9 +143,10 @@ class RadarPicker {
                         const baseLabel = productLabels[entry.code] || entry.code;
                         this.currentProduct.textContent = baseLabel;
                         tiltSelector.value = '0'; // Reset dropdown to Tilt 1
+                        this.setProductCode(entry.code);
                         if (typeof onChangeProduct === 'function') {
                             onChangeProduct(entry.code, 0);
-                        }
+                    }
                     });
                     productName.style.cursor = 'pointer';
                 } else {
@@ -143,6 +155,7 @@ class RadarPicker {
                     productItem.appendChild(productName);
                     productItem.addEventListener('click', () => {
                         this.setCurrentProduct(entry.code);
+                        this.setProductCode(entry.code);
                         if (typeof onChangeProduct === 'function') {
                             onChangeProduct(entry.code, 0);
                         }
@@ -166,19 +179,32 @@ class RadarPicker {
     setCurrentProduct(product) {
         if (!product) {
             this.currentProduct.textContent = 'No product selected';
+            this.currentProductCode.textContent = '';
             return;
         }
 
+        this.setProductCode(product);
         const normalizedProduct = String(product).replace(/\d/, '_');
         this.currentProduct.textContent = productLabels[normalizedProduct] || product || 'No product selected';
     }
 
-    setTimeAndTilt(time, tilt, timeIso = null) {
+    setProductCode(code) {
+        const normalizedProduct = String(code).replace(/\d/, '_');
+        this.currentProductCode.textContent = `(${normalizedProduct})`;
+    }
+
+    setTimeAndTilt(time, tilt, timeIso = null, options = {}) {
         if (!this.timeAndTilt) return;
         this.radarTime = time;
+        this.radarTilt = tilt;
+        const { ignoreAgeColoring = false } = options || {};
         const parsedTime = timeIso || time;
         const parsedMs = parsedTime ? Date.parse(parsedTime) : NaN;
         let minutesOld = Number.isFinite(parsedMs) ? (Date.now() - parsedMs) / 60000 : null;
+        // Compensate for 1-hour timestamp offset correction
+        if (minutesOld != null) {
+            minutesOld = Math.max(0, minutesOld - 60);
+        }
         if (minutesOld != null && minutesOld < 0) {
             if (minutesOld < -720) minutesOld += 1440;
             else minutesOld = 0;
@@ -187,7 +213,9 @@ class RadarPicker {
         this.timeAndTilt.innerHTML = `<div class="timeAndTiltSub"><p id="timeElem">${time || '--:--:--'}</p><p>• ${tilt ?? '--'}</p></div>`;
 
         const timeElem = this.timeAndTilt.querySelector('#timeElem');
-        if (minutesOld != null && minutesOld > 20) {
+        if (ignoreAgeColoring) {
+            timeElem.style.color = 'white';
+        } else if (minutesOld != null && minutesOld > 20) {
             timeElem.style.color = '#ff2121';
         } else if (minutesOld != null && minutesOld > 15) {
             timeElem.style.color = '#ffcc00';

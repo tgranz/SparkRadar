@@ -50,7 +50,7 @@ class Dialog {
         this.content.innerHTML = htmlContent;
         if (scrollable) {
             this.content.style.overflowY = 'auto';
-            this.content.style.maxHeight = '80vh';
+            this.content.style.maxHeight = '75vh';
         } else {
             this.content.style.overflowY = 'hidden';
         }

@@ -424,7 +424,7 @@ class AlertLayer {
                 </div>
                 ${alert.message ? `
                     <div style="margin-bottom: 15px;">
-                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.9em;">${alert.message.replace('  ', '\n')}</p>
+                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${alert.message.replace('  ', '\n')}</p>
                     </div>
                 ` : ''}
             </div>

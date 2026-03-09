@@ -10,6 +10,7 @@ See LICENSE for more.
 import { checkLatestL2RadarFile, checkLatestL3RadarFile, loadLatestL2RadarFile, loadLatestL3RadarFile, loadRadarFileFromUrl } from '../parse/fetch.js';
 import { Level2Radar } from '../parse/level2/src/index.js';
 import nexradLevel3Data from '../parse/level3/src/browser.js';
+import RadarCache from './radar_cache.js';
 
 // Helper function to yield to the browser between processing iterations
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -25,6 +26,22 @@ class Radar {
         this.radarStation = 'KIWX'
         this.radarGeoJson = null;
         this.workerSupported = typeof Worker !== 'undefined';
+
+        let savedCacheSlots = 6;
+        let savedCacheSizeGB = 0;
+        try {
+            const settings = JSON.parse(localStorage.getItem('settings') || '{}');
+            if (Number.isFinite(settings.cacheMaxSlots) && settings.cacheMaxSlots > 0) {
+                savedCacheSlots = settings.cacheMaxSlots;
+            }
+            if (Number.isFinite(settings.cacheMaxSizeGB) && settings.cacheMaxSizeGB >= 0) {
+                savedCacheSizeGB = settings.cacheMaxSizeGB;
+            }
+        } catch {
+            // Ignore malformed settings and keep defaults.
+        }
+
+        this.cache = new RadarCache(savedCacheSlots, savedCacheSizeGB);
     }
 
     _inferLevelFromProduct(product) {
@@ -44,7 +61,7 @@ class Radar {
         const timeValue = Number(productDescription.volumeScanTime ?? productDescription.productTime);
         let timeIso = null;
         if (Number.isFinite(dateValue) && Number.isFinite(timeValue)) {
-            const epochMs = (dateValue * 86400 + timeValue) * 1000;
+            const epochMs = (dateValue * 86400 + timeValue) * 1000 - 3600000;
             timeIso = new Date(epochMs).toISOString();
         }
 
@@ -64,6 +81,31 @@ class Radar {
             return false;
         }
         return this._inferLevelFromProduct(layer) === 'L3';
+    }
+
+    _getLevel3TiltIndex(layer) {
+        if (!layer || typeof layer !== 'string') return null;
+        const match = layer.toUpperCase().match(/^N(\d)[A-Z]$/);
+        if (!match) return null;
+        return Number(match[1]);
+    }
+
+    _getCacheTiltKey(layer, options = {}, metadata = null) {
+        if (this._isLevel3Layer(layer)) {
+            const l3Tilt = this._getLevel3TiltIndex(layer);
+            if (Number.isFinite(l3Tilt)) return l3Tilt;
+            return 0;
+        }
+
+        if (Number.isFinite(options?.elevation)) {
+            return options.elevation;
+        }
+
+        if (metadata && Number.isFinite(metadata.elevationAngle)) {
+            return metadata.elevationAngle;
+        }
+
+        return 1;
     }
 
     // Assistant functions
@@ -416,26 +458,71 @@ class Radar {
         const isLevel3 = this._isLevel3Layer(layer);
 
         try {
-            // If loading from URL, skip checking for latest
+            let latestFileName = null;
+            if (!options.fromUrl) {
+                latestFileName = isLevel3
+                    ? await checkLatestL3RadarFile(radarStation, layer)
+                    : await checkLatestL2RadarFile(radarStation);
+                console.log(`[getRadarLayer] Latest file available: ${latestFileName}`);
+
+                const latestTimeIso = this._parseFilenameToIso(latestFileName);
+                const cacheTilt = this._getCacheTiltKey(layer, options);
+                const cached = latestTimeIso
+                    ? this.cache.get(radarStation, layer, cacheTilt, latestTimeIso)
+                    : null;
+
+                if (cached) {
+                    console.log(`[getRadarLayer] Using cached data for ${radarStation}/${layer}/${cacheTilt}/${latestTimeIso}`);
+
+                    if (isLevel3) {
+                        this.latestRadarFiles.L3[layer] = latestFileName;
+                    } else {
+                        this.latestRadarFiles.L2 = latestFileName;
+                    }
+
+                    if (cached.metadata && typeof options.onMetadata === 'function') {
+                        const date = new Date(cached.metadata.timeIso || latestTimeIso);
+                        const timeString = date.toLocaleTimeString('en-US', {
+                            hour12: true,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                        });
+                        options.onMetadata({
+                            timeString,
+                            timeIso: cached.metadata.timeIso,
+                            tilt: cached.metadata.elevationAngle,
+                            vcp: cached.metadata.vcp ?? null
+                        });
+                    }
+
+                    this.radarGeoJson = null;
+                    document.title = `SparkRadar | ${radarStation}`;
+                    return {
+                        geojson: null,
+                        meshData: cached.meshData,
+                        bounds: cached.bounds,
+                        metadata: cached.metadata
+                    };
+                }
+            }
+
             let radarFile;
             if (options.fromUrl) {
                 console.log(`[getRadarLayer] Loading from URL: ${options.fromUrl}`);
                 radarFile = await loadRadarFileFromUrl(options.fromUrl);
             } else {
-                const latestBefore = isLevel3
-                    ? await checkLatestL3RadarFile(radarStation, layer)
-                    : await checkLatestL2RadarFile(radarStation);
-                console.log(`[getRadarLayer] About to fetch layer ${layer}, latest file: ${latestBefore}`);
                 if (isLevel3) {
-                    this.latestRadarFiles.L3[layer] = latestBefore;
+                    this.latestRadarFiles.L3[layer] = latestFileName;
                 } else {
-                    this.latestRadarFiles.L2 = latestBefore;
+                    this.latestRadarFiles.L2 = latestFileName;
                 }
 
                 radarFile = isLevel3
                     ? await loadLatestL3RadarFile(radarStation, layer)
                     : await loadLatestL2RadarFile(radarStation);
             }
+
             console.log(`[getRadarLayer] Loaded file: ${radarFile.fileName}`);
             const rawData = radarFile.data;
 
@@ -453,35 +540,35 @@ class Radar {
                 geojson = result.geojson;
                 meshData = result.meshData || null;
                 bounds = result.bounds || null;
-                metadata = result.metadata;
+                metadata = result.metadata || null;
+            } else if (isLevel3) {
+                const { radar, radarLocation } = await this._fetchLevel3RadarData(radarStation, layer, rawData);
+                const processed = await this._processLevel3RadarData(radar, radarLocation, layer, { ...options, includeGeojson });
+                geojson = processed.geojson;
+                meshData = processed.meshData;
+                bounds = processed.bounds;
+                const level3Meta = this._getLevel3Metadata(radar);
+                metadata = {
+                    station: radarStation,
+                    product: layer,
+                    ...(level3Meta ?? {})
+                };
             } else {
-                if (isLevel3) {
-                    const { radar, radarLocation } = await this._fetchLevel3RadarData(radarStation, layer, rawData);
-                    const processed = await this._processLevel3RadarData(radar, radarLocation, layer, { ...options, includeGeojson });
-                    geojson = processed.geojson;
-                    meshData = processed.meshData;
-                    bounds = processed.bounds;
-                    const level3Meta = this._getLevel3Metadata(radar);
-                    metadata = {
-                        station: radarStation,
-                        product: layer,
-                        ...(level3Meta ?? {})
-                    };
-                } else {
-                    const { radar, radarLocation, extent, header } = await this._fetchRadarData(radarStation, options, rawData);
-                    const processed = await this._processRadarData(radar, radarLocation, extent, layer, { ...options, includeGeojson });
-                    geojson = processed.geojson;
-                    meshData = processed.meshData;
-                    bounds = processed.bounds;
-                    metadata = {
-                        timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds).toISOString(),
-                        elevationAngle: header.elevation_angle,
-                        vcp: Number.isFinite(header.vcp) ? header.vcp : null
-                    };
-                }
+                const { radar, radarLocation, extent, header } = await this._fetchRadarData(radarStation, options, rawData);
+                const processed = await this._processRadarData(radar, radarLocation, extent, layer, { ...options, includeGeojson });
+                geojson = processed.geojson;
+                meshData = processed.meshData;
+                bounds = processed.bounds;
+                metadata = {
+                    timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds - 3600000).toISOString(),
+                    elevationAngle: header.elevation_angle,
+                    vcp: Number.isFinite(header.vcp) ? header.vcp : null,
+                    station: radarStation,
+                    product: layer
+                };
             }
 
-            if (metadata?.timeIso && Number.isFinite(metadata.elevationAngle)) {
+            if (metadata?.timeIso && typeof options.onMetadata === 'function') {
                 const date = new Date(metadata.timeIso);
                 const timeString = date.toLocaleTimeString('en-US', {
                     hour12: true,
@@ -489,14 +576,30 @@ class Radar {
                     minute: '2-digit',
                     second: '2-digit'
                 });
-                if (typeof options.onMetadata === 'function') {
-                    options.onMetadata({
-                        timeString,
-                        timeIso: metadata.timeIso,
-                        tilt: metadata.elevationAngle,
-                        vcp: metadata.vcp ?? null
-                    });
-                }
+                options.onMetadata({
+                    timeString,
+                    timeIso: metadata.timeIso,
+                    tilt: metadata.elevationAngle,
+                    vcp: metadata.vcp ?? null
+                });
+            }
+
+            // Prefer the timestamp derived from the latest filename for cache keys.
+            // Some metadata decoders can be off by a day due to source date conventions.
+            const latestTimeIsoForCache = latestFileName ? this._parseFilenameToIso(latestFileName) : null;
+            const cacheTimeIso = latestTimeIsoForCache || metadata?.timeIso || null;
+
+            if (meshData && cacheTimeIso) {
+                const cacheTilt = this._getCacheTiltKey(layer, options, metadata);
+                this.cache.set(
+                    radarStation,
+                    layer,
+                    cacheTilt,
+                    cacheTimeIso,
+                    meshData,
+                    bounds,
+                    metadata
+                );
             }
 
             if (!isLevel3 && !['REF', 'VEL', 'CC', 'KDP', 'SW', 'ZDR'].includes(layer)) {
@@ -504,8 +607,6 @@ class Radar {
                 return null;
             }
 
-            // Process the radar data and generate GeoJSON
-            // Store the GeoJSON and update the latest file tracking
             this.radarGeoJson = geojson;
             if (isLevel3) {
                 this.latestRadarFiles.L3[layer] = await checkLatestL3RadarFile(radarStation, layer);
@@ -513,11 +614,103 @@ class Radar {
                 this.latestRadarFiles.L2 = await checkLatestL2RadarFile(radarStation);
             }
 
-            console.log("Done processing radar layer.");
+            console.log('Done processing radar layer.');
             document.title = `SparkRadar | ${radarStation}`;
             return { geojson, meshData, bounds, metadata };
         } catch (error) {
             console.error(`Error adding radar layer: ${error.message}`);
+            return null;
+        }
+    }
+
+    /**
+     * Get radar cache statistics
+     * @returns {Object} Cache statistics
+     */
+    getCacheStats() {
+        return this.cache.getStats();
+    }
+
+    /**
+     * Clear the radar cache
+     */
+    clearCache() {
+        this.cache.clear();
+    }
+
+    /**
+     * Update the maximum number of cache slots
+     * @param {number} maxSlots - New maximum number of slots
+     */
+    setCacheSize(maxSlots) {
+        this.cache.setMaxSlots(maxSlots);
+    }
+
+    /**
+     * Update maximum cache size in GB
+     * @param {number} maxSizeGB - Max cache size in GB (0 = unlimited)
+     */
+    setCacheMaxSizeGB(maxSizeGB) {
+        this.cache.setMaxSizeGB(maxSizeGB);
+    }
+
+    /**
+     * Update both slot and size limits in one call
+     * @param {Object} limits - Cache limits
+     */
+    setCacheLimits(limits = {}) {
+        if (Number.isFinite(limits.maxSlots) && limits.maxSlots > 0) {
+            this.cache.setMaxSlots(limits.maxSlots);
+        }
+        if (Number.isFinite(limits.maxSizeGB) && limits.maxSizeGB >= 0) {
+            this.cache.setMaxSizeGB(limits.maxSizeGB);
+        }
+    }
+
+    /**
+     * Remove cache entries for a specific station or product
+     * @param {Object} criteria - Matching criteria {station, product, tilt}
+     */
+    removeCacheEntries(criteria) {
+        this.cache.removeMatching(criteria);
+    }
+
+    /**
+     * Parse a radar filename into an ISO timestamp
+     * Filename format: STATION_PRODUCT_YYYY_MM_DD_HH_MM_SS
+     * @param {string} filename - Radar filename
+     * @returns {string|null} ISO timestamp or null if parsing fails
+     */
+    _parseFilenameToIso(filename) {
+        if (!filename || typeof filename !== 'string') return null;
+        
+        // Extract timestamp parts from filename
+        // Format: STATION_PRODUCT_YYYY_MM_DD_HH_MM_SS
+        const parts = filename.split('_');
+        if (parts.length < 8) return null;
+        
+        // Get the date/time parts (skip station and product)
+        const year = parts[parts.length - 6];
+        const month = parts[parts.length - 5];
+        const day = parts[parts.length - 4];
+        const hour = parts[parts.length - 3];
+        const minute = parts[parts.length - 2];
+        const second = parts[parts.length - 1];
+        
+        // Validate parts are numbers
+        if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month) || !/^\d{2}$/.test(day) ||
+            !/^\d{2}$/.test(hour) || !/^\d{2}$/.test(minute) || !/^\d{2}$/.test(second)) {
+            return null;
+        }
+        
+        // Construct ISO timestamp
+        try {
+            const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}.000Z`;
+            // Validate by parsing
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return null;
+            return isoString;
+        } catch {
             return null;
         }
     }

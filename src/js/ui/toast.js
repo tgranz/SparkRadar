@@ -26,11 +26,11 @@ export default class Toast {
         if (!this.toast) return;
 
         this.toast.classList.remove('show');
-        this.toast.addEventListener('transitionend', () => {
-            if (this.toast && this.toast.parentNode) {
-                this.toast.parentNode.removeChild(this.toast);
+        setTimeout(() => {
+            if (this.toast) {
+                document.body.removeChild(this.toast);
                 this.toast = null;
             }
-        });
+        }, 300); // Match CSS transition duration
     }
 }

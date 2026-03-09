@@ -236,7 +236,7 @@ const getLevel3Metadata = (radar) => {
     const timeValue = Number(productDescription.volumeScanTime ?? productDescription.productTime);
     let timeIso = null;
     if (Number.isFinite(dateValue) && Number.isFinite(timeValue)) {
-        const epochMs = (dateValue * 86400 + timeValue) * 1000;
+        const epochMs = (dateValue * 86400 + timeValue) * 1000 - 3600000;
         timeIso = new Date(epochMs).toISOString();
     }
 
@@ -298,7 +298,7 @@ self.onmessage = (event) => {
 
             const { meshData, bounds, geojson } = processRadarData(radar, radarLocation, extent, layer, options);
             const metadata = {
-                timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds).toISOString(),
+                timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds - 3600000).toISOString(),
                 elevationAngle: header.elevation_angle,
                 station: options?.station || null,
                 vcp: Number.isFinite(header.vcp) ? header.vcp : null
