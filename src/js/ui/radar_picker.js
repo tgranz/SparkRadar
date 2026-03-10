@@ -201,10 +201,9 @@ class RadarPicker {
         const parsedTime = timeIso || time;
         const parsedMs = parsedTime ? Date.parse(parsedTime) : NaN;
         let minutesOld = Number.isFinite(parsedMs) ? (Date.now() - parsedMs) / 60000 : null;
-        // Compensate for 1-hour timestamp offset correction
-        if (minutesOld != null) {
-            minutesOld = Math.max(0, minutesOld - 60);
-        }
+        
+        console.log(`[RadarPicker] timeIso=${timeIso}, displayTime=${time}, minutesOld=${minutesOld}, now=${new Date().toISOString()}`);
+        
         if (minutesOld != null && minutesOld < 0) {
             if (minutesOld < -720) minutesOld += 1440;
             else minutesOld = 0;

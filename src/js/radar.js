@@ -61,8 +61,11 @@ class Radar {
         const timeValue = Number(productDescription.volumeScanTime ?? productDescription.productTime);
         let timeIso = null;
         if (Number.isFinite(dateValue) && Number.isFinite(timeValue)) {
-            const epochMs = (dateValue * 86400 + timeValue) * 1000 - 3600000;
+            // NEXRAD uses "days since Dec 31, 1969" where day 1 = Jan 1, 1970
+            // Add 1 hour offset to correct for NEXRAD timestamp quirk
+            const epochMs = ((dateValue - 1) * 86400 + timeValue) * 1000 + 3600000;
             timeIso = new Date(epochMs).toISOString();
+            console.log(`[Level3 Timestamp] date=${dateValue}, time=${timeValue}, epochMs=${epochMs}, iso=${timeIso}`);
         }
 
         const elevationAngle = Number.isFinite(productDescription.elevationAngle)
@@ -206,14 +209,24 @@ class Radar {
             radar.setElevation(elevations[0] || 1);
         }
 
-        // Load the header data
-        const header = radar.getHeader(0);
+        // Load the header data (for elevation angle, vcp, etc.)
+        const recordHeader = radar.getHeader(0);
+        
+        // Get file header for timestamp (modified_julian_date is more reliable)
+        const fileHeader = radar.header;
+
+        // Combine data for return
+        const header = {
+            ...recordHeader,
+            modified_julian_date: fileHeader.modified_julian_date,
+            milliseconds: fileHeader.milliseconds
+        };
 
         // Find the radar location
-        const radarLocation = [header.volume.latitude, header.volume.longitude];
+        const radarLocation = [recordHeader.volume.latitude, recordHeader.volume.longitude];
 
         // Determine the radar extent
-        const extent = header.radial_length;
+        const extent = recordHeader.radial_length;
 
         return { radar, radarLocation, extent, header };
     }
@@ -482,12 +495,14 @@ class Radar {
 
                     if (cached.metadata && typeof options.onMetadata === 'function') {
                         const date = new Date(cached.metadata.timeIso || latestTimeIso);
+                        console.log(`[RadarCached] timeIso=${cached.metadata.timeIso || latestTimeIso}, date object=${date.toString()}`);
                         const timeString = date.toLocaleTimeString('en-US', {
                             hour12: true,
                             hour: '2-digit',
                             minute: '2-digit',
                             second: '2-digit'
                         });
+                        console.log(`[RadarCached] timeString=${timeString}`);
                         options.onMetadata({
                             timeString,
                             timeIso: cached.metadata.timeIso,
@@ -559,8 +574,12 @@ class Radar {
                 geojson = processed.geojson;
                 meshData = processed.meshData;
                 bounds = processed.bounds;
+                // NEXRAD Level 2 file header uses modified_julian_date (days since Dec 31, 1969)
+                // Add 1 hour offset to correct for NEXRAD timestamp quirk
+                const epochMs = (header.modified_julian_date * 86400 * 1000) + header.milliseconds + 3600000;
+                console.log(`[Level2 Timestamp] modified_julian_date=${header.modified_julian_date}, milliseconds=${header.milliseconds}, epochMs=${epochMs}, iso=${new Date(epochMs).toISOString()}`);
                 metadata = {
-                    timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds - 3600000).toISOString(),
+                    timeIso: new Date(epochMs).toISOString(),
                     elevationAngle: header.elevation_angle,
                     vcp: Number.isFinite(header.vcp) ? header.vcp : null,
                     station: radarStation,
@@ -568,14 +587,26 @@ class Radar {
                 };
             }
 
+            // Prefer the timestamp derived from the latest filename for cache keys and metadata.
+            // Header-based timestamps can be incorrect due to NEXRAD format quirks.
+            const latestTimeIsoForCache = latestFileName ? this._parseFilenameToIso(latestFileName) : null;
+            const cacheTimeIso = latestTimeIsoForCache || metadata?.timeIso || null;
+            
+            // Override metadata timestamp with filename-based timestamp if available
+            if (latestTimeIsoForCache && metadata) {
+                metadata.timeIso = latestTimeIsoForCache;
+            }
+
             if (metadata?.timeIso && typeof options.onMetadata === 'function') {
                 const date = new Date(metadata.timeIso);
+                console.log(`[RadarMetadata] timeIso=${metadata.timeIso}, date object=${date.toString()}`);
                 const timeString = date.toLocaleTimeString('en-US', {
                     hour12: true,
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit'
                 });
+                console.log(`[RadarMetadata] timeString=${timeString}`);
                 options.onMetadata({
                     timeString,
                     timeIso: metadata.timeIso,
@@ -583,11 +614,6 @@ class Radar {
                     vcp: metadata.vcp ?? null
                 });
             }
-
-            // Prefer the timestamp derived from the latest filename for cache keys.
-            // Some metadata decoders can be off by a day due to source date conventions.
-            const latestTimeIsoForCache = latestFileName ? this._parseFilenameToIso(latestFileName) : null;
-            const cacheTimeIso = latestTimeIsoForCache || metadata?.timeIso || null;
 
             if (meshData && cacheTimeIso) {
                 const cacheTilt = this._getCacheTiltKey(layer, options, metadata);
