@@ -1211,6 +1211,14 @@ input[type="color"] {
   gap: 10px;
 }
 
+.notification-body {
+  line-height: 1.4;
+}
+
+.notification-actions {
+  margin-top: 12px;
+}
+
 .onlineindicator {
   font-size: 0.75em;
   padding: 2px 6px;
@@ -1265,7 +1273,13 @@ input[type="color"] {
   0% {
     color: #ff00ff;
   }
+  49.99% {
+    color: #ff00ff;
+  }
   50% {
+    color: #ff2121;
+  }
+  99.99% {
     color: #ff2121;
   }
   100% {
@@ -1281,7 +1295,13 @@ input[type="color"] {
   0% {
     color: #ad00ad;
   }
+  49.99% {
+    color: #ad00ad;
+  }
   50% {
+    color: #ff00ff;
+  }
+  99.99% {
     color: #ff00ff;
   }
   100% {
@@ -1774,6 +1794,16 @@ input[type="color"] {
   margin-bottom: 20px;
 }
 
+.alert-section-header {
+  font-size: 0.8em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 10px 0 6px 0;
+  margin-bottom: 4px;
+}
+
 .alert-search {
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
@@ -2025,4 +2055,8 @@ select:hover {
   align-items: center;
   gap: 10px;
   flex-direction: row;
+}
+
+#dialog-title {
+    width: 100%;
 }

@@ -101,6 +101,14 @@ class Layers {
             // Additional handling for new alerts can be added here if needed
         };
 
+        this.alertService.onAlertNotificationViewMap = (alertData) => {
+            this.alertLayer.zoomToAlert(alertData);
+        };
+
+        this.alertService.onAlertNotificationViewProduct = (alertData) => {
+            this.alertLayer._showAlertDialog(alertData);
+        };
+
         // Set up unified click handler for all layer types
         this._setupClickHandlers();
     }

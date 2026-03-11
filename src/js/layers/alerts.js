@@ -288,10 +288,9 @@ class AlertLayer {
 
             const meta = `
             ${expiry}
-            ${rendered.props.is_tor_possible ? ' | <b>Tornado Possible</b>' : ''}
+            ${rendered.props.is_tor_possible ? ' | <b>Tornado Possible</b>' : (rendered.props.is_tor_observed ? ' | <b>Confirmed Tornado</b>' : (rendered.props.is_tor_radar_indicated ? ' | <b>Radar Indicated</b>' : ''))}
             ${rendered.props.is_waterspout_possible ? ' | <b>Waterspout Possible</b>' : ''}
-            ${rendered.props.max_wind_gust ? `<br>Wind: ${rendered.props.max_wind_gust.toUpperCase()}` : ''}
-            ${rendered.props.max_hail_size ? ` | Hail: ${rendered.props.max_hail_size.toUpperCase()}` : ''}
+            ${rendered.props.max_wind_gust && rendered.props.max_hail_size ? `<br>Wind: ${rendered.props.max_wind_gust.toUpperCase()} | Hail: ${rendered.props.max_hail_size.toUpperCase()}` : (rendered.props.max_hail_size ? `<br>Hail: ${rendered.props.max_hail_size.toUpperCase()}` : (rendered.props.max_wind_gust ? `<br>Wind: ${rendered.props.max_wind_gust.toUpperCase()}` : ''))}
             ${(rendered.props.is_emergency && rendered.name.includes("Tornado")) ? '<br><b>TORNADO EMERGENCY</b>' : rendered.props.is_pds ? '<br><b>PARTICULARLY DANGEROUS SITUATION</b>' : ''}
             `.trim();
 
@@ -416,7 +415,7 @@ class AlertLayer {
                         <strong>Issued:</strong> <span>${formatDate(alert.issued || alert.receivedAt)}</span>
                         <strong>Expires:</strong> <span>${formatDate(alert.expiry || alert.expiresAt)}</span>
                         ${alert.sender || alert.nwsOffice ? `<strong>Sender:</strong> <span>${alert.sender || alert.nwsOffice}</span>` : ''}
-                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : (rendered.props.is_tor_observed ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Observed</span>` : (rendered.props.is_tor_radar_indicated ? `<strong>Tornado:</strong> <span style="color: #ffcc00;">Radar Indicated</span>` : ''))}
                         ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                         ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()} (${expandHailSize(rendered.props.max_hail_size)})</span>` : ''}
                         ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
@@ -431,6 +430,66 @@ class AlertLayer {
         `;
 
         new Dialog(rendered.name, 'alert-triangle', html, {}, true);
+    }
+
+    zoomToAlert(alert) {
+        if (!alert?.geometry) {
+            console.warn('Alert has no geometry data');
+            return;
+        }
+
+        let minLng = Infinity;
+        let minLat = Infinity;
+        let maxLng = -Infinity;
+        let maxLat = -Infinity;
+
+        const geometry = alert.geometry;
+        const coordinates = geometry.type && Array.isArray(geometry.coordinates)
+            ? geometry.coordinates
+            : geometry;
+
+        let rings = [];
+        if (Array.isArray(coordinates) && coordinates.length > 0) {
+            if (geometry.type === 'MultiPolygon') {
+                rings = coordinates.flat();
+            } else if (Array.isArray(coordinates[0]) && coordinates[0].length === 2 && typeof coordinates[0][0] === 'number') {
+                rings = [coordinates];
+            } else if (Array.isArray(coordinates[0]) && Array.isArray(coordinates[0][0])) {
+                rings = coordinates;
+            }
+        }
+
+        for (const ring of rings) {
+            for (const coord of ring) {
+                const lng = Number(coord[0]);
+                const lat = Number(coord[1]);
+                if (Number.isNaN(lng) || Number.isNaN(lat)) continue;
+                minLng = Math.min(minLng, lng);
+                minLat = Math.min(minLat, lat);
+                maxLng = Math.max(maxLng, lng);
+                maxLat = Math.max(maxLat, lat);
+            }
+        }
+
+        if (!Number.isFinite(minLng) || !Number.isFinite(minLat) || !Number.isFinite(maxLng) || !Number.isFinite(maxLat)) {
+            console.warn('Could not calculate alert bounds');
+            return;
+        }
+
+        const map = this.map?.map;
+        if (!map) {
+            console.warn('Map instance not available');
+            return;
+        }
+
+        try {
+            map.fitBounds(
+                [[minLng, minLat], [maxLng, maxLat]],
+                { padding: 50, maxZoom: 10, duration: 1000 }
+            );
+        } catch (error) {
+            console.error('Error zooming to alert:', error);
+        }
     }
 
     _scheduleAlertSync(target) {

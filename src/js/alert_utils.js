@@ -53,17 +53,17 @@ export function renderAlert(alert) {
     else icon = 'alert-triangle';
 
     // Check props
-    const alertMessage = alert?.message || "";
-    const _is_consid = alert?.message.toLowerCase().includes('considerable') || false;
-    const _is_destructive = alert?.message.toLowerCase().includes('destructive') || alert?.message.toLowerCase().includes('catastrophic') || false;
-    const is_emergency = alert?.message.includes('TORNADO EMERGENCY') || alert?.message.includes('FLASH FLOOD EMERGENCY') || false;
-    const is_pds = alert?.message.toLowerCase().includes('particularly dangerous situation') || false;
+    const alertMessage = alert?.message?.split("#####")[0] || ""; // Split updates and select the most recent message
+    const _is_consid = alertMessage.toLowerCase().includes('considerable') || false;
+    const _is_destructive = alertMessage.toLowerCase().includes('destructive') || alertMessage.toLowerCase().includes('catastrophic') || false;
+    const is_emergency = alertMessage.includes('TORNADO EMERGENCY') || alertMessage.includes('FLASH FLOOD EMERGENCY') || false;
+    const is_pds = alertMessage.toLowerCase().includes('particularly dangerous situation') || false;
     const damagelevel = _is_consid ? 'considerable' : _is_destructive ? 'destructive' : 'normal';
     const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
     const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
     const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
     const maxWindGust = windMatch ? windMatch[1].trim() : null;
-    const is_confirmed_tor = alertMessage.includes('tornado...observed');
+    const is_confirmed_tor = alertMessage.includes('TORNADO...OBSERVED') || false;
 
     // Store original product name for settings lookup
     const originalProductName = alert?.productName.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
@@ -113,6 +113,7 @@ export function renderAlert(alert) {
             damagelevel: damagelevel,
             is_tor_possible: alert?.message.toLowerCase().includes('tornado...possible') || false,
             is_tor_observed: is_confirmed_tor,
+            is_tor_radar_indicated: alertMessage.toLowerCase().includes('tornado...radar indicated') || false,
             is_waterspout_possible: alert?.message.toLowerCase().includes('waterspout...possible') || false,
             max_hail_size: maxHailSize,
             max_wind_gust: maxWindGust

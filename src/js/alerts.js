@@ -38,6 +38,8 @@ class AlertService {
         this.onAlertsUpdated = null; // Callback when alerts are fetched: (alerts) => void
         this.onWatchesUpdated = null; // Callback when watches are fetched: (watches) => void
         this.onNewAlert = null; // Callback when a new alert is received via SSE: (alertData) => void
+        this.onAlertNotificationViewMap = null;
+        this.onAlertNotificationViewProduct = null;
         
         if (this.isMobileDevice) {
             console.log('[AlertService] Mobile device detected - performance optimizations enabled');
@@ -420,12 +422,51 @@ class AlertService {
         // Don't send notifications for unknown alerts
         if (rendered.name === 'Unknown Alert') return;
 
+        const hasValidGeometry = !!(alertData?.geometry && (
+            (Array.isArray(alertData.geometry) && alertData.geometry.length > 0) ||
+            (alertData.geometry.type && Array.isArray(alertData.geometry.coordinates) && alertData.geometry.coordinates.length > 0)
+        ));
+
+        let meta = '';
+        var metaObj = [];
+        if (rendered.props.is_tor_possible) {
+            metaObj.push('<b style="color: #ff2121;">Tornado: Possible</b>');
+        } else if (rendered.props.is_tor_observed) {
+            metaObj.push('<b style="color: #ff2121;">Tornado: Observed</b>');
+        } else if (rendered.props.is_tor_radar_indicated) {
+            metaObj.push('<b style="color: #ff2121;">Tornado: Radar Indicated</b>');
+        }
+        if (rendered.props.is_waterspout_possible) {
+            metaObj.push('<b style="color: #ff2121;">Waterspout: Possible</b>');
+        }
+        if (rendered.props.max_hail_size) {
+            metaObj.push(`Max Hail: ${rendered.props.max_hail_size.toUpperCase()}`);
+        }
+        if (rendered.props.max_wind_gust) {
+            metaObj.push(`Max Wind Gust: ${rendered.props.max_wind_gust.toUpperCase()}`);
+        }
+
+        meta = metaObj.join('<br>');
+
+        const actions = [];
+        if (hasValidGeometry) {
+            actions.push({
+                label: 'View on Map',
+                onClick: () => this.onAlertNotificationViewMap?.(alertData)
+            });
+        }
+        actions.push({
+            label: 'View Product',
+            onClick: () => this.onAlertNotificationViewProduct?.(alertData)
+        });
+
         new Notification(
             "New Alert",
-            `A new ${rendered.name} has been issued.`,
+            `A new ${rendered.name} has been issued.${meta ? `<br><br>${meta}` : ''}`,
             rendered.notif.icon,
             rendered.color,
-            8000 // Show for 8 seconds
+            8000,
+            actions
         );
     }
 

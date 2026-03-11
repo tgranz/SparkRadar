@@ -101,52 +101,64 @@ export default class AlertList {
         };
         let highestSeverity = 0;
 
-        // Sort alerts by issued date (most recent first)
-        const sortedAlerts = [...alerts].sort((a, b) => {
-            const aIssued = Date.parse(a?.issued || a?.issuedAt) || 0;
-            const bIssued = Date.parse(b?.issued || b?.issuedAt) || 0;
-            return bIssued - aIssued;
-        });
+        // Priority: lower number = higher priority
+        const getPriority = (rendered) => {
+            const name = rendered.name;
+            if (name === 'Tornado Emergency') return 0;
+            if (name === 'PDS Tornado Warning') return 1;
+            if (name.includes('Tornado Warning')) return 2;
+            if (name === 'Destructive Severe Thunderstorm Warning') return 3;
+            if (name === 'Considerable Severe Thunderstorm Warning') return 4;
+            if (name.includes('Severe Thunderstorm Warning')) return 5;
+            if (name === 'Special Weather Statement') return 6;
+            return 7;
+        };
 
-        sortedAlerts.forEach(alert => {
-            let desiredColor = '#ffffff';
-            let desiredSeverity = 0;
+        const now = Date.now();
+        const ONE_MINUTE_MS = 60 * 1000;
 
+        // Pre-process: render, filter unknowns, compute recency & priority
+        const processed = [];
+        for (const alert of alerts) {
             const rendered = renderAlert(alert);
+            if (rendered.name === 'Unknown Alert') continue;
 
             const has_valid_geometry = !!(alert?.geometry && (
                 (Array.isArray(alert.geometry) && alert.geometry.length > 0) ||
                 (alert.geometry.type && Array.isArray(alert.geometry.coordinates) && alert.geometry.coordinates.length > 0)
             ));
 
-            // Ignore unknown alerts
-            if (rendered.name === 'Unknown Alert') return;
+            const issuedTime = Date.parse(alert?.issued || alert?.issuedAt) || 0;
+            const isRecent = (now - issuedTime) < ONE_MINUTE_MS;
+            const priority = getPriority(rendered);
 
             if (rendered.props.is_emergency) {
-                desiredColor = '#ad00ad';
-                desiredSeverity = 4;
+                highestSeverity = Math.max(highestSeverity, 4);
             } else if (rendered.props.is_pds) {
-                desiredColor = '#ff00ff';
-                desiredSeverity = 3;
+                highestSeverity = Math.max(highestSeverity, 3);
             } else if (rendered.name.toLowerCase().includes('tornado')) {
-                desiredColor = '#ff2121';
-                desiredSeverity = 2;
+                highestSeverity = Math.max(highestSeverity, 2);
             } else if (rendered.name.toLowerCase().includes('severe thunderstorm')) {
-                desiredColor = '#ff7f00';
-                desiredSeverity = 1;
+                highestSeverity = Math.max(highestSeverity, 1);
             }
 
-            highestSeverity = Math.max(highestSeverity, desiredSeverity);
+            processed.push({ alert, rendered, has_valid_geometry, issuedTime, isRecent, priority });
+        }
 
+        // Sort by priority, then newest-issued first within each priority tier
+        processed.sort((a, b) =>
+            a.priority !== b.priority ? a.priority - b.priority : b.issuedTime - a.issuedTime
+        );
+
+        const buildItem = ({ alert, rendered, has_valid_geometry }) => {
             const item = document.createElement('div');
             item.classList.add('alert-item', 'alert-list-item');
-    
             item.innerHTML = `
                 <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
                     <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.name}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Expires:</strong> <span>${this.formatDate(alert.expiry || alert.expiresAt)}</span>
-                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : (rendered.props.is_tor_observed ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Observed</span>` : (rendered.props.is_tor_radar_indicated ? `<strong>Tornado:</strong> <span style="color: #ffcc00;">Radar Indicated</span>` : ''))}
                         ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                         ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()}</span>` : ''}
                         ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
@@ -157,11 +169,8 @@ export default class AlertList {
                     </div>
                 </div>
             `;
-            mainList.appendChild(item);
 
-            // Add button event listeners
-            const viewProductBtn = item.querySelector('[data-action="view-product"]');
-            viewProductBtn.addEventListener('click', () => {
+            item.querySelector('[data-action="view-product"]').addEventListener('click', () => {
                 if (this.layersInstance?.alertLayer?._showAlertDialog) {
                     this.layersInstance.alertLayer._showAlertDialog(alert);
                 } else {
@@ -170,14 +179,32 @@ export default class AlertList {
             });
 
             if (has_valid_geometry) {
-                const viewMapBtn = item.querySelector('[data-action="view-map"]');
-                viewMapBtn.addEventListener('click', () => {
+                item.querySelector('[data-action="view-map"]').addEventListener('click', () => {
                     this._zoomToAlert(alert);
                     this.close();
                 });
             }
 
-        });
+            return item;
+        };
+
+        const makeSectionHeader = (label) => {
+            const el = document.createElement('div');
+            el.classList.add('alert-section-header');
+            el.textContent = label;
+            return el;
+        };
+
+        // Recents section
+        const recents = processed.filter(e => e.isRecent);
+        if (recents.length > 0) {
+            mainList.appendChild(makeSectionHeader('New and Recently Updated'));
+            recents.forEach(entry => mainList.appendChild(buildItem(entry)));
+            mainList.appendChild(makeSectionHeader('All Alerts'));
+        }
+
+        // Full priority-sorted list
+        processed.forEach(entry => mainList.appendChild(buildItem(entry)));
 
         if (highestSeverity === 3) {
             this.opener.classList.add('pds');

@@ -1,10 +1,11 @@
 export default class Notification{
-    constructor(title, body, icon, color, duration = 5000){
+    constructor(title, body, icon, color, duration = 5000, actions = []){
         this.title = title;
         this.body = body;
         this.icon = icon;
         this.color = color;
         this.duration = duration;
+        this.actions = Array.isArray(actions) ? actions : [];
         this.autoCloseTimeout = null;
 
         this.notification = document.createElement("div");
@@ -33,8 +34,27 @@ export default class Notification{
 
         const bodyElem = document.createElement("div");
         bodyElem.classList.add("notification-body");
-        bodyElem.textContent = this.body;
+        bodyElem.innerHTML = this.body;
         content.appendChild(bodyElem);
+
+        if (this.actions.length > 0) {
+            const actionRow = document.createElement('div');
+            actionRow.classList.add('alert-btns', 'notification-actions');
+
+            this.actions.forEach((action) => {
+                const button = document.createElement('button');
+                button.classList.add('alert-btn');
+                button.type = 'button';
+                button.textContent = action.label;
+                button.addEventListener('click', () => {
+                    action.onClick?.();
+                    this.close();
+                });
+                actionRow.appendChild(button);
+            });
+
+            content.appendChild(actionRow);
+        }
 
         this.notification.appendChild(content);
 
