@@ -24,7 +24,11 @@ const ALERT_CATEGORIES = [
             { type: 'Tornado Emergency', color: '#ae21ff' },
             { type: 'PDS Tornado Warning', color: '#ff00ff' },
             { type: 'Confirmed Tornado Warning', color: '#ca2020' },
+            { type: 'Destructive Tornado Warning', color: '#e01414' },
+            { type: 'Considerable Tornado Warning', color: '#ff5500' },
             { type: 'Tornado Warning', color: '#ff2121' },
+            { type: 'Destructive Severe Thunderstorm Warning', color: '#ff4400' },
+            { type: 'Considerable Severe Thunderstorm Warning', color: '#ff6600' },
             { type: 'Severe Thunderstorm Warning', color: '#ff9900' },
             { type: 'Special Weather Statement', color: '#facc15' }
         ]
@@ -34,6 +38,8 @@ const ALERT_CATEGORIES = [
         visualOnly: false,
         alerts: [
             { type: 'Flash Flood Emergency', color: '#1ed400' },
+            { type: 'Destructive Flash Flood Warning', color: '#28a428' },
+            { type: 'Considerable Flash Flood Warning', color: '#2ecc40' },
             { type: 'Flash Flood Warning', color: '#38f852' },
             { type: 'Flash Flood Watch', color: '#27bd3b' },
             { type: 'Flood Warning', color: '#27beff' }
