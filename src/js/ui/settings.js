@@ -25,6 +25,8 @@ const ALERT_CATEGORIES = [
             { type: 'PDS Tornado Warning', color: '#ff00ff' },
             { type: 'Confirmed Tornado Warning', color: '#ca2020' },
             { type: 'Tornado Warning', color: '#ff2121' },
+            { type: 'Destructive Severe Thunderstorm Warning', color: '#ff5500'},
+            { type: 'Considerable Severe Thunderstorm Warning', color: '#ff7700'},
             { type: 'Severe Thunderstorm Warning', color: '#ff9900' },
             { type: 'Special Weather Statement', color: '#facc15' }
         ]
