@@ -30,7 +30,7 @@ class AlertService {
         this.isMobileDevice = this._isMobileDevice();
         
         // Connection status tracking
-        this.connectionStatus = 'OFFLINE'; // 'ONLINE', 'ISSUES', or 'OFFLINE'
+        this.connectionStatus = 'OFFLINE'; // 'CONNECTED', 'ISSUES', or 'OFFLINE'
         this.sseConnected = false;
         this.lastSuccessfulFetch = null;
 
@@ -373,7 +373,7 @@ class AlertService {
 
     /**
      * Updates connection status based on SSE and polling state
-     * ONLINE: SSE connected
+     * CONNECTED: SSE connected
      * ISSUES: SSE disconnected but polling is working
      * OFFLINE: Both SSE and polling failing
      */
@@ -392,7 +392,7 @@ class AlertService {
         }
 
         if (this.sseConnected) {
-            newStatus = 'ONLINE';
+            newStatus = 'CONNECTED';
         } else if (this.lastSuccessfulFetch) {
             // Check if last successful fetch was recent (within 2x polling interval)
             const now = new Date();
@@ -421,6 +421,9 @@ class AlertService {
                 
         // Don't send notifications for unknown alerts
         if (rendered.name === 'Unknown Alert') return;
+
+        // Don't send notifications if user has disabled them for this alert type
+        if (!rendered.notif.enabled) return;
 
         const hasValidGeometry = !!(alertData?.geometry && (
             (Array.isArray(alertData.geometry) && alertData.geometry.length > 0) ||
@@ -466,7 +469,8 @@ class AlertService {
             rendered.notif.icon,
             rendered.color,
             8000,
-            actions
+            actions,
+            rendered.notif.soundFile
         );
     }
 
@@ -502,3 +506,15 @@ class AlertService {
 }
 
 export default AlertService;
+
+// Test alert notification
+/*
+new AlertService()._showAlertNotification({
+    productName: "Tornado Warning",
+    message: "TORNADO...OBSERVED\nMAX HAIL SIZE...1.75 INCHES\nMAX WIND GUSTS...80 MPH",
+    geometry: {
+        type: "Polygon",
+        coordinates: [[[ -97.0, 35.0 ], [ -97.5, 35.0 ], [ -97.5, 35.5 ], [ -97.0, 35.5 ], [ -97.0, 35.0 ]]]
+    },
+});
+*/

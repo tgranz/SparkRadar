@@ -6,7 +6,7 @@ Manages SPC outlook display on the map
 See LICENSE for more.
 */
 
-import { waitForRadarLayer } from "./layer_utils.js";
+import { waitForRadarLayer, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 
 class OutlookLayer {
     constructor(mapInstance) {
@@ -96,8 +96,8 @@ class OutlookLayer {
         const sourceId = target === 'main' ? 'outlook-source' : 'outlook-source-dual';
         const layerId = target === 'main' ? 'outlook-layer' : 'outlook-layer-dual';
         const fillLayerId = `${layerId}-fill`;
-        const beforeLayerId = target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
-        const insertBeforeId = map.getLayer(beforeLayerId) ? beforeLayerId : undefined;
+        const fillBeforeId = getWeatherFillBeforeLayerId(map, target);
+        const outlineBeforeId = getWeatherOutlineBeforeLayerId(map, target);
 
         // Remove existing layers/sources
         if (map.getLayer(layerId)) {
@@ -125,7 +125,7 @@ class OutlookLayer {
                 'fill-color': ['get', 'fill'],
                 'fill-opacity': 0.3
             }
-        }, insertBeforeId);
+        }, fillBeforeId);
 
         // Add line layer for outlook boundaries
         map.addLayer({
@@ -137,7 +137,7 @@ class OutlookLayer {
                 'line-width': 2,
                 'line-opacity': 1
             }
-        }, insertBeforeId);
+        }, outlineBeforeId);
     }
 
     _getEnabledOutlookDay() {

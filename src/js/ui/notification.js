@@ -1,11 +1,12 @@
 export default class Notification{
-    constructor(title, body, icon, color, duration = 5000, actions = []){
+    constructor(title, body, icon, color, duration = 5000, actions = [], soundFile = null){
         this.title = title;
         this.body = body;
         this.icon = icon;
         this.color = color;
         this.duration = duration;
         this.actions = Array.isArray(actions) ? actions : [];
+        this.soundFile = soundFile;
         this.autoCloseTimeout = null;
 
         this.notification = document.createElement("div");
@@ -68,6 +69,24 @@ export default class Notification{
         if (this.duration > 0) {
             this.autoCloseTimeout = setTimeout(() => this.close(), this.duration);
         }
+
+        // Play sound if provided from sound/{filename}
+        if (this.soundFile) {
+            this.audio = new Audio(`sound/${this.soundFile}`);
+            this.audio.play().catch((err) => {
+                if (err.name === 'NotAllowedError') {
+                    setTimeout(() => {
+                        new Notification(
+                            'Audio Blocked',
+                            `Alert sounds are being blocked by your browser's autoplay settings. Enable autoplay (usually found in the URL bar or browser settings) for sparkradar.app to hear notification sounds.`,
+                            'volume-off',
+                            '#f59e0b',
+                            15000
+                        );
+                    }, 5000);
+                }
+            });
+        }
     }
 
     close() {
@@ -86,5 +105,11 @@ export default class Notification{
                 this.notification.parentNode.removeChild(this.notification);
             }
         }, 300);
+
+        // Stop any playing sound if playing
+        if (this.soundFile && this.audio) {
+            this.audio.pause();
+            this.audio.currentTime = 0;
+        }
     }
 }

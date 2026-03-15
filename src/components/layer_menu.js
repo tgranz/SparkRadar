@@ -31,7 +31,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Mesoscale Discussions</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-mesoscale-discussions-layer" class="switch">
@@ -45,7 +44,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>TVS Signatures</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-tvs-signatures-layer" class="switch">
@@ -54,7 +52,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Hail Signatures</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-hail-signatures-layer" class="switch">
@@ -280,7 +277,7 @@ function initializeLayerToggles(mapInstance) {
             // Update color classes
             connectionStatusElement.classList.remove('online', 'delayed', 'offline');
             
-            if (status === 'ONLINE') {
+            if (status === 'CONNECTED') {
                 connectionStatusElement.classList.add('online');
             } else if (status === 'ISSUES') {
                 connectionStatusElement.classList.add('delayed');

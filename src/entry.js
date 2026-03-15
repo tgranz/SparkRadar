@@ -247,11 +247,12 @@ if (isMobile) {
     console.log('[SparkRadar] Mobile device detected - enabling performance optimizations');
 }
 
-//Map style (bad): https://tgranz.github.io/maps/bold.json
+// Map style (bad): https://tgranz.github.io/maps/bold.json
+// (old): https://api.maptiler.com/maps/01991750-e542-745a-bb74-f8f5646a978c/style.json?key=UMONrX6MjViuKZoR882u
 
 const map = new Map({
     container: "map",
-    style: 'https://api.maptiler.com/maps/01991750-e542-745a-bb74-f8f5646a978c/style.json?key=UMONrX6MjViuKZoR882u',
+    style: 'https://tgranz.github.io/maps/spark.json',
     center: [-97.1, 35.4],
     zoom: 5,
     minZoom: 3,
@@ -407,9 +408,16 @@ const toolbar = createToolbar(
       map.splitMap('horizontal', { station: mainRadar.station, product: newProduct });
     } 
   },
-  () => { menu.open(); },
+  () => { menu.open();},
   () => { new RadarStatus(mainRadar.station); },
-  () => { layerMenu.open(); },
+  () => { 
+    if (!document.getElementById('open-layer-picker-button').classList.contains('selected')) {
+      layerMenu.open();
+    } else {
+      document.getElementById('layer-menu').classList.add('layer-menu-hidden');
+      const openLayerPickerButton = document.getElementById('open-layer-picker-button');
+      if (openLayerPickerButton) { openLayerPickerButton.classList.remove('selected'); }
+    }},
   () => { startDraw(); },
   () => { 
     if (map.isSplit()) {

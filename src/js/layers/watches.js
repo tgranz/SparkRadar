@@ -7,7 +7,7 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
-import { waitForRadarLayer, pointInPolygon } from "./layer_utils.js";
+import { waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 
 class WatchLayer {
     constructor(mapInstance) {
@@ -254,6 +254,8 @@ class WatchLayer {
                         <strong>Expires:</strong> <span>${formatDate(props.expire)}</span>
                     </div>
                 </div>
+
+                <img src="https://www.spc.noaa.gov/products/watch/ww${String(props.number).padStart(4, '0')}_radar.gif?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; height: auto;">
             </div>
         `;
 
@@ -318,7 +320,8 @@ class WatchLayer {
 
         const cache = target === 'main' ? this.watchCache.main : this.watchCache.dual;
         const nextKeys = new Set();
-        const beforeLayerId = target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
+        const fillBeforeLayerId = getWeatherFillBeforeLayerId(map, target);
+        const outlineBeforeLayerId = getWeatherOutlineBeforeLayerId(map, target);
 
         this.watches.forEach((watch, index) => {
             const key = this._getWatchKey(watch, index);
@@ -332,6 +335,8 @@ class WatchLayer {
 
             const sourceId = target === 'main' ? `watch-source-${key}` : `watch-source-${key}-dual`;
             const layerPrefix = target === 'main' ? `watch-${key}` : `watch-${key}-dual`;
+            const outlineLayerId = `${layerPrefix}-outline`;
+            const outlineOutlineLayerId = `${layerPrefix}-outline-outline`;
             const cached = cache.get(key);
 
             if (!map.getSource(sourceId)) {
@@ -352,12 +357,12 @@ class WatchLayer {
                         'fill-color': colors.fill,
                         'fill-opacity': 0.25
                     }
-                }, beforeLayerId);
+                }, fillBeforeLayerId);
             }
 
-            if (!map.getLayer(`${layerPrefix}-outline`)) {
+            if (!map.getLayer(outlineLayerId)) {
                 map.addLayer({
-                    id: `${layerPrefix}-outline`,
+                    id: outlineLayerId,
                     type: 'line',
                     source: sourceId,
                     paint: {
@@ -365,12 +370,12 @@ class WatchLayer {
                         'line-width': 2,
                         'line-opacity': 1
                     }
-                });
+                }, outlineBeforeLayerId);
             }
 
-            if (!map.getLayer(`${layerPrefix}-outline-outline`)) {
+            if (!map.getLayer(outlineOutlineLayerId)) {
                 map.addLayer({
-                    id: `${layerPrefix}-outline-outline`,
+                    id: outlineOutlineLayerId,
                     type: 'line',
                     source: sourceId,
                     paint: {
@@ -378,15 +383,18 @@ class WatchLayer {
                         'line-width': 6,
                         'line-opacity': 1
                     }
-                }, `${layerPrefix}-outline`);
+                }, outlineLayerId);
+            } else if (map.getLayer(outlineLayerId)) {
+                // Keep black casing below the colored outline
+                map.moveLayer(outlineOutlineLayerId, outlineLayerId);
             }
 
             if (!cached || cached.colorSignature !== colorSignature) {
                 if (map.getLayer(`${layerPrefix}-fill`)) {
                     map.setPaintProperty(`${layerPrefix}-fill`, 'fill-color', colors.fill);
                 }
-                if (map.getLayer(`${layerPrefix}-outline`)) {
-                    map.setPaintProperty(`${layerPrefix}-outline`, 'line-color', colors.outline);
+                if (map.getLayer(outlineLayerId)) {
+                    map.setPaintProperty(outlineLayerId, 'line-color', colors.outline);
                 }
             }
 

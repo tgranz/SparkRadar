@@ -8,7 +8,7 @@ See LICENSE for more.
 
 import Dialog from "../ui/dialog.js";
 import { buildAlertDefaults } from "../ui/settings.js";
-import { waitForRadarLayer, pointInPolygon } from "./layer_utils.js";
+import { waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 import { renderAlert } from "../alert_utils.js";
 
 class AlertLayer {
@@ -565,7 +565,8 @@ class AlertLayer {
 
         // Use a single GeoJSON source for ALL alerts - much better performance
         const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
-        const beforeLayerId = target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
+        const fillBeforeLayerId = getWeatherFillBeforeLayerId(map, target);
+        const outlineBeforeLayerId = getWeatherOutlineBeforeLayerId(map, target);
         
         // Build a FeatureCollection with all enabled alerts
         const features = [];
@@ -623,7 +624,7 @@ class AlertLayer {
                     'line-width': 6,
                     'line-opacity': 1
                 }
-            }, 'Pier road');
+            }, outlineBeforeLayerId);
         }
 
         if (!map.getLayer(outlineLayerId)) {
@@ -636,7 +637,7 @@ class AlertLayer {
                     'line-width': 2,
                     'line-opacity': 1
                 }
-            }, 'Pier road');
+            }, outlineBeforeLayerId);
         }
 
         if (!map.getLayer(fillLayerId)) {
@@ -649,7 +650,7 @@ class AlertLayer {
                     'fill-color': ['get', 'fillColor'],
                     'fill-opacity': 0.4
                 }
-            }, beforeLayerId);
+            }, fillBeforeLayerId);
         } else {
             map.setFilter(fillLayerId, ['!=', ['get', 'isNew'], 1]);
         }
@@ -670,7 +671,7 @@ class AlertLayer {
                     'line-width': 6,
                     'line-opacity': 1
                 }
-            }, 'Pier road');
+            }, outlineBeforeLayerId);
         } else {
             map.setFilter(newOutlineOutlineLayerId, ['==', ['get', 'isNew'], 1]);
         }
@@ -686,7 +687,7 @@ class AlertLayer {
                     'line-width': 2,
                     'line-opacity': 1
                 }
-            }, 'Pier road');
+            }, outlineBeforeLayerId);
         } else {
             map.setFilter(newOutlineLayerId, ['==', ['get', 'isNew'], 1]);
         }
@@ -701,7 +702,7 @@ class AlertLayer {
                     'fill-color': ['get', 'fillColor'],
                     'fill-opacity': 0.4
                 }
-            }, beforeLayerId);
+            }, fillBeforeLayerId);
         } else {
             map.setFilter(newFillLayerId, ['==', ['get', 'isNew'], 1]);
         }

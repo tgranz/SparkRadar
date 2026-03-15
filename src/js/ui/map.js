@@ -122,6 +122,12 @@ class Map {
                 this.enableSplitCursorMarker = value;
             }
         });
+
+
+        // List map layers for debugging
+        this.map.on('load', () => {
+            console.log('[Map] Map loaded with layers:', this.map.getStyle().layers.map(l => l.id));
+        });
     }
 
     // Function to apply projection to a map instance
@@ -200,7 +206,7 @@ class Map {
                 'id': 'radar-webgl-dual',
                 'type': 'circle',
                 'source': 'empty-source'
-            }, 'Pier');
+            }, this.dualMap.getLayer('road_area_pier') ? 'road_area_pier' : (this.dualMap.getLayer('road_pier') ? 'road_pier' : undefined));
         });
 
         // Show the split map toolbar
@@ -1314,8 +1320,18 @@ class Map {
         };
 
         try {
-            // Try to add before Pier layer, fall back to no beforeLayer if Pier doesn't exist
-            const beforeLayer = map.getLayer('Pier') ? 'Pier' : undefined;
+            const styleLayers = map.getStyle?.()?.layers || [];
+            const weatherOutlineLayer = styleLayers.find((layer) => {
+                const layerId = layer?.id || '';
+                return /^alerts-combined(-dual)?-outline(-outline|-new|-outline-new)?$/.test(layerId)
+                    || /^watch-.*-(outline|outline-outline)$/.test(layerId)
+                    || /^outlook-layer(-dual)?$/.test(layerId)
+                    || /^md-.*-(outline|outline-outline)$/.test(layerId);
+            })?.id;
+
+            // Keep radar below weather outlines when they exist; otherwise below roads/labels.
+            const beforeLayer = weatherOutlineLayer
+                || (map.getLayer('road_area_pier') ? 'road_area_pier' : (map.getLayer('road_pier') ? 'road_pier' : undefined));
             console.log(`[WebGL] Adding layer ${layerId}, beforeLayer: ${beforeLayer}`);
             map.addLayer(highlightLayer, beforeLayer);
             console.log(`[WebGL] Successfully added layer ${layerId}`);

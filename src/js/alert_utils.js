@@ -43,7 +43,7 @@ export function renderAlert(alert) {
     // Find the icon
     if (name.includes('tornado')) icon = 'tornado';
     else if (name.includes('severe thunderstorm')) icon = 'bolt';
-    else if (name.includes('flash flood')) icon = 'ripple-up';
+    else if (name.includes('flash flood')) icon = 'ripple';
     else if (name.includes('flood')) icon = 'ripple';
     else if (name.includes('winter') || name.includes('blizzard') || name.includes('snow')) icon = 'snowflake';
     else if (name.includes('wind')) icon = 'wind';
@@ -74,6 +74,8 @@ export function renderAlert(alert) {
             alert.productName = "Tornado Emergency";
         } else if (is_pds) {
             alert.productName = "PDS Tornado Warning";
+        } else if (is_confirmed_tor) {
+            alert.productName = "Confirmed Tornado Warning";
         } else if (damagelevel === 'destructive') {
             alert.productName = "Destructive Tornado Warning";
         } else if (damagelevel === 'considerable') {
@@ -95,8 +97,8 @@ export function renderAlert(alert) {
         }
     }
 
-    // Get alert settings using original product name
-    const alertSettings = getAlertSettings(originalProductName);
+    // Get alert settings using the final (renamed) product name
+    const alertSettings = getAlertSettings(alert?.productName);
 
     return {
         name: alert?.productName || "Unknown Alert",
@@ -106,6 +108,7 @@ export function renderAlert(alert) {
         notif: {
             icon: icon,
             enabled: alertSettings.notify,
+            soundFile: alertSettings.sound || null
         },
         props: {
             is_pds: is_pds,

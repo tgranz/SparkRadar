@@ -53,6 +53,50 @@ export function waitForRadarLayer(map, target) {
 }
 
 /**
+ * Returns the best layer ID to insert weather overlays beneath roads and labels.
+ */
+export function getWeatherOverlayBeforeLayerId(map, target) {
+    if (!map) return undefined;
+
+    const preferredOrder = [
+        'road_area_pier',
+        'road_pier',
+        target === 'main' ? 'radar-webgl' : 'radar-webgl-dual'
+    ];
+
+    for (const layerId of preferredOrder) {
+        if (map.getLayer(layerId)) {
+            return layerId;
+        }
+    }
+
+    return undefined;
+}
+
+export function getRadarLayerId(target) {
+    return target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
+}
+
+/**
+ * Fill layers should render below radar when possible.
+ */
+export function getWeatherFillBeforeLayerId(map, target) {
+    if (!map) return undefined;
+    const radarLayerId = getRadarLayerId(target);
+    if (map.getLayer(radarLayerId)) {
+        return radarLayerId;
+    }
+    return getWeatherOverlayBeforeLayerId(map, target);
+}
+
+/**
+ * Outline layers should render above radar but below roads/labels.
+ */
+export function getWeatherOutlineBeforeLayerId(map, target) {
+    return getWeatherOverlayBeforeLayerId(map, target);
+}
+
+/**
  * Normalizes a polygon ring by removing duplicates and ensuring proper closure
  */
 export function normalizePolygonRing(ring) {

@@ -16,58 +16,142 @@ const paletteKeyMap = {
 };
 
 // Alert type configurations organized by category
-const ALERT_CATEGORIES = {
-    'Severe': {
-        "Tornado Emergency": { color: '#ae21ff' },
-        "PDS Tornado Warning": { color: '#ff00ff' },
-        "Tornado Warning": { color: '#ff2121' },
-        "Severe Thunderstorm Warning": { color: '#ff9900' },
-        "Special Weather Statement": { color: '#facc15' }
+const ALERT_CATEGORIES = [
+    {
+        name: 'Severe',
+        visualOnly: false,
+        alerts: [
+            { type: 'Tornado Emergency', color: '#ae21ff' },
+            { type: 'PDS Tornado Warning', color: '#ff00ff' },
+            { type: 'Confirmed Tornado Warning', color: '#ca2020' },
+            { type: 'Tornado Warning', color: '#ff2121' },
+            { type: 'Severe Thunderstorm Warning', color: '#ff9900' },
+            { type: 'Special Weather Statement', color: '#facc15' }
+        ]
     },
-    'Flood': {
-        "Flash Flood Emergency": { color: '#1ed400' },
-        "Flash Flood Warning": { color: '#38f852' },
-        "Flash Flood Watch": { color: '#27bd3b' },
-        "Flood Warning": { color: '#27beff' },
+    {
+        name: 'Flood',
+        visualOnly: false,
+        alerts: [
+            { type: 'Flash Flood Emergency', color: '#1ed400' },
+            { type: 'Flash Flood Warning', color: '#38f852' },
+            { type: 'Flash Flood Watch', color: '#27bd3b' },
+            { type: 'Flood Warning', color: '#27beff' }
+        ]
     },
-    'Marine': {
-        "Special Marine Warning": { color: '#1406d4' },
-        "Marine Weather Statement": { color: '#06b6d4' },
+    {
+        name: 'Marine',
+        visualOnly: false,
+        alerts: [
+            { type: 'Special Marine Warning', color: '#1406d4' },
+            { type: 'Marine Weather Statement', color: '#06b6d4' }
+        ]
     },
-    'Seismic': {
-        "Tsunami Warning": { color: '#00b418' },
-        "Earthquake Warning": { color: '#b40000' },
-        "Volcano Warning": { color: '#ff8800' }
+    {
+        name: 'Seismic',
+        visualOnly: false,
+        alerts: [
+            { type: 'Tsunami Warning', color: '#00b418' },
+            { type: 'Earthquake Warning', color: '#b40000' },
+            { type: 'Volcano Warning', color: '#ff8800' }
+        ]
     },
-    'Winter': {
-        "Avalanche Warning": { color: '#d52dff' },
-        "Avalanche Watch": { color: '#b23acf' },
-        "Snow Squall Warning": { color: '#00d4ff' }
+    {
+        name: 'Winter',
+        visualOnly: false,
+        alerts: [
+            { type: 'Avalanche Warning', color: '#d52dff' },
+            { type: 'Avalanche Watch', color: '#b23acf' },
+            { type: 'Snow Squall Warning', color: '#00d4ff' }
+        ]
     },
-    'Miscellaneous': {
-        "Extreme Wind Warning": { color: '#ff00ff' },
-        "Shelter in Place Warning": { color: '#f700ff' },
-        "Dust Storm Warning": { color: '#c76531' }
+    {
+        name: 'Miscellaneous',
+        visualOnly: false,
+        alerts: [
+            { type: 'Extreme Wind Warning', color: '#ff00ff' },
+            { type: 'Shelter in Place Warning', color: '#f700ff' },
+            { type: 'Dust Storm Warning', color: '#c76531' }
+        ]
     },
-    'Watches': {
-        "Tornado Watch": { color: '#ff2121' },
-        "Severe Thunderstorm Watch": { color: '#ff9900' }
+    {
+        name: 'Watches',
+        visualOnly: true,
+        alerts: [
+            { type: 'Tornado Watch', color: '#ff2121' },
+            { type: 'Severe Thunderstorm Watch', color: '#ff9900' }
+        ]
     },
-    'Products': {
-        "Mesoscale Discussion": { color: '#000000' }
+    {
+        name: 'Products',
+        visualOnly: true,
+        alerts: [
+            { type: 'Mesoscale Discussion', color: '#ffcc00' }
+        ]
     }
-};
+];
+
+function buildAlertSettingKey(alertType) {
+    return `alert_${alertType.replace(/\s+/g, '_').toLowerCase()}`;
+}
 
 // Flatten alert defaults for backward compatibility
 function buildAlertDefaults() {
     const defaults = {};
-    Object.values(ALERT_CATEGORIES).forEach(category => {
-        Object.assign(defaults, category);
+    ALERT_CATEGORIES.forEach((category) => {
+        category.alerts.forEach((alertConfig) => {
+            defaults[alertConfig.type] = { color: alertConfig.color };
+        });
     });
     return defaults;
 }
 
 const ALERT_TYPE_DEFAULTS = buildAlertDefaults();
+
+let activePreviewAudio = null;
+
+function stopActivePreviewAudio() {
+    if (!activePreviewAudio) {
+        return;
+    }
+
+    activePreviewAudio.pause();
+    activePreviewAudio.currentTime = 0;
+    activePreviewAudio = null;
+}
+
+function previewNotificationSound(soundFile) {
+    stopActivePreviewAudio();
+
+    if (!soundFile || soundFile === 'none') {
+        new Toast('Select a sound to preview.').show();
+        return;
+    }
+
+    const audio = new Audio(`sound/${soundFile}`);
+    activePreviewAudio = audio;
+
+    const clearPreview = () => {
+        if (activePreviewAudio === audio) {
+            activePreviewAudio = null;
+        }
+    };
+
+    audio.addEventListener('ended', clearPreview, { once: true });
+    audio.addEventListener('error', () => {
+        clearPreview();
+        new Toast('Unable to play preview sound.').show();
+    }, { once: true });
+
+    audio.play().catch((error) => {
+        clearPreview();
+        if (error?.name === 'NotAllowedError') {
+            new Toast('Audio preview blocked by browser autoplay settings.').show();
+            return;
+        }
+        new Toast('Unable to play preview sound.').show();
+    });
+}
 
 
 function initSettings(settingsInstance) {
@@ -382,34 +466,51 @@ function handlePaletteUpload(settingKey, settingsInstance) {
 function generateAlertSettings(settingsInstance, container) {
     container.innerHTML = '';
 
-    Object.entries(ALERT_CATEGORIES).forEach(([category, alerts]) => {
+    ALERT_CATEGORIES.forEach((categoryConfig) => {
+        const { name: category, alerts, visualOnly } = categoryConfig;
+
         // Create category header
         const categoryHeader = document.createElement('div');
         categoryHeader.className = 'alert-category-header';
-        categoryHeader.style.fontSize = '1.1em';
-        categoryHeader.style.fontWeight = 'bold';
-        categoryHeader.style.marginTop = '15px';
-        categoryHeader.style.color = 'var(--primary-color)';
         categoryHeader.textContent = category;
         container.appendChild(categoryHeader);
 
         // Create alert items in this category
-        Object.entries(alerts).forEach(([alertType, defaultColors]) => {
-            const settingKey = `alert_${alertType.replace(/\s+/g, '_').toLowerCase()}`;
+        alerts.forEach((alertConfig) => {
+            const alertType = alertConfig.type;
+            const settingKey = buildAlertSettingKey(alertType);
             const alertSettings = settingsInstance.getSetting(settingKey);
             
             if (!alertSettings) return;
 
             const control = document.createElement('div');
-            control.className = 'settings-control';
-            control.style.padding = '10px';
+            control.className = 'settings-control alert-setting-control';
             
-            const header = document.createElement('div');
-            header.className = 'settings-control-header';
-            header.style.gap = '10px';
+            const topRow = document.createElement('div');
+            topRow.className = 'alert-setting-top';
+
+            const title = document.createElement('div');
+            title.className = 'alert-setting-title';
+            title.textContent = alertType;
+            topRow.appendChild(title);
+
+            const topControls = document.createElement('div');
+            topControls.className = 'alert-setting-top-controls';
+
+            const createControlGroup = (text) => {
+                const group = document.createElement('div');
+                group.className = 'alert-setting-group';
+
+                const groupLabel = document.createElement('span');
+                groupLabel.className = 'alert-setting-group-label';
+                groupLabel.textContent = text;
+                group.appendChild(groupLabel);
+
+                return group;
+            };
             
-            // For "Watches" and "Products" categories, only show color picker (no enabled/notify toggles)
-            const isVisualCategory = category === 'Watches' || category === 'Products';
+            // Visual-only categories show color picker only
+            const isVisualCategory = visualOnly;
             
             if (!isVisualCategory) {
                 // Checkbox for enabled/disabled
@@ -423,17 +524,35 @@ function generateAlertSettings(settingsInstance, container) {
                     const current = settingsInstance.getSetting(settingKey);
                     settingsInstance.setSetting(settingKey, { ...current, enabled: enableCheckbox.checked });
                 });
-                header.appendChild(enableCheckbox);
+
+                const enabledGroup = createControlGroup('Show on map');
+                enabledGroup.appendChild(enableCheckbox);
+                topControls.appendChild(enabledGroup);
             }
+
+            const colorGroup = createControlGroup('Color');
             
-            // Label
-            const label = document.createElement('label');
-            label.htmlFor = isVisualCategory ? `${settingKey}-color` : `${settingKey}-enabled`;
-            label.style.flex = '1';
-            label.textContent = alertType;
-            header.appendChild(label);
-            
+            // Color picker
+            const alertColor = document.createElement('input');
+            alertColor.type = 'color';
+            alertColor.id = `${settingKey}-color`;
+            alertColor.value = alertSettings.color || alertConfig.color;
+            alertColor.title = `Set the color for ${alertType} on the radar`;
+            alertColor.className = 'alert-setting-color';
+            alertColor.addEventListener('input', () => {
+                const current = settingsInstance.getSetting(settingKey);
+                settingsInstance.setSetting(settingKey, { ...current, color: alertColor.value });
+            });
+            colorGroup.appendChild(alertColor);
+            topControls.appendChild(colorGroup);
+
+            topRow.appendChild(topControls);
+            control.appendChild(topRow);
+
             if (!isVisualCategory) {
+                const bottomRow = document.createElement('div');
+                bottomRow.className = 'alert-setting-bottom';
+
                 // Notification toggle
                 const notifyCheckbox = document.createElement('input');
                 notifyCheckbox.type = 'checkbox';
@@ -445,24 +564,54 @@ function generateAlertSettings(settingsInstance, container) {
                     const current = settingsInstance.getSetting(settingKey);
                     settingsInstance.setSetting(settingKey, { ...current, notify: notifyCheckbox.checked });
                 });
-                header.appendChild(notifyCheckbox);
+
+                const notificationGroup = createControlGroup('Notifications');
+                notificationGroup.appendChild(notifyCheckbox);
+                bottomRow.appendChild(notificationGroup);
+
+                // Notification sound picker
+                const soundSelect = document.createElement('select');
+                soundSelect.id = `${settingKey}-sound`;
+                soundSelect.title = `Select notification sound for new ${alertType}s`;
+                soundSelect.className = 'alert-setting-sound';
+                const sounds = [
+                    { name: 'Silent', value: 'none' },
+                    { name: 'Default', value: 'warning.mp3' },
+                    { name: 'EAS Tone', value: 'eas.mp3' },
+                    { name: 'Ryan Hall - Tornado Warning', value: 'ryanhall_tor.mp3' },
+                    { name: 'Ryan Hall - Severe Thunderstorm Warning', value: 'ryanhall_svr.mp3' },
+                ];
+                sounds.forEach((sound) => {
+                    const option = document.createElement('option');
+                    option.value = sound.value;
+                    option.textContent = sound.name;
+                    if (alertSettings.sound === sound.value) {
+                        option.selected = true;
+                    }
+                    soundSelect.appendChild(option);
+                });
+                soundSelect.addEventListener('change', () => {
+                    const current = settingsInstance.getSetting(settingKey);
+                    settingsInstance.setSetting(settingKey, { ...current, sound: soundSelect.value });
+                });
+
+                const previewButton = document.createElement('button');
+                previewButton.type = 'button';
+                previewButton.className = 'alert-setting-preview';
+                previewButton.innerHTML = '<i class="ti ti-volume"></i>';
+                previewButton.title = `Preview selected sound for ${alertType}`;
+                previewButton.addEventListener('click', () => {
+                    previewNotificationSound(soundSelect.value);
+                });
+
+                const soundGroup = createControlGroup('Sound');
+                soundGroup.appendChild(soundSelect);
+                soundGroup.appendChild(previewButton);
+                bottomRow.appendChild(soundGroup);
+
+                control.appendChild(bottomRow);
             }
-            
-            // Color picker
-            const alertColor = document.createElement('input');
-            alertColor.type = 'color';
-            alertColor.id = `${settingKey}-color`;
-            alertColor.value = alertSettings.color || defaultColors.color;
-            alertColor.title = `Set the color for ${alertType} on the radar`;
-            alertColor.style.width = '40px';
-            alertColor.style.height = '32px';
-            alertColor.addEventListener('input', () => {
-                const current = settingsInstance.getSetting(settingKey);
-                settingsInstance.setSetting(settingKey, { ...current, color: alertColor.value });
-            });
-            header.appendChild(alertColor);
-            
-            control.appendChild(header);
+
             container.appendChild(control);
         });
     });
@@ -473,7 +622,7 @@ export default class Settings {
         // Generate default alert settings from ALERT_TYPE_DEFAULTS
         const alertDefaults = {};
         Object.entries(ALERT_TYPE_DEFAULTS).forEach(([alertType, colors]) => {
-            const key = `alert_${alertType.replace(/\s+/g, '_').toLowerCase()}`;
+            const key = buildAlertSettingKey(alertType);
             alertDefaults[key] = {
                 enabled: true,
                 notify: true,
@@ -644,6 +793,8 @@ export default class Settings {
     }
 
     closeSettings() {
+        stopActivePreviewAudio();
+
         if (this.cacheStatsInterval) {
             clearInterval(this.cacheStatsInterval);
             this.cacheStatsInterval = null;

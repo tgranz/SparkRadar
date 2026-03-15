@@ -6,16 +6,38 @@
 
 *Please note there is no license.*
 
-This code is open source but not available for redistributing. If you want to use the code in your own work, please get in contact with me at nimbusapps@proton.me.
+This code is open source but **not available for redistributing**. If you want to use the code in your own work, please get in contact with me at nimbusapps@proton.me.
+
+SparkRadar is the free online, reliable, community-supported, multiplatform, easy-to-use weather radar for beginners and pros. Also try the Lite version at [lite.sparkradar.app](https://lite.sparkradar.app)
+
+<p style="margin-left: 20px; font-weight: bolder; font-size: 2em;"><a href="https://sparkradar.app">> https://sparkradar.app</a></p>
 
 <br><br>
 
-<div style="width: 100%; display: flex; align-items: center; flex-direction: column; text-align: center;">
-    <h1>SparkRadar</h1>
-    <p>The free online, reliable, community-supported, multiplatform, easy-to-use weather radar for beginners and pros.</p>
-    <p>Available on every device at <a href="https://sparkradar.app">sparkradar.app.</a></p>
-    <p>Also try the Lite version at <a href="https://lite.sparkradar.app">lite.sparkradar.app.</a></p>
-</div>
+## Screenshots (as of March 2026)
+<img height="350px" src="https://raw.githubusercontent.com/tgranz/SparkRadar/refs/heads/main/assets/screenshots/storminitiation.png">
+<img height="300px" src="https://raw.githubusercontent.com/tgranz/SparkRadar/refs/heads/main/assets/screenshots/torr.png">
+<img height="300px" src="https://raw.githubusercontent.com/tgranz/SparkRadar/refs/heads/main/assets/screenshots/torc.png">
+
+## Features
+- Access to L3 products such as **Reflectivity**, **Velocity**, **Correlation Coefficient**, **Differential Reflectivity**, **Hydrometer Classification**, and more at all available tilt levels.
+- Access to archive L2 products including **Reflectivity**, **Velocity**, and **Correlation Coefficient** for any station at anytime for years back.
+- Multiple advanced tools including a **radar inspector**, **drawing tool**, **measurement tool**, and more.
+- Literally *instant* alerts from the National Weather Service. In my testing, SparkRadar was consistently the first radar to recieve any given alert over RadarScope, WeatherWise, and SupercellWX thanks to [SparkAlerts](https://github.com/tgranz/SparkAlerts).
+- Simplest, most easy to use yet visually appealing radar application to date.
+- 100% Free forever with no ads or intrusive trackers.
+
+
+<br>
+***
+<br>
+
+## Source Code Contents
+1. [Bug Reporting](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#bug-reporting)
+2. [Feature Request](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#requesting-a-feature)
+3. [How to Contribute](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#contributing)
+4. [Run SparkRadar Yourself](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#test)
+5. [Building SparkRadar](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#build)
 
 
 <br>

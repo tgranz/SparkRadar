@@ -7,7 +7,7 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
-import { waitForRadarLayer, pointInPolygon } from "./layer_utils.js";
+import { waitForRadarLayer, pointInPolygon, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 
 class MesoscaleDiscussionLayer {
     constructor(mapInstance) {
@@ -187,6 +187,9 @@ class MesoscaleDiscussionLayer {
                                 ${validTime ? `<strong>Valid Time:</strong> <span>${formatDate(validTime)}</span>` : ''}
                             </div>
                         </div>
+
+                        <img src="https://www.spc.noaa.gov/products/md/mcd${String(num).padStart(4, '0')}.png?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; margin-bottom: 15px; height: auto;">
+
                         ${preText ? `<div style="margin-bottom: 15px;">
                             <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${preText}</p>
                             </div>` : ''}
@@ -243,9 +246,7 @@ class MesoscaleDiscussionLayer {
 
         const cache = target === 'main' ? this.mdCache.main : this.mdCache.dual;
         const nextKeys = new Set();
-        // Insert before alert fill layer so MD appears below alerts but above radar
-        const alertFillLayerId = target === 'main' ? 'alerts-combined-fill' : 'alerts-combined-fill';
-        const insertBeforeId = map.getLayer(alertFillLayerId) ? alertFillLayerId : (target === 'main' ? 'radar-webgl' : 'radar-webgl-dual');
+        const insertBeforeId = getWeatherOutlineBeforeLayerId(map, target);
 
         const settings = window.settingsInstance;
         const mdColor = settings?.getSetting('alert_mesoscale_discussion')?.color || '#fbbf24';

@@ -50,7 +50,7 @@ class Layers {
                 'id': 'radar-webgl',
                 'type': 'circle',
                 'source': 'empty-source'
-            }, 'Pier');
+            }, this.map.map.getLayer('road_area_pier') ? 'road_area_pier' : (this.map.map.getLayer('road_pier') ? 'road_pier' : undefined));
         });
 
         // Now load all layers
