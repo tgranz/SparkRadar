@@ -224,51 +224,100 @@ export default class Finder {
             }
         }
 
-        if (this.isTyping) {
-            clearTimeout(this.typingTimeout);
-        }
-        this.isTyping = true;
-        this.typingTimeout = setTimeout(async () => {
-            this.isTyping = false;
-            const results = await this._searchNominatim(query);
+        // Next look for radar station matches
+        const radarStations = window.radarStationFeatures || [];
+        const matchingStations = radarStations.filter(station => {
+            const name = station.properties?.name || '';
+            const icao = station.properties?.id || '';
+            return name.toLowerCase().includes(query.toLowerCase()) || icao.toLowerCase().includes(query.toLowerCase());
+        });
 
-            // Ignore stale responses from older searches.
-            if (currentSearchSequence !== this.searchSequence) {
-                return;
-            }
+        if (matchingStations.length > 0) {
+            const sectionHeader = document.createElement('p');
+            sectionHeader.textContent = 'Radar Stations:';
+            sectionHeader.style.padding = '10px';
+            sectionHeader.style.fontWeight = 'bold';
+            this.resultsContainer.appendChild(sectionHeader);
 
-            const nominatimHeader = document.createElement('p');
-            nominatimHeader.innerHTML = 'From <a href="https://nominatim.org/" target="_blank">Nominatim</a>:';
-            nominatimHeader.style.padding = '10px';
-            nominatimHeader.style.fontWeight = 'bold';
-            this.resultsContainer.appendChild(nominatimHeader);
-
-            if (results && results.length > 0) {
-                results.forEach(result => {
-                    const resultItem = buildResultItem('map-pin', result.display_name);
-                    resultItem.addEventListener('click', () => {
-                        this._setMapView(result.boundingbox, 11, result.lat, result.lon);
-                        this.close();
-                    });
-                    if (this.isFirstElement) {
-                        resultItem.classList.add('finder-result-first');
-                        document.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') {
-                                this._setMapView(result.boundingbox, 11, result.lat, result.lon);
-                                this.close();
-                            }
-                        }, { once: true });
-                    }
-                    this.resultsContainer.appendChild(resultItem);
-                    this.isFirstElement = false;
+            matchingStations.forEach(station => {
+                const name = station.properties?.name || 'Unknown';
+                const icao = station.properties?.id || 'Unknown callsign';
+                const resultItem = buildResultItem('radar-2', `${icao} (${name})`);
+                resultItem.addEventListener('click', () => {
+                    const bbox = station.bbox || station.properties?.bbox;
+                    const lat = station.geometry?.coordinates[1] || station.properties?.latitude;
+                    const lon = station.geometry?.coordinates[0] || station.properties?.longitude;
+                    this._setMapView(bbox, 11, lat, lon);
+                    this.close();
                 });
-            } else if (this.resultsContainer.innerHTML === '') {
-                const noResultsItem = document.createElement('div');
-                noResultsItem.classList.add('finder-no-results');
-                noResultsItem.textContent = 'No results found';
-                this.resultsContainer.appendChild(noResultsItem);
+                if (this.isFirstElement) {
+                    resultItem.classList.add('finder-result-first');
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            const bbox = station.bbox || station.properties?.bbox;
+                            const lat = station.geometry?.coordinates[1] || station.properties?.latitude;
+                            const lon = station.geometry?.coordinates[0] || station.properties?.longitude;
+                            this._setMapView(bbox, 8, lat, lon);
+                            this.close();
+                        }
+                    }, { once: true });
+                }
+                this.resultsContainer.appendChild(resultItem);
+                this.isFirstElement = false;
+            });
+        }
+
+
+        // Finally, search Nominatim for any remaining queries (longer than 4 chars)
+        if (query.length > 4) {
+            if (this.isTyping) {
+                clearTimeout(this.typingTimeout);
             }
-        }, 500);
+            
+            this.isTyping = true;
+            
+            this.typingTimeout = setTimeout(async () => {
+                this.isTyping = false;
+                const results = await this._searchNominatim(query);
+
+                // Ignore stale responses from older searches.
+                if (currentSearchSequence !== this.searchSequence) {
+                    return;
+                }
+
+                const sectionHeader = document.createElement('p');
+                sectionHeader.innerHTML = 'From <a href="https://nominatim.org/" target="_blank">Nominatim</a>:';
+                sectionHeader.style.padding = '10px';
+                sectionHeader.style.fontWeight = 'bold';
+                this.resultsContainer.appendChild(sectionHeader);
+
+                if (results && results.length > 0) {
+                    results.forEach(result => {
+                        const resultItem = buildResultItem('map-pin', result.display_name);
+                        resultItem.addEventListener('click', () => {
+                            this._setMapView(result.boundingbox, 11, result.lat, result.lon);
+                            this.close();
+                        });
+                        if (this.isFirstElement) {
+                            resultItem.classList.add('finder-result-first');
+                            document.addEventListener('keydown', (e) => {
+                                if (e.key === 'Enter') {
+                                    this._setMapView(result.boundingbox, 11, result.lat, result.lon);
+                                    this.close();
+                                }
+                            }, { once: true });
+                        }
+                        this.resultsContainer.appendChild(resultItem);
+                        this.isFirstElement = false;
+                    });
+                } else if (this.resultsContainer.innerHTML === '') {
+                    const noResultsItem = document.createElement('div');
+                    noResultsItem.classList.add('finder-no-results');
+                    noResultsItem.textContent = 'No results found';
+                    this.resultsContainer.appendChild(noResultsItem);
+                }
+            }, 500);
+        }
 
         if (this.isFirstElement && this.resultsContainer.innerHTML === '') {
             const noResultsItem = document.createElement('div');

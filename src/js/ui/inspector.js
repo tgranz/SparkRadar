@@ -106,7 +106,7 @@ export default class Inspector {
             case 'N2U':
             case 'N3U':
             case 'VEL':
-            return 'm/s';
+            return 'mph';
             case 'N0C':
             case 'N1C':
             case 'N2C':
@@ -131,7 +131,7 @@ export default class Inspector {
             case 'N3H':
             return 'TYPE';
             case 'SW':
-            return 'm/s';
+            return 'mph';
             default:
             return '';
         }
@@ -277,6 +277,9 @@ export default class Inspector {
 
             if (unit === 'TYPE') {
                 valueStr = dhcMapping[value] || `Unknown (${value})`;
+            } else if (unit == 'mph') {
+                // MPH products are stored in m/s, so convert to mph
+                valueStr = (value * 2.23694).toFixed(1);
             } else {
                 valueStr = value === 'rf' ? 'RF' : value.toFixed(1);
             }
@@ -326,7 +329,7 @@ export default class Inspector {
                 this.updateValue(mapId);
                 this.updateCirclePosition(mapId);
             });
-        }, 250);
+        }, 500);
         
         // Initial update
         Object.keys(this.circles).forEach(mapId => {

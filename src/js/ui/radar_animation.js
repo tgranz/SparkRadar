@@ -58,7 +58,7 @@ export default class AnimationController {
         this.playPauseButton.title = 'Play/Pause';
         this.playPauseButton.addEventListener('click', () => this.togglePlayPause());
         this.playPauseShortcutListener = document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !e.repeat) {
+            if (e.code === 'Space' && !e.repeat && !e.target.matches('input, textarea')) {
                 e.preventDefault();
                 this.togglePlayPause();
             }

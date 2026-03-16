@@ -1619,6 +1619,7 @@ class Map {
                 }
 
                 const features = data.features;
+                window.radarStationFeatures = features; // Expose for use in other modules
                 const isSplit = this.hasSplitMap();
                 const callbacks = this.callbacks;
                 const mainMap = this.map;
