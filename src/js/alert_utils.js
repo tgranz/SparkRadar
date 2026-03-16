@@ -54,11 +54,11 @@ export function renderAlert(alert) {
 
     // Check props
     const alertMessage = alert?.message?.split("#####")[0] || ""; // Split updates and select the most recent message
-    const _is_consid = alertMessage.toLowerCase().includes('considerable') || false;
     const _is_destructive = alertMessage.toLowerCase().includes('destructive') || alertMessage.toLowerCase().includes('catastrophic') || false;
+    const _is_consid = !_is_destructive && alertMessage.toLowerCase().includes('considerable') || false;
     const is_emergency = alertMessage.includes('TORNADO EMERGENCY') || alertMessage.includes('FLASH FLOOD EMERGENCY') || false;
     const is_pds = alertMessage.toLowerCase().includes('particularly dangerous situation') || false;
-    const damagelevel = _is_consid ? 'considerable' : _is_destructive ? 'destructive' : 'normal';
+    const damagelevel = _is_destructive ? 'destructive' : _is_consid ? 'considerable' : 'normal';
     const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
     const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
     const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
