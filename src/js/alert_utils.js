@@ -53,7 +53,7 @@ export function renderAlert(alert) {
     else icon = 'alert-triangle';
 
     // Check props
-    const alertMessage = alert?.message?.split("#####")[0] || ""; // Split updates and select the most recent message
+    const alertMessage = alert?.message || "";
     const _is_destructive = alertMessage.toLowerCase().includes('destructive') || alertMessage.toLowerCase().includes('catastrophic') || false;
     const _is_consid = !_is_destructive && alertMessage.toLowerCase().includes('considerable') || false;
     const is_emergency = alertMessage.includes('TORNADO EMERGENCY') || alertMessage.includes('FLASH FLOOD EMERGENCY') || false;
