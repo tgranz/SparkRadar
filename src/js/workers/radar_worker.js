@@ -11,15 +11,21 @@ const createRadarProjector = (radarLat, radarLon) => {
     const lon1 = radarLon * DEG_TO_RAD;
     const sinLat1 = Math.sin(lat1);
     const cosLat1 = Math.cos(lat1);
+    // sin/cos of angular distance depend only on range, not azimuth.
+    // Cache them so each unique distance is computed once across all radials.
+    const rangeCache = new Map();
 
     return (sinAz, cosAz, distanceMeters) => {
-        const dR = distanceMeters / EARTH_RADIUS;
-        const sinDR = Math.sin(dR);
-        const cosDR = Math.cos(dR);
-        const lat2 = Math.asin(sinLat1 * cosDR + cosLat1 * sinDR * cosAz);
+        let entry = rangeCache.get(distanceMeters);
+        if (entry === undefined) {
+            const dR = distanceMeters / EARTH_RADIUS;
+            entry = { s: Math.sin(dR), c: Math.cos(dR) };
+            rangeCache.set(distanceMeters, entry);
+        }
+        const lat2 = Math.asin(sinLat1 * entry.c + cosLat1 * entry.s * cosAz);
         const lon2 = lon1 + Math.atan2(
-            sinAz * sinDR * cosLat1,
-            cosDR - sinLat1 * Math.sin(lat2)
+            sinAz * entry.s * cosLat1,
+            entry.c - sinLat1 * Math.sin(lat2)
         );
         return [lon2 * RAD_TO_DEG, lat2 * RAD_TO_DEG];
     };

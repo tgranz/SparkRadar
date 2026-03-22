@@ -52,6 +52,67 @@ export function waitForRadarLayer(map, target) {
     });
 }
 
+export function hasUsableMapStyle(map) {
+    if (!map || typeof map.getStyle !== 'function') return false;
+
+    try {
+        const style = map.getStyle();
+        return !!style && Array.isArray(style.layers);
+    } catch {
+        return false;
+    }
+}
+
+export function waitForMapStyleReady(map) {
+    if (!map) return Promise.resolve();
+
+    if (hasUsableMapStyle(map)) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+        let resolved = false;
+        const events = ['styledata', 'data', 'idle', 'load'];
+        let pollId = null;
+        let timeoutId = null;
+
+        const cleanup = () => {
+            events.forEach((eventName) => {
+                map.off(eventName, onMapUpdate);
+            });
+            if (pollId) {
+                clearInterval(pollId);
+                pollId = null;
+            }
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+        };
+
+        const onMapUpdate = () => {
+            if (hasUsableMapStyle(map)) {
+                if (resolved) return;
+                resolved = true;
+                cleanup();
+                resolve();
+            }
+        };
+
+        events.forEach((eventName) => {
+            map.on(eventName, onMapUpdate);
+        });
+
+        pollId = setInterval(onMapUpdate, 100);
+
+        timeoutId = setTimeout(() => {
+            if (resolved) return;
+            cleanup();
+            resolve();
+        }, 15000);
+    });
+}
+
 /**
  * Returns the best layer ID to insert weather overlays beneath roads and labels.
  */
@@ -200,4 +261,120 @@ export function pointInPolygon(point, rings) {
         }
     }
     return true;
+}
+
+// ─── Layer Ordering ──────────────────────────────────────────────────────────
+
+export const DEFAULT_LAYER_ORDER = [
+    'signatures', 'labels', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
+];
+
+export const LAYER_ORDER_LABELS = {
+    labels:                'Labels',
+    signatures:            'TVS / Hail Signatures',
+    alerts:                'Alerts',
+    watches:               'Watches',
+    mesoscaleDiscussions:  'Mesoscale Discussions',
+    surfaceAnalysis:       'Surface Fronts',
+    lightning:             'Lightning',
+    spotterNetworkPositions:'Spotter Network Positions',
+    outlook:               'SPC Outlook',
+    roads:                 'Roads',
+    radar:                 'Radar',
+};
+
+export const LAYER_ORDER_ANCHORS = new Set(['roads', 'labels']);
+
+export function findFirstRoadLayer(map) {
+    const layers = map.getStyle()?.layers || [];
+    // Exclude tunnel layers; find the first above-grade road/highway/bridge/railway layer
+    return layers.find(l => !l.id.startsWith('tunnel') && /road|highway|railway|bridge/.test(l.id))?.id;
+}
+
+export function findFirstLabelLayer(map) {
+    const layers = map.getStyle()?.layers || [];
+    // Match only place-label layers (label_city, label_country, etc.), not waterway/highway name
+    // layers whose IDs end in '_label' (e.g. waterway_line_label, highway-name-minor)
+    return layers.find(l => /^label_/.test(l.id))?.id;
+}
+
+function _getGroupLayerIds(map, group, target) {
+    const isDual = target === 'dual';
+
+    // Custom layers (type: 'custom') are excluded from map.getStyle().layers serialization,
+    // so radar must be checked with map.getLayer() directly.
+    if (group === 'radar') {
+        const id = isDual ? 'radar-webgl-dual' : 'radar-webgl';
+        return map.getLayer(id) ? [id] : [];
+    }
+
+    const layers = map.getStyle()?.layers || [];
+    return layers.filter(l => {
+        const id = l.id;
+        const hasDual = id.includes('-dual');
+        const isBaseStyleGroup = group === 'roads' || group === 'labels';
+        if (!isBaseStyleGroup && isDual !== hasDual) return false;
+        if (isBaseStyleGroup && hasDual) return false;
+        switch (group) {
+            case 'roads':               return !id.startsWith('tunnel') && /road|highway|railway|bridge/.test(id);
+            case 'labels':              return /^label_/.test(id);
+            case 'alerts':              return id.startsWith('alerts-combined')
+                                              && !id.endsWith('-fill')
+                                              && !id.endsWith('-fill-new');
+            case 'watches':             return id.startsWith('watch-');
+            case 'mesoscaleDiscussions':return id.startsWith('md-');
+            case 'surfaceAnalysis':     return id.startsWith('surface-analysis-');
+            case 'lightning':           return id.startsWith('lightning-');
+            case 'spotterNetworkPositions': return id.startsWith('spotter-network-position-');
+            case 'outlook':             return id.startsWith('outlook-layer');
+            case 'signatures':          return id.startsWith('center-');
+            case 'alertFills':          return id.startsWith('alerts-combined')
+                                              && (id.endsWith('-fill') || id.endsWith('-fill-new'));
+            default:                    return false;
+        }
+    }).map(l => l.id);
+}
+
+/**
+ * Reorders all active weather + base-map layers on `map` according to `orderList`.
+ * orderList should go from highest z-index (index 0) to lowest.
+ * Includes data layers (alerts, watches, etc.), weather overlays (radar, outlook, signatures),
+ * and base-map components (roads, labels) as movable groups.
+ */
+export function applyLayerOrder(map, orderList, target = 'main') {
+    if (!map || !orderList || orderList.length === 0) return;
+    if (typeof map.getStyle !== 'function') return;
+
+    // beforeIdForNext is the layer that the NEXT (lower z-index) group should be inserted before.
+    // undefined means "place at the very top of the stack".
+    let beforeIdForNext = undefined;
+
+    for (let i = 0; i < orderList.length; i++) {
+        const group = orderList[i];
+        const beforeId      = beforeIdForNext;
+        const groupLayerIds = _getGroupLayerIds(map, group, target);
+        if (groupLayerIds.length === 0) continue;
+
+        // Move the topmost group layer to just below `beforeId`
+        try { map.moveLayer(groupLayerIds[groupLayerIds.length - 1], beforeId); } catch (e) {}
+
+        // Stack remaining group layers below the topmost, maintaining their relative order
+        for (let j = groupLayerIds.length - 2; j >= 0; j--) {
+            try { map.moveLayer(groupLayerIds[j], groupLayerIds[j + 1]); } catch (e) {}
+        }
+
+        // Next group goes just below the bottom of this group
+        beforeIdForNext = groupLayerIds[0];
+    }
+
+    // Keep alert fills pinned beneath all customizable groups.
+    const alertFillLayerIds = _getGroupLayerIds(map, 'alertFills', target);
+    if (alertFillLayerIds.length > 0) {
+        const fillBeforeId = beforeIdForNext;
+
+        try { map.moveLayer(alertFillLayerIds[alertFillLayerIds.length - 1], fillBeforeId); } catch (e) {}
+        for (let i = alertFillLayerIds.length - 2; i >= 0; i--) {
+            try { map.moveLayer(alertFillLayerIds[i], alertFillLayerIds[i + 1]); } catch (e) {}
+        }
+    }
 }

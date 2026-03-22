@@ -8,8 +8,16 @@ See LICENSE for more.
 
 import Dialog from "../ui/dialog.js";
 import { buildAlertDefaults } from "../ui/settings.js";
-import { waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 import { renderAlert } from "../alert_utils.js";
+
+const EMPTY_FEATURE_COLLECTION = {
+    type: 'FeatureCollection',
+    features: []
+};
+
+const DEBUG_ALERT_SYNC = false;
+const SYNC_PENDING_STALE_MS = 15000;
 
 class AlertLayer {
     constructor(mapInstance, alertService) {
@@ -20,6 +28,7 @@ class AlertLayer {
         this.alerts = [];
         this.alertCache = { main: new globalThis.Map(), dual: new globalThis.Map() };
         this.alertSyncPending = { main: false, dual: false };
+        this.alertSyncPendingSince = { main: 0, dual: 0 };
         this.alertPopups = { main: null, dual: null };
         this.alertPopupLocations = { main: null, dual: null };
         this.alertPopupMoveHandlers = { main: null, dual: null };
@@ -104,11 +113,13 @@ class AlertLayer {
             
             const colors = this._getAlertColor(alert);
             const isNew = this._isAlertNew(alert);
+            const priority = this._getAlertPriority(alert);
             
             geojson.properties.fillColor = colors.fill;
             geojson.properties.outlineColor = colors.outline;
             geojson.properties.alertIndex = index;
             geojson.properties.isNew = isNew ? 1 : 0;
+            geojson.properties.priority = priority;
             
             if (isNew) hasNewAlerts = true;
             
@@ -180,6 +191,10 @@ class AlertLayer {
         return (alert?.message || '').toLowerCase();
     }
 
+    _getAlertPriority(alert) {
+        return Number(renderAlert(alert)?.priority) || 0;
+    }
+
     _getAlertColor(alert) {
         // Check for custom colors in settings first
         const rendered = renderAlert(alert);
@@ -230,6 +245,16 @@ class AlertLayer {
                 }
             }
         }
+
+        matches.sort((a, b) => {
+            const priorityDiff = this._getAlertPriority(b) - this._getAlertPriority(a);
+            if (priorityDiff !== 0) return priorityDiff;
+
+            const issuedA = Date.parse(a?.issued || a?.issuedAt) || 0;
+            const issuedB = Date.parse(b?.issued || b?.issuedAt) || 0;
+            return issuedB - issuedA;
+        });
+
         return matches;
     }
 
@@ -258,7 +283,16 @@ class AlertLayer {
     buildAlertPopupSection(alerts) {
         if (!alerts || alerts.length === 0) return '';
 
-        const items = alerts.map((alert, index) => {
+        const orderedAlerts = [...alerts].sort((a, b) => {
+            const priorityDiff = this._getAlertPriority(b) - this._getAlertPriority(a);
+            if (priorityDiff !== 0) return priorityDiff;
+
+            const issuedA = Date.parse(a?.issued || a?.issuedAt) || 0;
+            const issuedB = Date.parse(b?.issued || b?.issuedAt) || 0;
+            return issuedB - issuedA;
+        });
+
+        const items = orderedAlerts.map((alert, index) => {
             const issuedAt = alert.issued || alert.receivedAt;
             const alertIssued = new Date(issuedAt).toLocaleTimeString(undefined, {
                 hour: '2-digit',
@@ -421,11 +455,12 @@ class AlertLayer {
                         ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
                     </div>
                 </div>
-                ${alert.message ? `
+                ${alert.message ? alert.message.split('#####\n\n').map((section, i, arr) => `
+                    ${arr.length === 1 ? `` : `${i === 0 ? '<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Latest Bulletin</p>' : `<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Update ${arr.length - i} of ${arr.length}</p>`}`}
                     <div style="margin-bottom: 15px;">
-                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${alert.message.replace('  ', '\n')}</p>
+                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${section.replace('  ', '\n').replace(/<[^>]+>/g, '')}</p>
                     </div>
-                ` : ''}
+                `).join('') : ''}
             </div>
         `;
 
@@ -501,22 +536,33 @@ class AlertLayer {
             return;
         }
 
-        const isStyleLoaded = map.isStyleLoaded && map.isStyleLoaded();
+        const isStyleLoaded = hasUsableMapStyle(map);
         console.log(`[AlertLayer] _scheduleAlertSync for ${target}: isStyleLoaded=${isStyleLoaded}, pending=${this.alertSyncPending[target]}`);
         
         if (isStyleLoaded) {
+            this.alertSyncPending[target] = false;
+            this.alertSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncAlertsToMap(target);
             });
             return;
         }
 
-        if (this.alertSyncPending[target]) return;
-        this.alertSyncPending[target] = true;
-
-        console.log(`[AlertLayer] Waiting for map ${target} to load before syncing alerts`);
-        map.once('load', () => {
+        if (this.alertSyncPending[target]) {
+            const pendingAge = Date.now() - (this.alertSyncPendingSince[target] || 0);
+            if (pendingAge < SYNC_PENDING_STALE_MS) {
+                return;
+            }
+            console.warn(`[AlertLayer] Resetting stale sync pending flag for ${target} (age=${pendingAge}ms)`);
             this.alertSyncPending[target] = false;
+        }
+        this.alertSyncPending[target] = true;
+        this.alertSyncPendingSince[target] = Date.now();
+
+        console.log(`[AlertLayer] Waiting for map ${target} style to be ready before syncing alerts`);
+        waitForMapStyleReady(map).then(() => {
+            this.alertSyncPending[target] = false;
+            this.alertSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncAlertsToMap(target);
             });
@@ -556,12 +602,30 @@ class AlertLayer {
             console.warn(`[AlertLayer] _syncAlertsToMap: Map not available for target ${target}`);
             return;
         }
-        if (map.isStyleLoaded && !map.isStyleLoaded()) {
-            console.warn(`[AlertLayer] _syncAlertsToMap: Style not loaded for target ${target}`);
+        if (!hasUsableMapStyle(map)) {
+            console.warn(`[AlertLayer] _syncAlertsToMap: Style not ready for target ${target}; waiting and retrying.`);
+            waitForMapStyleReady(map).then(() => {
+                waitForRadarLayer(map, target).then(() => {
+                    this._syncAlertsToMap(target);
+                });
+            });
             return;
         }
 
         console.log(`[AlertLayer] _syncAlertsToMap: Syncing ${this.alerts.length} alerts to ${target}`);
+
+        if (DEBUG_ALERT_SYNC) {
+            try {
+                const layerIds = (map.getStyle()?.layers || []).map((layer) => layer.id);
+                console.log(`[Debug][AlertSync] pre-sync ${target}`, {
+                    sourcePresent: !!map.getSource(target === 'main' ? 'alerts-combined' : 'alerts-combined-dual'),
+                    alertLayersPresent: layerIds.filter((id) => id.startsWith(target === 'main' ? 'alerts-combined' : 'alerts-combined-dual')),
+                    top20Layers: layerIds.slice(-20)
+                });
+            } catch (error) {
+                console.warn(`[Debug][AlertSync] pre-sync snapshot failed (${target}):`, error);
+            }
+        }
 
         // Use a single GeoJSON source for ALL alerts - much better performance
         const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
@@ -582,12 +646,14 @@ class AlertLayer {
                 return;
             }
             const colors = this._getAlertColor(alert);
+            const priority = this._getAlertPriority(alert);
             
             // Add color information to properties for data-driven styling
             geojson.properties.fillColor = colors.fill;
             geojson.properties.outlineColor = colors.outline;
             geojson.properties.alertIndex = index;
             geojson.properties.isNew = this._isAlertNew(alert) ? 1 : 0;
+            geojson.properties.priority = priority;
             
             features.push(geojson);
         });
@@ -619,6 +685,9 @@ class AlertLayer {
                 id: outlineOutlineLayerId,
                 type: 'line',
                 source: sourceId,
+                layout: {
+                    'line-sort-key': ['get', 'priority']
+                },
                 paint: {
                     'line-color': '#000000',
                     'line-width': 6,
@@ -632,6 +701,9 @@ class AlertLayer {
                 id: outlineLayerId,
                 type: 'line',
                 source: sourceId,
+                layout: {
+                    'line-sort-key': ['get', 'priority']
+                },
                 paint: {
                     'line-color': ['get', 'outlineColor'],
                     'line-width': 2,
@@ -646,6 +718,9 @@ class AlertLayer {
                 type: 'fill',
                 source: sourceId,
                 filter: ['!=', ['get', 'isNew'], 1],
+                layout: {
+                    'fill-sort-key': ['get', 'priority']
+                },
                 paint: {
                     'fill-color': ['get', 'fillColor'],
                     'fill-opacity': 0.4
@@ -666,6 +741,9 @@ class AlertLayer {
                 type: 'line',
                 source: sourceId,
                 filter: ['==', ['get', 'isNew'], 1],
+                layout: {
+                    'line-sort-key': ['get', 'priority']
+                },
                 paint: {
                     'line-color': '#000000',
                     'line-width': 6,
@@ -682,6 +760,9 @@ class AlertLayer {
                 type: 'line',
                 source: sourceId,
                 filter: ['==', ['get', 'isNew'], 1],
+                layout: {
+                    'line-sort-key': ['get', 'priority']
+                },
                 paint: {
                     'line-color': ['get', 'outlineColor'],
                     'line-width': 2,
@@ -698,6 +779,9 @@ class AlertLayer {
                 type: 'fill',
                 source: sourceId,
                 filter: ['==', ['get', 'isNew'], 1],
+                layout: {
+                    'fill-sort-key': ['get', 'priority']
+                },
                 paint: {
                     'fill-color': ['get', 'fillColor'],
                     'fill-opacity': 0.4
@@ -709,20 +793,41 @@ class AlertLayer {
 
         // Start flash animation for new alerts
         this._startFlashAnimation(target);
+
+        this.map?.layers?.applyLayerOrder(target);
+
+        if (DEBUG_ALERT_SYNC) {
+            try {
+                const layerIds = (map.getStyle()?.layers || []).map((layer) => layer.id);
+                const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
+                console.log(`[Debug][AlertSync] post-sync ${target}`, {
+                    sourcePresent: !!map.getSource(sourceId),
+                    fillPresent: !!map.getLayer(`${sourceId}-fill`),
+                    outlinePresent: !!map.getLayer(`${sourceId}-outline`),
+                    outlineOutlinePresent: !!map.getLayer(`${sourceId}-outline-outline`),
+                    newFillPresent: !!map.getLayer(`${sourceId}-fill-new`),
+                    newOutlinePresent: !!map.getLayer(`${sourceId}-outline-new`),
+                    newOutlineOutlinePresent: !!map.getLayer(`${sourceId}-outline-outline-new`),
+                    alertLayersOrder: layerIds.filter((id) => id.startsWith(sourceId)),
+                    top20Layers: layerIds.slice(-20)
+                });
+            } catch (error) {
+                console.warn(`[Debug][AlertSync] post-sync snapshot failed (${target}):`, error);
+            }
+        }
     }
 
     _isAlertsLayerEnabled() {
-        const checkbox = document.getElementById('toggle-alerts-layer');
-        if (checkbox) {
-            return checkbox.checked;
-        }
-
         try {
             const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-            return settings.alertsEnabled !== undefined ? settings.alertsEnabled : true;
+            if (typeof settings.alertsEnabled === 'boolean') {
+                return settings.alertsEnabled;
+            }
         } catch {
-            return true;
         }
+
+        const checkbox = document.getElementById('toggle-alerts-layer');
+        return checkbox ? checkbox.checked : true;
     }
 
     displayAlertsOnMap(target = 'main') {
@@ -754,7 +859,7 @@ class AlertLayer {
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) {
-            return;
+            return; 
         }
 
         // Stop flash animation
@@ -769,29 +874,8 @@ class AlertLayer {
         const newOutlineLayerId = `${sourceId}-outline-new`;
         const newOutlineOutlineLayerId = `${sourceId}-outline-outline-new`;
 
-        // Remove layers in reverse order (including new alert layers)
-        if (map.getLayer(fillLayerId)) {
-            map.removeLayer(fillLayerId);
-        }
-        if (map.getLayer(outlineLayerId)) {
-            map.removeLayer(outlineLayerId);
-        }
-        if (map.getLayer(outlineOutlineLayerId)) {
-            map.removeLayer(outlineOutlineLayerId);
-        }
-        if (map.getLayer(newFillLayerId)) {
-            map.removeLayer(newFillLayerId);
-        }
-        if (map.getLayer(newOutlineLayerId)) {
-            map.removeLayer(newOutlineLayerId);
-        }
-        if (map.getLayer(newOutlineOutlineLayerId)) {
-            map.removeLayer(newOutlineOutlineLayerId);
-        }
-
-        // Remove source
         if (map.getSource(sourceId)) {
-            map.removeSource(sourceId);
+            map.getSource(sourceId).setData(EMPTY_FEATURE_COLLECTION);
         }
 
         this._clearAlertPopup(target);

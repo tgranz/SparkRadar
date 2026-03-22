@@ -6,7 +6,7 @@
 
 *Please note there is no license.*
 
-This code is open source but **not available for redistributing**. If you want to use the code in your own work, please get in contact with me at nimbusapps@proton.me.
+This code is open source but **not available for redistributing**. See more in the DISCLAIMER.md file.
 
 SparkRadar is the free online, reliable, community-supported, multiplatform, easy-to-use weather radar for beginners and pros. Also try the Lite version at [lite.sparkradar.app](https://lite.sparkradar.app)
 

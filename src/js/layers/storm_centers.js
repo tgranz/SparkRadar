@@ -7,7 +7,14 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
-import { waitForRadarLayer } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer } from "./layer_utils.js";
+
+const EMPTY_FEATURE_COLLECTION = {
+    type: 'FeatureCollection',
+    features: []
+};
+
+const SYNC_PENDING_STALE_MS = 15000;
 
 class StormCentersLayer {
     constructor(mapInstance) {
@@ -18,6 +25,7 @@ class StormCentersLayer {
         this.stormCenters = [];     // Current filtered centers
         this.centerCache = { main: new globalThis.Map(), dual: new globalThis.Map() };
         this.centerSyncPending = { main: false, dual: false };
+        this.centerSyncPendingSince = { main: 0, dual: 0 };
 
         // Icons registered on the map
         this.iconsRegistered = { main: new Set(), dual: new Set() };
@@ -287,18 +295,29 @@ class StormCentersLayer {
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
 
-        if (map.isStyleLoaded && map.isStyleLoaded()) {
+        if (hasUsableMapStyle(map)) {
+            this.centerSyncPending[target] = false;
+            this.centerSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncCentersToMap(target);
             });
             return;
         }
 
-        if (this.centerSyncPending[target]) return;
-        this.centerSyncPending[target] = true;
-
-        map.once('load', () => {
+        if (this.centerSyncPending[target]) {
+            const pendingAge = Date.now() - (this.centerSyncPendingSince[target] || 0);
+            if (pendingAge < SYNC_PENDING_STALE_MS) {
+                return;
+            }
+            console.warn(`[StormCentersLayer] Resetting stale sync pending flag for ${target} (age=${pendingAge}ms)`);
             this.centerSyncPending[target] = false;
+        }
+        this.centerSyncPending[target] = true;
+        this.centerSyncPendingSince[target] = Date.now();
+
+        waitForMapStyleReady(map).then(() => {
+            this.centerSyncPending[target] = false;
+            this.centerSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncCentersToMap(target);
             });
@@ -470,19 +489,17 @@ class StormCentersLayer {
     }
 
     _areStormCentersEnabled() {
-        const tvsCheckbox = document.getElementById('toggle-tvs-signatures-layer');
-        const hailCheckbox = document.getElementById('toggle-hail-signatures-layer');
-
-        if (tvsCheckbox || hailCheckbox) {
-            return !!(tvsCheckbox?.checked || hailCheckbox?.checked);
-        }
-
         try {
             const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-            return !!(settings.tvsSignaturesEnabled || settings.hailSignaturesEnabled);
+            if (typeof settings.tvsSignaturesEnabled === 'boolean' || typeof settings.hailSignaturesEnabled === 'boolean') {
+                return !!(settings.tvsSignaturesEnabled || settings.hailSignaturesEnabled);
+            }
         } catch {
-            return false;
         }
+
+        const tvsCheckbox = document.getElementById('toggle-tvs-signatures-layer');
+        const hailCheckbox = document.getElementById('toggle-hail-signatures-layer');
+        return !!(tvsCheckbox?.checked || hailCheckbox?.checked);
     }
 
     displayStormCentersOnMap(target = 'main') {
@@ -535,13 +552,13 @@ class StormCentersLayer {
 
         const cache = target === 'main' ? this.centerCache.main : this.centerCache.dual;
         for (const key of cache.keys()) {
-            this._removeCenterFromMap(target, key);
+            const sourceId = target === 'main' ? `center-source-${key}` : `center-source-${key}-dual`;
+            const source = map.getSource(sourceId);
+            if (source) {
+                source.setData(EMPTY_FEATURE_COLLECTION);
+            }
         }
         cache.clear();
-        
-        if (target === 'main') {
-            this.stormCenters = [];
-        }
     }
 
     /**
@@ -569,7 +586,7 @@ class StormCentersLayer {
             }, 10000);
 
             const response = await fetch(
-                'https://mesonet.agron.iastate.edu/geojson/nexrad_attr.py',
+                encodeURI('https://cachefetch.sparkradar.app/cache?maxAge=60&url=https://mesonet.agron.iastate.edu/geojson/nexrad_attr.py'),
                 { signal: controller.signal }
             );
             clearTimeout(timeoutId);

@@ -13,6 +13,7 @@ import Palettes from "../palettes.js";
 import { showLoadingAnimation, hideLoadingAnimation } from "./loader.js";
 import RadarPicker from "./radar_picker.js";
 import Layers from "../layers.js";
+import RadarStationsLayer from "../layers/radar_stations.js";
 import Radar3D from "../3dradar.js";
 import Notification from './notification.js';
 
@@ -72,13 +73,12 @@ class Map {
         this.applyProjection(this.map, params.projection);
         // Store move listeners so we can clean them up later
         this.moveListeners = { main: null, dual: null };
-        // Store radar station markers for cleanup
-        this.radarMarkers = { main: [], dual: [] };
-        // Store radar station overlap handlers for cleanup
-        this.radarStationHandlers = { main: null, dual: null };
 
         // Alert tracking - handled by Layers class
         this.layers = new Layers(this);
+
+        // Radar station markers, handlers and timers
+        this.radarStationsLayer = new RadarStationsLayer(this);
 
         // Reflectivity gate filter (for filtering out weak reflectivity values)
         // Initialize from localStorage if available, otherwise use default
@@ -124,10 +124,35 @@ class Map {
         });
 
 
-        // List map layers for debugging
-        this.map.on('load', () => {
-            console.log('[Map] Map loaded with layers:', this.map.getStyle().layers.map(l => l.id));
-        });
+        setInterval(() => this._updateCurrentPosition(), 5000);
+    }
+
+    // Function to add the user's current position to the map
+    _updateCurrentPosition() {
+        // Remove existing position marker if it exists
+        if (this.positionMarker) {
+            this.positionMarker.remove();
+        }
+
+        if (!window.locationServices || !window.locationServices.isEnabled()) {
+            return;
+        }
+
+        const latitude = window.locationServices.latitude;
+        const longitude = window.locationServices.longitude;
+        if (typeof latitude === 'number' && typeof longitude === 'number') {
+            // Add new position marker
+            const el = document.createElement('div');
+            el.style.width = '16px';
+            el.style.height = '16px';
+            el.style.backgroundColor = '#27beff';
+            el.style.boxShadow = '0 0 6px 3px #27beff88';
+            el.style.borderRadius = '50%';
+            el.style.border = '2px solid white';
+            this.positionMarker = new maplibregl.Marker({ element: el })
+                .setLngLat([longitude, latitude])
+                .addTo(this.map);
+        }
     }
 
     // Function to apply projection to a map instance
@@ -303,6 +328,11 @@ class Map {
 
             // Add radar stations to the split map
             this.updateRadarStations();
+
+            // Apply saved layer ordering to split map once dual layers are present
+            if (this.layers?.applyLayerOrder) {
+                this.layers.applyLayerOrder('dual');
+            }
 
             // Switch colorbar to split view
             const colorbarMain = document.getElementById('colorbar-main');
@@ -633,37 +663,8 @@ class Map {
         }
         this.radar3D = null;
 
-        // Clean up radar station layers and handlers from split/dual map
-        if (this.radarStationHandlers?.dual) {
-            if (dualMapRef) {
-                dualMapRef.off('move', this.radarStationHandlers.dual);
-            }
-            this.radarStationHandlers.dual = null;
-        }
-
-        // Clear debounce timers on split teardown
-        if (this.radarStationTimers) {
-            clearTimeout(this.radarStationTimers.main);
-            clearTimeout(this.radarStationTimers.dual);
-            this.radarStationTimers = { main: null, dual: null };
-        }
-
-        // Restore main map overlap handler after closing split map
-        if (!this.radarStationHandlers) {
-            this.radarStationHandlers = { main: null, dual: null };
-        }
-        if (this.radarStationHandlers.main) {
-            this.map.off('move', this.radarStationHandlers.main);
-        }
-        this.radarStationHandlers.main = () => {
-            this._hideOverlappingStationMarkers(this.radarMarkers.main, this.map);
-        };
-        this.map.on('move', this.radarStationHandlers.main);
-        this._hideOverlappingStationMarkers(this.radarMarkers.main, this.map);
-
-        // Clean up radar markers from split/dual map
-        this.radarMarkers.dual.forEach(marker => marker.remove());
-        this.radarMarkers.dual = [];
+        // Clean up radar station markers, handlers and timers from split view
+        this.radarStationsLayer.onSplitStopped();
 
         // Destroy the split map's radar picker if it exists and rebuild the main radar picker to reset its position
         try { this.splitRadarPicker.destroy(); } catch {}
@@ -745,7 +746,7 @@ class Map {
         if (!Number.isFinite(tiltIndex)) return baseProduct;
 
         if (baseProduct.includes('_')) {
-            const tilt = Math.max(0, Math.min(3, Math.floor(tiltIndex)));
+            const tilt = Math.max(0, Math.min(4, Math.floor(tiltIndex)));
             const suffix = baseProduct.slice(2);
             if (baseProduct === 'N_G' && tilt >= 2) {
                 return `N${tilt}U`;
@@ -1336,6 +1337,11 @@ class Map {
             map.addLayer(highlightLayer, beforeLayer);
             console.log(`[WebGL] Successfully added layer ${layerId}`);
 
+            // Re-apply user layer order now that the radar layer exists again
+            if (this.layers?.applyLayerOrder) {
+                this.layers.applyLayerOrder(isMainLayer ? 'main' : 'dual');
+            }
+
             // Update colorbar
             const colorbarId = isMainLayer ? 'colorbar-main' : 'colorbar-split';
             const colorbar = document.getElementById(colorbarId);
@@ -1377,6 +1383,9 @@ class Map {
             try {
                 map.addLayer(highlightLayer);
                 console.log(`[WebGL] Added layer ${layerId} without beforeLayer`);
+                if (this.layers?.applyLayerOrder) {
+                    this.layers.applyLayerOrder(isMainLayer ? 'main' : 'dual');
+                }
             } catch (e2) {
                 console.error(`[WebGL] Failed to add layer ${layerId} even without beforeLayer:`, e2);
             }
@@ -1499,255 +1508,8 @@ class Map {
         this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product);
     }
 
-    _createStationMarkerElement(icao, isOperational) {
-        const el = document.createElement('div');
-        const styles = el.style;
-        styles.backgroundColor = isOperational ? 'var(--primary-color)' : '#ff2121';
-        styles.border = '2px solid #1f2937';
-        styles.borderRadius = '10px';
-        styles.display = 'flex';
-        styles.alignItems = 'center';
-        styles.justifyContent = 'center';
-        styles.color = 'black';
-        styles.fontWeight = 'bold';
-        styles.fontSize = '1em';
-        styles.padding = '1px 8px';
-        styles.cursor = 'pointer';
-        styles.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-        el.textContent = icao;
-        return el;
-    }
-
-    _hideOverlappingStationMarkers(markerArray, map) {
-        // Defensive checks: ensure map and markers are valid
-        if (!markerArray || markerArray.length === 0 || !map || !map.getCanvas) return;
-        
-        // Safety check: ensure map canvas still exists and has valid context
-        let canvas;
-        try {
-            canvas = map.getCanvas();
-            if (!canvas || !canvas.parentElement) return; // Canvas removed from DOM
-            // Test if canvas is usable by checking context
-            if (!canvas.getContext) return;
-            const ctx = canvas.getContext('2d');
-            if (!ctx) return;
-        } catch (e) {
-            // Map is destroyed or invalid, bail out gracefully
-            return;
-        }
-
-        const markerWidth = 50;
-        const markerWidthSq = markerWidth * markerWidth;
-        const visibilityMap = new Map();
-        const markerThreshold = 150;
-
-        if (markerArray.length > markerThreshold) {
-            markerArray.forEach(marker => {
-                try {
-                    const el = marker.getElement();
-                    if (el) el.style.display = 'block';
-                } catch (e) {
-                    // Ignore errors
-                }
-            });
-            return;
-        }
-
-        // Reset visibility and project all markers once
-        const projections = new Map();
-        markerArray.forEach((marker, index) => {
-            try {
-                const el = marker.getElement();
-                if (el) el.style.display = 'block';
-                // Extra safety: ensure map.project exists before calling
-                if (typeof map.project !== 'function') {
-                    visibilityMap.set(index, false);
-                    return;
-                }
-                projections.set(index, map.project(marker.getLngLat()));
-                visibilityMap.set(index, true);
-            } catch (e) {
-                // Map is destroyed or marker is invalid
-                visibilityMap.set(index, false);
-            }
-        });
-
-        // Check overlaps with squared distance to avoid sqrt calls
-        for (let i = 0; i < markerArray.length; i++) {
-            if (!visibilityMap.get(i)) continue;
-            const point1 = projections.get(i);
-            if (!point1) continue;
-
-            for (let j = i + 1; j < markerArray.length; j++) {
-                if (!visibilityMap.get(j)) continue;
-                const point2 = projections.get(j);
-                if (!point2) continue;
-
-                const dx = point1.x - point2.x;
-                const dy = point1.y - point2.y;
-                const distanceSq = dx * dx + dy * dy;
-
-                if (distanceSq < markerWidthSq) {
-                    visibilityMap.set(j, false);
-                }
-            }
-        }
-
-        // Apply visibility changes
-        markerArray.forEach((marker, index) => {
-            try {
-                const el = marker.getElement();
-                if (el) el.style.display = visibilityMap.get(index) ? 'block' : 'none';
-            } catch (e) {
-                // Ignore errors on invalid markers
-            }
-        });
-    }
-
     updateRadarStations() {
-        // Fetch the radar stations and their statuses from the NWS API
-        fetch('https://api.weather.gov/radar/stations', { signal: AbortSignal.timeout(5000) })
-            .then(response => response.json())
-            .then(data => {
-                const markers = this.radarMarkers;
-                markers.main.forEach(m => m.remove());
-                markers.main.length = 0;
-                
-                if (this.hasSplitMap()) {
-                    markers.dual.forEach(m => m.remove());
-                    markers.dual.length = 0;
-                }
-
-                const features = data.features;
-                window.radarStationFeatures = features; // Expose for use in other modules
-                const isSplit = this.hasSplitMap();
-                const callbacks = this.callbacks;
-                const mainMap = this.map;
-                const dualMap = this.dualMap;
-                
-                const filteredFeatures = [];
-                
-                for (let i = 0; i < features.length; i++) {
-                    const station = features[i];
-                    const properties = station.properties;
-                    
-                    // Filter TDWR stations
-                    if (properties.stationType !== 'WSR-88D') continue;
-                    // Filter non-CONUS stations
-                    if (!properties.id.startsWith('K')) continue;
-
-                    const isOperational = station.properties?.rda?.properties?.status === 'Operate';
-                    filteredFeatures.push({
-                        type: 'Feature',
-                        geometry: station.geometry,
-                        properties: {
-                            ...properties,
-                            isOperational: isOperational ? 1 : 0
-                        }
-                    });
-                }
-
-                // Add markers to main map
-                filteredFeatures.forEach((feature) => {
-                    const isOperational = feature.properties.isOperational === 1;
-                    const icao = feature.properties.id;
-                    const coords = feature.geometry.coordinates;
-                    
-                    const markerElement = this._createStationMarkerElement(icao, isOperational);
-                    markerElement.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if (typeof callbacks.onSelectStation === 'function') {
-                            callbacks.onSelectStation(icao);
-                        }
-                    });
-                    const marker = new maplibregl.Marker({ element: markerElement })
-                        .setLngLat(coords)
-                        .addTo(mainMap);
-                    markers.main.push(marker);
-                });
-
-                // Add to split map if active
-                if (isSplit && dualMap) {
-                    try {
-                        // Verify dualMap is still valid before adding markers
-                        if (dualMap.getCanvas()) {
-                            filteredFeatures.forEach((feature) => {
-                                const isOperational = feature.properties.isOperational === 1;
-                                const icao = feature.properties.id;
-                                const coords = feature.geometry.coordinates;
-                                
-                                const markerElement = this._createStationMarkerElement(icao, isOperational);
-                                markerElement.addEventListener('click', (e) => {
-                                    e.stopPropagation();
-                                    if (typeof callbacks.onSelectStationSplit === 'function') {
-                                        callbacks.onSelectStationSplit(icao);
-                                    }
-                                });
-                                const marker = new maplibregl.Marker({ element: markerElement })
-                                    .setLngLat(coords)
-                                    .addTo(dualMap);
-                                markers.dual.push(marker);
-                            });
-                        }
-                    } catch (e) {
-                        // dualMap is being destroyed or invalid, skip adding markers
-                        console.warn('Could not add markers to split map: map is being destroyed');
-                    }
-                }
-
-                this._hideOverlappingStationMarkers(markers.main, mainMap);
-
-                if (isSplit && dualMap) {
-                    // Extra safety check: ensure dualMap is still valid before operating on it
-                    try {
-                        if (dualMap.getCanvas()) {
-                            this._hideOverlappingStationMarkers(markers.dual, dualMap);
-                        }
-                    } catch (e) {
-                        // dualMap is being destroyed or is invalid, skip
-                    }
-                }
-
-                // Re-check overlaps on map move with debouncing to avoid O(n²) on every pixel move
-                if (!this.radarStationTimers) {
-                    this.radarStationTimers = { main: null, dual: null };
-                }
-
-                const createDebouncedHandler = (mapInstance, markerArrays) => {
-                    return () => {
-                        const key = mapInstance === mainMap ? 'main' : 'dual';
-                        clearTimeout(this.radarStationTimers[key]);
-                        this.radarStationTimers[key] = setTimeout(() => {
-                            // Verify map is still valid before updating markers
-                            if (mapInstance && mapInstance.getCanvas && mapInstance.getCanvas()) {
-                                this._hideOverlappingStationMarkers(markerArrays[key], mapInstance);
-                            }
-                        }, 200); // Update only once per 200ms of movement
-                    };
-                };
-
-                // Store handlers for cleanup
-                if (!this.radarStationHandlers) {
-                    this.radarStationHandlers = { main: null, dual: null };
-                }
-                
-                if (this.radarStationHandlers.main) {
-                    mainMap.off('move', this.radarStationHandlers.main);
-                }
-                this.radarStationHandlers.main = createDebouncedHandler(mainMap, { main: markers.main, dual: markers.dual });
-                mainMap.on('move', this.radarStationHandlers.main);
-
-                if (isSplit) {
-                    if (this.radarStationHandlers.dual) {
-                        dualMap.off('move', this.radarStationHandlers.dual);
-                    }
-                    this.radarStationHandlers.dual = createDebouncedHandler(dualMap, { main: markers.main, dual: markers.dual });
-                    dualMap.on('move', this.radarStationHandlers.dual);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching radar stations:', error);
-            });
+        this.radarStationsLayer.update();
     }
     // Alert/Watch methods moved to src/js/layers.js
     // Access via this.layers.fetchAlerts(), this.layers.fetchWatches(), etc.
@@ -1763,6 +1525,14 @@ class Map {
 
     async fetchStormCenters() {
         return this.layers.fetchStormCenters();
+    }
+
+    async fetchLightning() {
+        return this.layers.fetchLightning();
+    }
+
+    async fetchSpotterNetworkPositions() {
+        return this.layers.fetchSpotterNetworkPositions();
     }
 
     async fetchOutlooks() {

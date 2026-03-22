@@ -123,10 +123,10 @@ async function getLatestFileUrl(level, product = null) {
         throw new Error(`No radar files found in last 5 days.`);
     } else if (level == 3) {
         // Level 3 bucket has flat file structure: SSS_PPP_YYYY_MM_DD_HH_MM_SS
-        // SSS = station without leading K, PPP = product code
+        // SSS = station without leading region prefix, PPP = product code
         // Filter with ?list-type=2&prefix=SSS_PPP_YYYY_MM
-        // Remove leading K from station for Level 3 naming
-        const stationCode = STATION.startsWith('K') ? STATION.substring(1) : STATION;
+        // Remove leading region prefix (K for US, P for Alaska/Hawaii, etc.)
+        const stationCode = STATION.substring(1);
         
         // Build prefix to match station and product: "SSS_PPP_"
         const normalizedProduct = normalizeLevel3Product(product);

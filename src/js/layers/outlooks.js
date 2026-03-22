@@ -6,7 +6,14 @@ Manages SPC outlook display on the map
 See LICENSE for more.
 */
 
-import { waitForRadarLayer, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+
+const EMPTY_FEATURE_COLLECTION = {
+    type: 'FeatureCollection',
+    features: []
+};
+
+const SYNC_PENDING_STALE_MS = 15000;
 
 class OutlookLayer {
     constructor(mapInstance) {
@@ -16,6 +23,8 @@ class OutlookLayer {
         this.currentOutlookDay = null; // 1, 2, 3, or null
         this.outlookData = null;
         this.outlookSyncPending = { main: false, dual: false };
+        this.outlookSyncPendingSince = { main: 0, dual: 0 };
+        this._pendingDay = null; // tracks latest requested day to discard stale responses
     }
 
     setOutlookData(day, data) {
@@ -37,8 +46,10 @@ class OutlookLayer {
             return null;
         }
 
+        this._pendingDay = day;
+
         try {
-            const url = `https://www.spc.noaa.gov/products/outlook/day${day}otlk_cat.nolyr.geojson`;
+            const url = encodeURI(`https://cachefetch.sparkradar.app/cache?maxAge=1800&url=https://www.spc.noaa.gov/products/outlook/day${day}otlk_cat.nolyr.geojson`);
             const response = await fetch(url, {
                 headers: { 'Accept': 'Application/geo+json' },
                 signal: AbortSignal.timeout(5000)
@@ -49,6 +60,9 @@ class OutlookLayer {
             }
             
             const data = await response.json();
+
+            // Discard stale response if a newer request was made while this was in flight
+            if (this._pendingDay !== day) return null;
             
             if (data?.features) {
                 this.currentOutlookDay = day;
@@ -68,18 +82,29 @@ class OutlookLayer {
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
 
-        if (map.isStyleLoaded && map.isStyleLoaded()) {
+        if (hasUsableMapStyle(map)) {
+            this.outlookSyncPending[target] = false;
+            this.outlookSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncOutlookToMap(target);
             });
             return;
         }
 
-        if (this.outlookSyncPending[target]) return;
-        this.outlookSyncPending[target] = true;
-
-        map.once('load', () => {
+        if (this.outlookSyncPending[target]) {
+            const pendingAge = Date.now() - (this.outlookSyncPendingSince[target] || 0);
+            if (pendingAge < SYNC_PENDING_STALE_MS) {
+                return;
+            }
+            console.warn(`[OutlookLayer] Resetting stale sync pending flag for ${target} (age=${pendingAge}ms)`);
             this.outlookSyncPending[target] = false;
+        }
+        this.outlookSyncPending[target] = true;
+        this.outlookSyncPendingSince[target] = Date.now();
+
+        waitForMapStyleReady(map).then(() => {
+            this.outlookSyncPending[target] = false;
+            this.outlookSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncOutlookToMap(target);
             });
@@ -141,6 +166,16 @@ class OutlookLayer {
     }
 
     _getEnabledOutlookDay() {
+        try {
+            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            if ([1, 2, 3].includes(settings.outlookDay)) {
+                return settings.outlookDay;
+            }
+            if (settings.outlookDay === null) {
+                return null;
+            }
+        } catch {}
+
         const day1Checkbox = document.getElementById('toggle-day-1-outlook-layer');
         const day2Checkbox = document.getElementById('toggle-day-2-outlook-layer');
         const day3Checkbox = document.getElementById('toggle-day-3-outlook-layer');
@@ -152,12 +187,7 @@ class OutlookLayer {
             return null;
         }
 
-        try {
-            const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-            return [1, 2, 3].includes(settings.outlookDay) ? settings.outlookDay : null;
-        } catch {
-            return null;
-        }
+        return null;
     }
 
     displayOutlookOnMap(target = 'main') {
@@ -189,14 +219,8 @@ class OutlookLayer {
         const layerId = target === 'main' ? 'outlook-layer' : 'outlook-layer-dual';
         const fillLayerId = `${layerId}-fill`;
 
-        if (map.getLayer(layerId)) {
-            map.removeLayer(layerId);
-        }
-        if (map.getLayer(fillLayerId)) {
-            map.removeLayer(fillLayerId);
-        }
         if (map.getSource(sourceId)) {
-            map.removeSource(sourceId);
+            map.getSource(sourceId).setData(EMPTY_FEATURE_COLLECTION);
         }
     }
 

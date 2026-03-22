@@ -64,6 +64,7 @@ export function renderAlert(alert) {
     const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
     const maxWindGust = windMatch ? windMatch[1].trim() : null;
     const is_confirmed_tor = alertMessage.includes('TORNADO...OBSERVED') || false;
+    const is_test = alertMessage.includes('TEST') || false;
 
     // Store original product name for settings lookup
     const originalProductName = alert?.productName.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
@@ -100,10 +101,41 @@ export function renderAlert(alert) {
     // Get alert settings using the final (renamed) product name
     const alertSettings = getAlertSettings(alert?.productName);
 
+    // Now identify priority for sorting
+    if (is_emergency) {
+        alert.priority = 50;
+    } else if (is_pds) {
+        alert.priority = 40;
+    } else if (damagelevel === 'destructive') {
+        alert.priority = 30;
+    } else if (damagelevel === 'considerable') {
+        alert.priority = 20;
+    } else {
+        if (alert?.productName.toLowerCase().includes('extreme')) {
+            alert.priority = 19;
+        } else if (alert?.productName.toLowerCase().includes('tornado')) {
+            alert.priority = 15;
+        } else if (alert?.productName.toLowerCase().includes('severe thunderstorm')) {
+            alert.priority = 14;
+        } else if (alert?.productName.toLowerCase().includes('flash flood')) {
+            alert.priority = 13;
+        } else if (alert?.productName.toLowerCase().includes('special marine')) {
+            alert.priority = 12;
+        } else if (alert?.productName.toLowerCase().includes('special weather')) {
+            alert.priority = 11;
+        } else if (alert?.productName.toLowerCase().includes('marine weather')) {
+            alert.priority = 10;
+        } else if (alert?.productName.toLowerCase().includes('flood')) {
+            alert.priority = 9;
+        } else {
+            alert.priority = 0;
+        }
+    }
+
     return {
         name: alert?.productName || "Unknown Alert",
-        color: alertSettings.color || "#ff2121",
-        outline: alertSettings.color ? '#000000' : null,
+        priority: alert?.priority || 0,
+        color: alertSettings.color || 'ff2121',
         enabled: alertSettings.enabled,
         notif: {
             icon: icon,
@@ -119,7 +151,8 @@ export function renderAlert(alert) {
             is_tor_radar_indicated: alertMessage.toLowerCase().includes('tornado...radar indicated') || false,
             is_waterspout_possible: alert?.message.toLowerCase().includes('waterspout...possible') || false,
             max_hail_size: maxHailSize,
-            max_wind_gust: maxWindGust
+            max_wind_gust: maxWindGust,
+            is_test: is_test
         }
     }
 }

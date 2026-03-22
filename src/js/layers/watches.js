@@ -7,7 +7,14 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
-import { waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+
+const EMPTY_FEATURE_COLLECTION = {
+    type: 'FeatureCollection',
+    features: []
+};
+
+const SYNC_PENDING_STALE_MS = 15000;
 
 class WatchLayer {
     constructor(mapInstance) {
@@ -17,6 +24,7 @@ class WatchLayer {
         this.watches = [];
         this.watchCache = { main: new globalThis.Map(), dual: new globalThis.Map() };
         this.watchSyncPending = { main: false, dual: false };
+        this.watchSyncPendingSince = { main: 0, dual: 0 };
 
         // Listen for settings changes to update layer colors
         this.settingsChangeListener = (event) => {
@@ -268,18 +276,29 @@ class WatchLayer {
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
 
-        if (map.isStyleLoaded && map.isStyleLoaded()) {
+        if (hasUsableMapStyle(map)) {
+            this.watchSyncPending[target] = false;
+            this.watchSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncWatchesToMap(target);
             });
             return;
         }
 
-        if (this.watchSyncPending[target]) return;
-        this.watchSyncPending[target] = true;
-
-        map.once('load', () => {
+        if (this.watchSyncPending[target]) {
+            const pendingAge = Date.now() - (this.watchSyncPendingSince[target] || 0);
+            if (pendingAge < SYNC_PENDING_STALE_MS) {
+                return;
+            }
+            console.warn(`[WatchLayer] Resetting stale sync pending flag for ${target} (age=${pendingAge}ms)`);
             this.watchSyncPending[target] = false;
+        }
+        this.watchSyncPending[target] = true;
+        this.watchSyncPendingSince[target] = Date.now();
+
+        waitForMapStyleReady(map).then(() => {
+            this.watchSyncPending[target] = false;
+            this.watchSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncWatchesToMap(target);
             });
@@ -410,17 +429,16 @@ class WatchLayer {
     }
 
     _areWatchesEnabled() {
-        const checkbox = document.getElementById('toggle-watches-layer');
-        if (checkbox) {
-            return checkbox.checked;
-        }
-
         try {
             const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-            return settings.watchesEnabled !== undefined ? settings.watchesEnabled : true;
+            if (typeof settings.watchesEnabled === 'boolean') {
+                return settings.watchesEnabled;
+            }
         } catch {
-            return true;
         }
+
+        const checkbox = document.getElementById('toggle-watches-layer');
+        return checkbox ? checkbox.checked : true;
     }
 
     displayWatchesOnMap(target = 'main') {
@@ -462,7 +480,11 @@ class WatchLayer {
 
         const cache = target === 'main' ? this.watchCache.main : this.watchCache.dual;
         for (const key of cache.keys()) {
-            this._removeWatchFromMap(target, key);
+            const sourceId = target === 'main' ? `watch-source-${key}` : `watch-source-${key}-dual`;
+            const source = map.getSource(sourceId);
+            if (source) {
+                source.setData(EMPTY_FEATURE_COLLECTION);
+            }
         }
         cache.clear();
     }

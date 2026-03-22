@@ -10,6 +10,7 @@ See LICENSE for more.
 import about from '../../components/about.js';
 import Settings from './settings.js';
 import debugConsole from './debug_console.js';
+import version from '../../VERSION.js';
 
 class Menu {
     // Constructor function
@@ -49,8 +50,6 @@ class Menu {
             { label: 'Settings', icon: 'settings', onClick: () => { this.close(); setTimeout(() => { new Settings().showSettingsMenu(); }, 250); } },
             { label: 'About', icon: 'info-circle', onClick: () => { this.close(); setTimeout(() => { about(); }, 250); } },
             { label: 'Help', icon: 'help-circle', onClick: () => { window.location = 'https://wiki.sparkradar.app/'; } },
-            { label: 'Switch to Lite Version', icon: 'logout', onClick: () => { window.location = 'https://lite.sparkradar.app/'; } },
-            { label: 'Buy Me a Coffee', icon: 'cup', onClick: () => { window.location = 'https://www.buymeacoffee.com/tgranz'; } },
         ];
 
 
@@ -103,6 +102,37 @@ class Menu {
             menuList.appendChild(li);
         });
 
+        // External links
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('menu-external-links');
+
+        const div = document.createElement('div');
+        div.innerHTML = `SparkRadar Lite <i class="ti ti-external-link"></i>`;
+        div.title = "Launch SparkRadar Lite"
+        div.style.fontWeight = 'bold';
+        div.style.display = 'flex';
+        div.style.alignItems = 'center';
+        div.addEventListener('click', () => { window.location = 'https://lite.sparkradar.app'; });
+        wrapper.appendChild(div);
+
+        const div2 = document.createElement('div');
+        div2.innerHTML = `SparkDAT <i class="ti ti-external-link"></i> `;
+        div2.title = "Launch the SparkDAT (Spark Damage Assessment Toolkit)"
+        div2.style.fontWeight = 'bold';
+        div2.style.display = 'flex';
+        div2.style.alignItems = 'center';
+        div2.addEventListener('click', () => { window.location = 'https://dat.sparkradar.app'; });
+        wrapper.appendChild(div2);
+
+        menuList.appendChild(wrapper);
+
+        const info = document.createElement('div');
+        info.style.fontSize = '0.8em';
+        info.style.color = 'rgba(255, 255, 255, 0.7)';
+        info.style.marginTop = '20px';
+        info.innerHTML = `SparkRadar v${version}`;
+        menuList.appendChild(info);
+        
         this.menu.appendChild(menuList);
         document.body.appendChild(this.menu);
     }

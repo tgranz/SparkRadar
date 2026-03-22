@@ -22,6 +22,7 @@
         <li><a href="#customization" class="settings-nav-item" data-section="customization">Customization</a></li>
         <li><a href="#radar" class="settings-nav-item" data-section="radar">Radar</a></li>
         <li><a href="#alerts" class="settings-nav-item" data-section="alerts">Alerts</a></li>
+        <li><a href="#spotternetwork" class="settings-nav-item" data-section="spotternetwork">Spotter Network</a></li>
         <li><a href="#shortcuts" class="settings-nav-item" data-section="shortcuts">Shortcuts</a></li>
       </ul>
     </nav>
@@ -43,15 +44,38 @@
       </div>
       <div class="settings-control">
         <div class="settings-control-header">
+          <label for="enable-location">Use Location</label>
+          <input type="checkbox" id="enable-location" name="enable-location" class="switch" data-setting="enableLocation">
+        </div>
+        <p class="settings-control-help">Enable to use location-based features such as Spotter Network location reporting and to view your location on the map.</p>
+      </div>
+      <h3 class="settings-subheader">Settings management</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="general-export">Export Settings</label>
+            <input type="button" id="general-export" class="settings-btn" name="general-export" value="Export" data-setting="generalExport">
+        </div>
+        <p class="settings-control-help">Click to export all settings to a JSON file. This does not back up your Spotter Network login or color palettes.</p>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="general-import">Import Settings</label>
+            <input type="button" id="general-import" class="settings-btn" name="general-import" value="Import" data-setting="generalImport">
+        </div>
+        <p class="settings-control-help">Click to import settings from an exported JSON file.</p>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
           <label for="general-reset">Reset Settings</label>
             <input class="danger-button" type="button" id="general-reset" name="general-reset" value="Reset" data-setting="generalReset">
         </div>
-        <p class="settings-control-help">Click to reset all settings to their defaults.</p>
+        <p class="settings-control-help">Click to reset all settings to their defaults. This will not sign you out of Spotter Network.</p>
       </div>
     </section>
     <section class="settings-section" data-section="customization">
       <h2>Customization</h2>
-      <h3 class="settings-subheader">Data presentations</h3>
+      <h4 class="settings-hint">Customize how SparkRadar looks.</h4>
+      <h3 class="settings-subheader">Toolbar</h3>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="vcp-display-format">VCP Display Format</label>
@@ -62,7 +86,18 @@
         </div>
         <p class="settings-control-help">Choose between concise ("VCP ##") or descriptive ("VCP ##: description"). Changing requires page refresh.</p>
       </div>
-      <h3 class="settings-subheader" style="margin-top: 10px;">Theming</h3>
+      <h3 class="settings-subheader">Lightning</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="lightning-marker-mode">Markers</label>
+          <select id="lightning-marker-mode" name="lightning-marker-mode" data-setting="lightningMarkerMode">
+            <option value="dot">Dots</option>
+            <option value="image">Icons</option>
+          </select>
+        </div>
+        <p class="settings-control-help">Choose to display lightning strikes as dots or lightning bolt icons.</p>
+      </div>
+      <h3 class="settings-subheader">Color Theming</h3>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="primary-color">Primary Color</label>
@@ -91,6 +126,7 @@
     </section>
     <section class="settings-section" data-section="radar">
       <h2>Radar</h2>
+      <h4 class="settings-hint">Customize the appearance and behavior of the radar layer.</h4>
       <br>
       <h3 class="settings-subheader">General</h3>
       <div class="settings-control">
@@ -154,33 +190,95 @@
     </section>
     <section class="settings-section" data-section="alerts">
       <h2>Alert Settings</h2>
+      <h4 class="settings-hint">Customize alert colors, notifications, and sounds.</h4>
       <div id="alerts-settings-list" style="display: flex; flex-direction: column; gap: 0px; margin-top: 20px;">
         <!-- Alert controls will be populated here -->
       </div>
     </section>
+    <section class="settings-section" data-section="spotternetwork">
+      <h2>Spotter Network (BETA)</h2>
+      <h4 class="settings-hint">Manage your Spotter Network login and location sharing.</h4>
+      <div id="sn-settings-container">
+        <!-- populated by JS -->
+      </div>
+    </section>
     <section class="settings-section" data-section="shortcuts">
       <h2>Keyboard Shortcuts</h2>
-      <p>In the future, these will be customizable.</p>
+      <h4 class="settings-hint">Set a keyboard key to trigger an action. Leave blank to disable that shortcut.</h4>
+      <h3 class="settings-subheader">Application</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-toggle-split">Toggle Split View</label>
+          <input type="text" id="shortcut-toggle-split" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutToggleSplitView">
+        </div>
+      </div>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="shortcut-show-radar-status">Show Radar Status</label>
-          <span class="settings-control-value" data-for="shortcut-show-radar-status">R</span>
+          <input type="text" id="shortcut-show-radar-status" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutShowRadarStatus">
         </div>
-        <p class="settings-control-help">Press this key to show the radar status dialog, which includes information about the current radar station and radar product.</p>
       </div>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="shortcut-show-menu">Show Main Menu</label>
-          <span class="settings-control-value" data-for="shortcut-show-menu">H</span>
+          <input type="text" id="shortcut-show-menu" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutShowMenu">
         </div>
-        <p class="settings-control-help">Press this key to open the main menu, where you can change the radar station, toggle radar layers, and more.</p>
       </div>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="shortcut-show-layer-menu">Show Layer Menu</label>
-          <span class="settings-control-value" data-for="shortcut-show-layer-menu">L</span>
+          <input type="text" id="shortcut-show-layer-menu" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutShowLayerMenu">
         </div>
-        <p class="settings-control-help">Press this key to open the layer menu, where you can toggle individual radar layers on and off.</p>
+      </div>
+      <h3 class="settings-subheader">Tools</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-draw">Draw Tool</label>
+          <input type="text" id="shortcut-draw" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutDraw">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-finder">Finder</label>
+          <input type="text" id="shortcut-finder" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutFinder">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-inspector">Inspector</label>
+          <input type="text" id="shortcut-inspector" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutInspector">
+        </div>
+      </div>
+      <h3 class="settings-subheader">Radar</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-product-reflectivity">Switch to Reflectivity</label>
+          <input type="text" id="shortcut-product-reflectivity" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutProductReflectivity">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-product-velocity">Switch to Velocity</label>
+          <input type="text" id="shortcut-product-velocity" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutProductVelocity">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-product-cc">Switch to Correlation Coefficient</label>
+          <input type="text" id="shortcut-product-cc" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutProductCorrelationCoefficient">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-product-hydrometeor">Switch to Hydrometeor Classification</label>
+          <input type="text" id="shortcut-product-hydrometeor" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutProductHydrometeorClassification">
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="shortcut-product-kdp">Switch to Specific Differential Phase</label>
+          <input type="text" id="shortcut-product-kdp" maxlength="1" class="settings-input shortcut-key-input" data-setting="shortcutProductSpecificDifferentialPhase">
+        </div>
       </div>
   </div>
 </div>

@@ -140,6 +140,8 @@ class DebugConsole {
         clearBtn.addEventListener('click', () => this.clear());
         
         const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.flexDirection = 'row';
         buttonContainer.appendChild(clearBtn);
         buttonContainer.appendChild(closeBtn);
         

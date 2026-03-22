@@ -4,9 +4,18 @@ export default class Popup {
     this.options = options;
     this.map = null;
     this.lngLat = null;
+    this._mapClickListener = null;
+    this._outsideClickCloseArmed = false;
+    this._outsideClickArmTimer = null;
 
     const popup = document.createElement('div');
     popup.classList.add('popup');
+    popup.style.position = 'absolute';
+    popup.style.transform = 'translate(-50%, calc(-100% - 10px))';
+
+    popup.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
 
     const popupInner = document.createElement('div');
     popupInner.classList.add('popup-inner');
@@ -32,6 +41,22 @@ export default class Popup {
     };
 
     document.addEventListener('keydown', this._escapeListener);
+
+    this._outsideClickCloseArmed = false;
+    this._outsideClickArmTimer = setTimeout(() => {
+      this._outsideClickCloseArmed = true;
+      this._outsideClickArmTimer = null;
+    }, 0);
+
+    this._mapClickListener = (event) => {
+      if (!this._outsideClickCloseArmed) return;
+      const canvas = this.map?.getCanvas?.();
+      if (!canvas) return;
+      if (event?.originalEvent?.target === canvas) {
+        this.removeFromMap();
+      }
+    };
+    map.on('click', this._mapClickListener);
   }
 
   setLngLat(lngLat) {
@@ -49,6 +74,18 @@ export default class Popup {
   }
 
   removeFromMap() {
+    if (this._outsideClickArmTimer) {
+      clearTimeout(this._outsideClickArmTimer);
+      this._outsideClickArmTimer = null;
+    }
+
+    if (this.map && this._mapClickListener) {
+      this.map.off('click', this._mapClickListener);
+      this._mapClickListener = null;
+    }
+
+    this._outsideClickCloseArmed = false;
+
     if (this.popup.parentNode) {
       this.popup.parentNode.removeChild(this.popup);
     }

@@ -1,6 +1,7 @@
 import settingsHTML from '../../components/settings.html?raw';
 import Palettes from '../palettes.js';
 import Toast from './toast.js';
+import Modal from './modal.js';
 
 // TODO: Alert color defaults dont work
 
@@ -36,6 +37,7 @@ const ALERT_CATEGORIES = [
         visualOnly: false,
         alerts: [
             { type: 'Flash Flood Emergency', color: '#1ed400' },
+            { type: 'Considerable Flash Flood Warning', color: '#38f852' },
             { type: 'Flash Flood Warning', color: '#38f852' },
             { type: 'Flash Flood Watch', color: '#27bd3b' },
             { type: 'Flood Warning', color: '#27beff' }
@@ -125,10 +127,7 @@ function stopActivePreviewAudio() {
 function previewNotificationSound(soundFile) {
     stopActivePreviewAudio();
 
-    if (!soundFile || soundFile === 'none') {
-        new Toast('Select a sound to preview.').show();
-        return;
-    }
+    if (!soundFile || soundFile === 'none') return;
 
     const audio = new Audio(`sound/${soundFile}`);
     activePreviewAudio = audio;
@@ -305,6 +304,13 @@ function bindSectionControls(settingsInstance, content) {
         }
     });
 
+    // Handle Spotter Network section
+    const snContainer = content.querySelector('#sn-settings-container');
+    if (snContainer) {
+        generateSpotterNetworkSettings(snContainer, settingsInstance);
+        return;
+    }
+
     // Handle alerts section specially
     const alertSettingsList = content.querySelector('#alerts-settings-list');
     if (alertSettingsList) {
@@ -329,7 +335,20 @@ function bindSectionControls(settingsInstance, content) {
                 } else if (key === 'generalReset') {
                     // Handle reset settings
                     settingsInstance.resetSettings();
-                    bindSectionControls(settingsInstance, content);
+                } else if (key === 'generalExport') {
+                    settingsInstance.exportSettings();
+                } else if (key === 'generalImport') {
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = '.json,application/json';
+
+                    fileInput.addEventListener('change', () => {
+                        const file = fileInput.files?.[0];
+                        if (!file) return;
+                        settingsInstance.importSettings(file);
+                    }, { once: true });
+
+                    fileInput.click();
                 }
             });
             return;
@@ -364,6 +383,27 @@ function bindSectionControls(settingsInstance, content) {
             }
             input.addEventListener('change', () => {
                 settingsInstance.setSetting(key, input.value);
+            });
+            return;
+        }
+
+        if (input.type === 'text') {
+            const currentValue = settingsInstance.getSetting(key);
+            if (typeof currentValue === 'string') {
+                input.value = currentValue;
+            }
+
+            const normalizeShortcut = (value) => {
+                if (typeof value !== 'string') return '';
+                return value.trim().slice(0, 1).toLowerCase();
+            };
+
+            input.addEventListener('input', () => {
+                const normalized = normalizeShortcut(input.value);
+                if (input.value !== normalized) {
+                    input.value = normalized;
+                }
+                settingsInstance.setSetting(key, normalized);
             });
             return;
         }
@@ -463,6 +503,201 @@ function handlePaletteUpload(settingKey, settingsInstance) {
     
     // Trigger file selection
     fileInput.click();
+}
+
+function generateSpotterNetworkSettings(container, settingsInstance) {
+    const sn = window.spotterNetworkInstance;
+    container.innerHTML = '';
+
+    if (sn?.isLoggedIn) {
+        const accountHeader = document.createElement('h3');
+        accountHeader.textContent = 'Account';
+        accountHeader.classList.add('settings-subheader');
+        accountHeader.style.marginTop = '20px';
+        container.appendChild(accountHeader);
+
+        const statusControl = document.createElement('div');
+        statusControl.className = 'settings-control';
+        const statusHeader = document.createElement('div');
+        statusHeader.className = 'settings-control-header';
+        const statusLabel = document.createElement('label');
+        statusLabel.textContent = 'Status';
+        const statusValue = document.createElement('span');
+        statusValue.className = 'settings-control-value';
+        statusValue.style.color = '#4caf50';
+        statusValue.textContent = `Logged in${sn.username ? ` as ${sn.username}` : ''}`;
+        statusHeader.appendChild(statusLabel);
+        statusHeader.appendChild(statusValue);
+        statusControl.appendChild(statusHeader);
+        container.appendChild(statusControl);
+
+        const logoutControl = document.createElement('div');
+        logoutControl.className = 'settings-control';
+        const logoutHeader = document.createElement('div');
+        logoutHeader.className = 'settings-control-header';
+        const logoutLabel = document.createElement('label');
+        logoutLabel.textContent = 'Log Out';
+        const logoutBtn = document.createElement('input');
+        logoutBtn.type = 'button';
+        logoutBtn.value = 'Logout';
+        logoutBtn.className = 'danger-button';
+        logoutBtn.addEventListener('click', () => {
+            sn.logout();
+            generateSpotterNetworkSettings(container, settingsInstance);
+        });
+        logoutHeader.appendChild(logoutLabel);
+        logoutHeader.appendChild(logoutBtn);
+        logoutControl.appendChild(logoutHeader);
+        const logoutHelp = document.createElement('p');
+        logoutHelp.className = 'settings-control-help';
+        logoutHelp.textContent = 'Delete stored Spotter Network credentials.';
+        logoutControl.appendChild(logoutHelp);
+        container.appendChild(logoutControl);
+
+
+        const locationSettingsHeader = document.createElement('h3');
+        locationSettingsHeader.textContent = 'Location Sharing';
+        locationSettingsHeader.classList.add('settings-subheader');
+        locationSettingsHeader.style.marginTop = '20px';
+        container.appendChild(locationSettingsHeader);
+
+
+        // Switch to enable/disable location sharing
+        const sendLocationControl = document.createElement('div');
+        sendLocationControl.className = 'settings-control';
+        const sendLocationHeader = document.createElement('div');
+        sendLocationHeader.className = 'settings-control-header';
+        const sendLocationLabel = document.createElement('label');
+        sendLocationLabel.textContent = 'Send Location';
+        const sendLocationCheckbox = document.createElement('input');
+        sendLocationCheckbox.type = 'checkbox';
+        sendLocationCheckbox.className = 'switch';
+        sendLocationCheckbox.checked = Boolean(sn.shareLocation);
+        sendLocationCheckbox.addEventListener('change', () => {
+            sn.setLocationSharing(sendLocationCheckbox.checked);
+        });
+        sendLocationHeader.appendChild(sendLocationLabel);
+        sendLocationHeader.appendChild(sendLocationCheckbox);
+        sendLocationControl.appendChild(sendLocationHeader);
+        const sendLocationHelp = document.createElement('p');
+        sendLocationHelp.className = 'settings-control-help';
+        sendLocationControl.appendChild(sendLocationHelp);
+        container.appendChild(sendLocationControl);
+
+        const isLocationEnabled = () => settingsInstance?.getSetting('enableLocation') !== false;
+        const syncLocationSharingControl = () => {
+            const locationEnabled = isLocationEnabled();
+
+            sendLocationCheckbox.disabled = !locationEnabled;
+            sendLocationCheckbox.classList.toggle('disabled', !locationEnabled);
+
+            if (!locationEnabled && sn.shareLocation) {
+                sn.setLocationSharing(false);
+            }
+
+            sendLocationCheckbox.checked = Boolean(sn.shareLocation);
+
+            if (locationEnabled) {
+                sendLocationHelp.textContent = `Send your current location to Spotter Network. Last update: ${window.spotterNetworkInstance.lastLocationSent ? window.spotterNetworkInstance.lastLocationSent.toLocaleTimeString() : 'Never'}`;
+            } else {
+                sendLocationHelp.textContent = 'Cannot send a location if location services are disabled. Enable them in "General" to use this feature.';
+            }
+        };
+
+        syncLocationSharingControl();
+
+        setInterval(() => {
+            syncLocationSharingControl();
+        }, 1000);
+
+
+        // Switch to enable high accuracy
+        const highAccuracyControl = document.createElement('div');
+        highAccuracyControl.className = 'settings-control';
+        const highAccuracyHeader = document.createElement('div');
+        highAccuracyHeader.className = 'settings-control-header';
+        const highAccuracyLabel = document.createElement('label');
+        highAccuracyLabel.textContent = 'High Accuracy';
+        const highAccuracyCheckbox = document.createElement('input');
+        highAccuracyCheckbox.type = 'checkbox';
+        highAccuracyCheckbox.className = 'switch';
+        highAccuracyCheckbox.checked = sn.highAccuracy;
+        highAccuracyCheckbox.addEventListener('change', () => {
+            sn.setHighAccuracy(highAccuracyCheckbox.checked);
+        });
+        highAccuracyHeader.appendChild(highAccuracyLabel);
+        highAccuracyHeader.appendChild(highAccuracyCheckbox);
+        highAccuracyControl.appendChild(highAccuracyHeader);
+        const highAccuracyHelp = document.createElement('p');
+        highAccuracyHelp.className = 'settings-control-help';
+        highAccuracyHelp.textContent = 'Turn on to enable precision location reporting (lat/lon to 6 digits), or disable for coarse reporting (lat/lon to 1 digit, more privacy).';
+        highAccuracyControl.appendChild(highAccuracyHelp);
+        container.appendChild(highAccuracyControl);
+    } else {
+        const usernameControl = document.createElement('div');
+        usernameControl.className = 'settings-control';
+        const usernameHeader = document.createElement('div');
+        usernameHeader.className = 'settings-control-header';
+        const usernameLabel = document.createElement('label');
+        usernameLabel.htmlFor = 'sn-username';
+        usernameLabel.textContent = 'Login';
+        usernameHeader.appendChild(usernameLabel);
+        usernameControl.appendChild(usernameHeader);
+        const usernameInput = document.createElement('input');
+        usernameInput.type = 'text';
+        usernameInput.id = 'sn-username';
+        usernameInput.name = 'username';
+        usernameInput.autocomplete = 'username';
+        usernameInput.placeholder = 'Spotter Network username';
+        usernameInput.classList.add('settings-input');
+        usernameInput.value = sn?.username || '';
+        usernameControl.appendChild(usernameInput);
+        const passwordInput = document.createElement('input');
+        passwordInput.type = 'password';
+        passwordInput.id = 'sn-password';
+        passwordInput.name = 'password';
+        passwordInput.classList.add('settings-input');
+        passwordInput.autocomplete = 'current-password';
+        passwordInput.placeholder = 'Spotter Network password';
+        usernameControl.appendChild(passwordInput);
+        const loginBtn = document.createElement('input');
+        loginBtn.type = 'button';
+        loginBtn.value = 'Login';
+        loginBtn.className = 'primary-button';
+        usernameControl.appendChild(loginBtn);
+        const statusMsg = document.createElement('p');
+        statusMsg.className = 'settings-control-help';
+        usernameControl.appendChild(statusMsg);
+        container.appendChild(usernameControl);
+
+        const handleLogin = async () => {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+            if (!username || !password) {
+                statusMsg.textContent = 'Please enter both username and password.';
+                statusMsg.style.color = '#ff2121';
+                return;
+            }
+            loginBtn.disabled = true;
+            loginBtn.value = 'Logging in\u2026';
+            statusMsg.textContent = '';
+            statusMsg.style.color = '';
+            const success = await sn?.login(username, password);
+            if (success) {
+                generateSpotterNetworkSettings(container, settingsInstance);
+            } else {
+                loginBtn.disabled = false;
+                loginBtn.value = 'Login';
+                statusMsg.textContent = 'Login failed. Check your credentials and try again.';
+                statusMsg.style.color = '#ff2121';
+            }
+        };
+
+        loginBtn.addEventListener('click', handleLogin);
+        passwordInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+    }
 }
 
 function generateAlertSettings(settingsInstance, container) {
@@ -579,7 +814,10 @@ function generateAlertSettings(settingsInstance, container) {
                 const sounds = [
                     { name: 'Silent', value: 'none' },
                     { name: 'Default', value: 'warning.mp3' },
+                    { name: 'Beep', value: 'singlebeep.mp3' },
+                    { name: 'Double Beep', value: 'doublebeep.mp3' },
                     { name: 'EAS Tone', value: 'eas.mp3' },
+                    { name: 'Max Velocity', value: 'maxvelocity.mp3' },
                     { name: 'Ryan Hall - Tornado Warning', value: 'ryanhall_tor.mp3' },
                     { name: 'Ryan Hall - Severe Thunderstorm Warning', value: 'ryanhall_svr.mp3' },
                 ];
@@ -636,6 +874,7 @@ export default class Settings {
             showToolbar: true,
             showProductPicker: true,
             showTimeAndTilt: true,
+            enableLocation: false,
             reflectivityGateFilter: -10,
             enableSplitCursorMarker: true,
             vcpDisplayFormat: 'descriptive',
@@ -646,6 +885,18 @@ export default class Settings {
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
             secondaryBorderColor: '#27beff',
+            shortcutToggleSplitView: 'm',
+            shortcutShowRadarStatus: 's',
+            shortcutShowMenu: 'h',
+            shortcutShowLayerMenu: 'l',
+            shortcutDraw: 'd',
+            shortcutFinder: 'f',
+            shortcutInspector: 'i',
+            shortcutProductReflectivity: '1',
+            shortcutProductVelocity: '2',
+            shortcutProductCorrelationCoefficient: '3',
+            shortcutProductHydrometeorClassification: '4',
+            shortcutProductSpecificDifferentialPhase: '5',
             ...alertDefaults
         };
 
@@ -707,10 +958,58 @@ export default class Settings {
     }
 
     resetSettings() {
+        const confirmReset = new Modal("Confirm Reset Settings", "Are you sure you want to reset all settings, including color palettes and customizations, to defaults?", [
+            { text: "Cancel", className: "secondary-button", click: (modal) => modal.close() },
+            { text: "Reset", className: "danger-button", click: (modal) => {
+                modal.close();
+                this._performReset();
+            } }
+        ]);
+        confirmReset.open();
+    }
+
+    exportSettings() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.settings, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        const dateStr = new Date().toISOString().split('T')[0];
+        downloadAnchor.setAttribute("download", `sparkradar_settings_${dateStr}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        document.body.removeChild(downloadAnchor);
+    }
+
+    importSettings(file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const importedSettings = JSON.parse(event.target.result);
+                if (typeof importedSettings !== 'object' || importedSettings === null) {
+                    throw new Error('Invalid settings format');
+                }
+                this.settings = { ...this.defaults, ...importedSettings };
+                this._normalizeSettings();
+                this.saveSettings();
+                this.applyThemeColors();
+                document.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key: 'all', value: this.settings } }));
+                window.location.reload();
+            } catch (error) {
+                new Toast('Failed to import settings: ' + error.message).show();
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    _performReset() {
         localStorage.removeItem('settings');
         document.dispatchEvent(new CustomEvent('settingsReset'));
-        alert('Settings have been reset to default values.');
-        window.location.reload();
+        const resetDone = new Modal("Settings Reset", "Settings reset successfully. Click OK to reload the page.", [
+            { text: "OK", className: "primary-button", click: (modal) => {
+                modal.close();
+                window.location.reload();
+            } }
+        ]);
+        resetDone.open();
     }
 
     applyThemeColors() {

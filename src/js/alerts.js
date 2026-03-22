@@ -156,7 +156,11 @@ class AlertService {
         this.eventSource.onerror = (e) => {
             console.error('[AlertService] SSE connection error:', e);
             this.sseConnected = false;
-            this._updateConnectionStatus("OFFLINE");
+            
+            // SSE frequently hiccups, do not set as disconnected until multiple failed attempts
+            if (this.sseReconnectAttempts === 0) {
+                this._updateConnectionStatus("CONNECTED"); // Keep as connected during transient issues
+            }
             this.eventSource.close();
             this.eventSource = null;
 

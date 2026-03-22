@@ -14,12 +14,17 @@ import WatchLayer from "./layers/watches.js";
 import MesoscaleDiscussionLayer from "./layers/mesoscale_discussions.js";
 import OutlookLayer from "./layers/outlooks.js";
 import StormCentersLayer from "./layers/storm_centers.js";
+import SurfaceAnalysisLayer from "./layers/surface_analysis.js";
+import LightningLayer from "./layers/lightning.js";
+import SpotterNetworkPositionsLayer from "./layers/spotter_network_positions.js";
+import { applyLayerOrder, DEFAULT_LAYER_ORDER } from "./layers/layer_utils.js";
 
 class Layers {
     constructor(mapInstance) {
         this.map = mapInstance;
         this.openPopup = null;  // Track currently open popup
         this.stormCenterHovered = false;  // Flag set when hovering over storm center marker
+        this.spotterNetworkPositionHovered = false;  // Flag set when hovering over Spotter position marker
 
         // Initialize AlertService
         this.alertService = new AlertService();
@@ -30,6 +35,25 @@ class Layers {
         this.mdLayer = new MesoscaleDiscussionLayer(mapInstance);
         this.outlookLayer = new OutlookLayer(mapInstance);
         this.stormCentersLayer = new StormCentersLayer(mapInstance);
+        this.surfaceAnalysisLayer = new SurfaceAnalysisLayer(mapInstance);
+        this.lightningLayer = new LightningLayer(mapInstance);
+        this.spotterNetworkPositionsLayer = new SpotterNetworkPositionsLayer(mapInstance);
+
+        // Layer ordering — load from localStorage or use default
+        try {
+            const saved = JSON.parse(localStorage.getItem('layerOrder') || 'null');
+            const normalizedOrder = Array.isArray(saved)
+                ? saved.filter((key) => DEFAULT_LAYER_ORDER.includes(key))
+                : [];
+            for (const key of DEFAULT_LAYER_ORDER) {
+                if (!normalizedOrder.includes(key)) {
+                    normalizedOrder.push(key);
+                }
+            }
+            this.layerOrder = normalizedOrder;
+        } catch {
+            this.layerOrder = [...DEFAULT_LAYER_ORDER];
+        }
 
         // Mobile device detection
         this.isMobileDevice = this.alertService.isMobileDevice;
@@ -72,6 +96,18 @@ class Layers {
             
             if (settings.stormCentersEnabled) {
                 this.fetchStormCenters();
+            }
+
+            if (settings.surfaceAnalysisEnabled) {
+                this.fetchSurfaceAnalysis();
+            }
+
+            if (settings.lightningEnabled) {
+                this.fetchLightning();
+            }
+
+            if (settings.spotterNetworkPositionsEnabled) {
+                this.fetchSpotterNetworkPositions();
             }
         } catch (error) {
             console.error('Error loading initial layer settings:', error);
@@ -150,8 +186,8 @@ class Layers {
             // Ignore clicks on UI elements
             if (e.originalEvent.target !== this.map?.map?.getCanvas()) return;
             
-            // If hovering over storm center, don't open popup
-            if (this.stormCenterHovered) {
+            // If hovering over storm center/spotter marker, don't open unified popup
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered) {
                 return;
             }
             
@@ -198,8 +234,8 @@ class Layers {
             // Ignore clicks on UI elements
             if (e.originalEvent.target !== this.map?.dualMap?.getCanvas()) return;
             
-            // If hovering over storm center, don't open popup
-            if (this.stormCenterHovered) {
+            // If hovering over storm center/spotter marker, don't open unified popup
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered) {
                 return;
             }
             
@@ -428,6 +464,13 @@ class Layers {
     }
 
     /**
+     * Get Spotter Network positions
+     */
+    get spotterNetworkPositions() {
+        return this.spotterNetworkPositionsLayer.getSpotterNetworkPositions();
+    }
+
+    /**
      * Get current outlook day
      */
     get currentOutlookDay() {
@@ -619,6 +662,27 @@ class Layers {
         }
     }
 
+    displaySurfaceAnalysis() {
+        this.displaySurfaceAnalysisOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displaySurfaceAnalysisOnMap('dual');
+        }
+    }
+
+    displayLightning() {
+        this.displayLightningOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayLightningOnMap('dual');
+        }
+    }
+
+    displaySpotterNetworkPositions() {
+        this.displaySpotterNetworkPositionsOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displaySpotterNetworkPositionsOnMap('dual');
+        }
+    }
+
     displayAlertsOnMap(target = 'main') {
         this.alertLayer.displayAlertsOnMap(target);
     }
@@ -637,6 +701,18 @@ class Layers {
 
     displayStormCentersOnMap(target = 'main') {
         this.stormCentersLayer.displayStormCentersOnMap(target);
+    }
+
+    displaySurfaceAnalysisOnMap(target = 'main') {
+        this.surfaceAnalysisLayer.displaySurfaceAnalysisOnMap(target);
+    }
+
+    displayLightningOnMap(target = 'main') {
+        this.lightningLayer.displayLightningOnMap(target);
+    }
+
+    displaySpotterNetworkPositionsOnMap(target = 'main') {
+        this.spotterNetworkPositionsLayer.displaySpotterNetworkPositionsOnMap(target);
     }
 
     // Display on dual map methods
@@ -660,6 +736,18 @@ class Layers {
         this.displayStormCentersOnMap('dual');
     }
 
+    displaySurfaceAnalysisOnDualMap() {
+        this.displaySurfaceAnalysisOnMap('dual');
+    }
+
+    displayLightningOnDualMap() {
+        this.displayLightningOnMap('dual');
+    }
+
+    displaySpotterNetworkPositionsOnDualMap() {
+        this.displaySpotterNetworkPositionsOnMap('dual');
+    }
+
     // Clear methods - delegate to layer classes
     clearAlerts(target = 'main') {
         this.alertLayer.clearAlerts(target);
@@ -681,6 +769,18 @@ class Layers {
         this.stormCentersLayer.clearStormCenters(target);
     }
 
+    clearSurfaceAnalysis(target = 'main') {
+        this.surfaceAnalysisLayer.clearSurfaceAnalysis(target);
+    }
+
+    clearLightning(target = 'main') {
+        this.lightningLayer.clearLightning(target);
+    }
+
+    clearSpotterNetworkPositions(target = 'main') {
+        this.spotterNetworkPositionsLayer.clearSpotterNetworkPositions(target);
+    }
+
     // Outlook methods - delegate to OutlookLayer
     async fetchOutlook(day) {
         const outlookData = await this.outlookLayer.fetchOutlook(day);
@@ -700,6 +800,53 @@ class Layers {
         this._setLayerCache('stormCenters', this.stormCentersLayer.getStormCenters());
         this.displayStormCenters();
         return result;
+    }
+
+    async fetchSurfaceAnalysis() {
+        const result = await this.surfaceAnalysisLayer.fetchSurfaceAnalysis();
+        this._setLayerCache('surfaceAnalysis', result);
+        this.displaySurfaceAnalysis();
+        return result;
+    }
+
+    async fetchLightning() {
+        const result = await this.lightningLayer.fetchLightning();
+        this._setLayerCache('lightning', result);
+        this.displayLightning();
+        return result;
+    }
+
+    async fetchSpotterNetworkPositions() {
+        const result = await this.spotterNetworkPositionsLayer.fetchSpotterNetworkPositions();
+        this._setLayerCache('spotterNetworkPositions', result);
+        this.displaySpotterNetworkPositions();
+        return result;
+    }
+
+    // Layer ordering
+    applyLayerOrder(target = 'main') {
+        const map = target === 'main' ? this.map?.map : this.map?.dualMap;
+        if (!map) return;
+        applyLayerOrder(map, this.layerOrder, target);
+    }
+
+    setLayerOrder(order) {
+        const normalizedOrder = Array.isArray(order)
+            ? order.filter((key) => DEFAULT_LAYER_ORDER.includes(key))
+            : [];
+        for (const key of DEFAULT_LAYER_ORDER) {
+            if (!normalizedOrder.includes(key)) {
+                normalizedOrder.push(key);
+            }
+        }
+        this.layerOrder = normalizedOrder;
+        try { localStorage.setItem('layerOrder', JSON.stringify(this.layerOrder)); } catch {}
+        this.applyLayerOrder('main');
+        if (this.map?.isSplit()) this.applyLayerOrder('dual');
+    }
+
+    getLayerOrder() {
+        return this.layerOrder;
     }
 }
 

@@ -40,17 +40,9 @@ export default class AlertList {
         this.list.appendChild(header);
 
         const searchInput = header.querySelector('.alert-search');
+        this.searchInput = searchInput;
         searchInput.addEventListener('input', () => {
-            const query = searchInput.value.toLowerCase();
-            const alertItems = this.list.querySelectorAll('.alert-item');
-            alertItems.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                if (text.includes(query)) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+            this._applySearchFilter();
         });
 
         const mainList = document.createElement('div');
@@ -83,6 +75,16 @@ export default class AlertList {
         this.countEl.textContent = String(count);
     }
 
+    _applySearchFilter() {
+        if (!this.list) return;
+        const query = (this.searchInput?.value || '').toLowerCase();
+        const alertItems = this.list.querySelectorAll('.alert-item');
+        alertItems.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(query) ? '' : 'none';
+        });
+    }
+
     _setAlerts(alerts) {
         const mainList = this.list.querySelector('.alert-main-list');
         if (!mainList) return;
@@ -101,18 +103,8 @@ export default class AlertList {
         };
         let highestSeverity = 0;
 
-        // Priority: lower number = higher priority
-        const getPriority = (rendered) => {
-            const name = rendered.name;
-            if (name === 'Tornado Emergency') return 0;
-            if (name === 'PDS Tornado Warning') return 1;
-            if (name.includes('Tornado Warning')) return 2;
-            if (name === 'Destructive Severe Thunderstorm Warning') return 3;
-            if (name === 'Considerable Severe Thunderstorm Warning') return 4;
-            if (name.includes('Severe Thunderstorm Warning')) return 5;
-            if (name === 'Special Weather Statement') return 6;
-            return 7;
-        };
+        // Higher number = higher priority (from renderAlert)
+        const getPriority = (rendered) => Number(rendered?.priority) || 0;
 
         const now = Date.now();
         const ONE_MINUTE_MS = 60 * 1000;
@@ -132,9 +124,9 @@ export default class AlertList {
             const isRecent = (now - issuedTime) < ONE_MINUTE_MS;
             const priority = getPriority(rendered);
 
-            if (rendered.props.is_emergency) {
+            if (rendered.props.is_emergency && rendered.name.toLowerCase().includes('tornado')) {
                 highestSeverity = Math.max(highestSeverity, 4);
-            } else if (rendered.props.is_pds) {
+            } else if (rendered.props.is_pds && rendered.name.toLowerCase().includes('tornado')) {
                 highestSeverity = Math.max(highestSeverity, 3);
             } else if (rendered.name.toLowerCase().includes('tornado')) {
                 highestSeverity = Math.max(highestSeverity, 2);
@@ -145,10 +137,11 @@ export default class AlertList {
             processed.push({ alert, rendered, has_valid_geometry, issuedTime, isRecent, priority });
         }
 
+        const compareProcessedAlerts = (a, b) =>
+            a.priority !== b.priority ? b.priority - a.priority : b.issuedTime - a.issuedTime;
+
         // Sort by priority, then newest-issued first within each priority tier
-        processed.sort((a, b) =>
-            a.priority !== b.priority ? a.priority - b.priority : b.issuedTime - a.issuedTime
-        );
+        processed.sort(compareProcessedAlerts);
 
         const buildItem = ({ alert, rendered, has_valid_geometry }) => {
             const item = document.createElement('div');
@@ -162,6 +155,7 @@ export default class AlertList {
                         ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                         ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()}</span>` : ''}
                         ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
+                        ${rendered.props.is_test ? `<strong>Test:</strong> <span>THIS IS A TEST MESSAGE</span>` : ''}
                     </div>
                     <div class="alert-btns">
                         ${has_valid_geometry ? `<button class="alert-btn" data-action="view-map">View on Map</button>` : ''}
@@ -196,7 +190,7 @@ export default class AlertList {
         };
 
         // Recents section
-        const recents = processed.filter(e => e.isRecent);
+        const recents = processed.filter(e => e.isRecent).sort(compareProcessedAlerts);
         if (recents.length > 0) {
             mainList.appendChild(makeSectionHeader('New and Recently Updated'));
             recents.forEach(entry => mainList.appendChild(buildItem(entry)));
@@ -205,6 +199,9 @@ export default class AlertList {
 
         // Full priority-sorted list
         processed.forEach(entry => mainList.appendChild(buildItem(entry)));
+
+        // Preserve active search filtering after list refresh
+        this._applySearchFilter();
 
         if (highestSeverity === 3) {
             this.opener.classList.add('pds');

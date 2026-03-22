@@ -36,6 +36,10 @@ import Inspector from "./js/ui/inspector.js";
 import Palettes from './js/palettes.js';
 import Finder from './js/ui/finder.js';
 import AnimationController from './js/ui/radar_animation.js';
+import SpotterNetwork from './js/spotter_network.js';
+
+// Import location services
+import LocationServices from "./js/location_services.js";
 
 // Import components
 import { createToolbar } from "./components/toolbar.js";
@@ -46,6 +50,11 @@ import { layerMenu } from "./components/layer_menu.js";
 
 import Settings from './js/ui/settings.js';
 window.settingsInstance = new Settings(); // Expose globally for color customization
+
+const locationServices = new LocationServices({
+  enabled: window.settingsInstance?.getSetting('enableLocation') !== false,
+});
+window.locationServices = locationServices;
 
 // Create a global Palettes instance to preserve custom palettes across calls
 const globalPalettes = new Palettes();
@@ -135,6 +144,223 @@ const productToPaletteKey = (product) => {
 
 // Expose to global scope for use in map.js
 window.productToPaletteKey = productToPaletteKey;
+
+const colorbarPaletteMetadata = {};
+
+const DHC_TYPE_LABELS = {
+  10: 'Biological',
+  20: 'Clutter',
+  30: 'Ice crystals',
+  40: 'Dry snow',
+  50: 'Wet snow',
+  60: 'Rain',
+  70: 'Heavy rain',
+  80: 'Big drops',
+  90: 'Graupel',
+  100: 'Hail + rain',
+  110: 'Large hail',
+  120: 'Giant hail',
+  130: 'RF',
+  140: 'Unknown',
+};
+
+const getDhcTypeLabel = (value) => {
+  const classes = Object.keys(DHC_TYPE_LABELS).map(Number).sort((a, b) => a - b);
+  let selectedClass = classes[0];
+
+  for (let i = 0; i < classes.length; i++) {
+    if (value >= classes[i]) {
+      selectedClass = classes[i];
+    } else {
+      break;
+    }
+  }
+
+  return DHC_TYPE_LABELS[selectedClass] || 'Unknown';
+};
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+const parsePaletteColor = (colorText) => {
+  if (typeof colorText !== 'string') return null;
+
+  let match = colorText.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/i);
+  if (match) {
+    const alphaRaw = Number(match[4]);
+    const alpha = alphaRaw > 1 ? alphaRaw / 255 : alphaRaw;
+    return {
+      r: clamp(Number(match[1]), 0, 255),
+      g: clamp(Number(match[2]), 0, 255),
+      b: clamp(Number(match[3]), 0, 255),
+      a: clamp(alpha, 0, 1),
+    };
+  }
+
+  match = colorText.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/i);
+  if (match) {
+    return {
+      r: clamp(Number(match[1]), 0, 255),
+      g: clamp(Number(match[2]), 0, 255),
+      b: clamp(Number(match[3]), 0, 255),
+      a: 1,
+    };
+  }
+
+  return null;
+};
+
+const interpolateStopColor = (stops, value) => {
+  if (!Array.isArray(stops) || stops.length === 0) {
+    return { r: 0, g: 0, b: 0, a: 0.85 };
+  }
+
+  if (value <= stops[0].value) {
+    return stops[0].color;
+  }
+
+  const lastStop = stops[stops.length - 1];
+  if (value >= lastStop.value) {
+    return lastStop.color;
+  }
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const left = stops[i];
+    const right = stops[i + 1];
+    if (value >= left.value && value <= right.value) {
+      const span = right.value - left.value;
+      const t = span === 0 ? 0 : (value - left.value) / span;
+      return {
+        r: Math.round(left.color.r + (right.color.r - left.color.r) * t),
+        g: Math.round(left.color.g + (right.color.g - left.color.g) * t),
+        b: Math.round(left.color.b + (right.color.b - left.color.b) * t),
+        a: left.color.a + (right.color.a - left.color.a) * t,
+      };
+    }
+  }
+
+  return lastStop.color;
+};
+
+const getContrastTextColor = ({ r, g, b }) => {
+  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  return luminance > 0.6 ? '#111' : '#fff';
+};
+
+const getPaletteMetadata = (paletteKey) => {
+  const cacheKey = String(paletteKey || 'REF').toUpperCase();
+  if (colorbarPaletteMetadata[cacheKey]) {
+    return colorbarPaletteMetadata[cacheKey];
+  }
+
+  const colorTable = window.globalPalettes?.getPalette?.(cacheKey) || [];
+  const stops = [];
+
+  for (let i = 0; i < colorTable.length; i += 2) {
+    const value = Number(colorTable[i]);
+    const color = parsePaletteColor(colorTable[i + 1]);
+    if (Number.isFinite(value) && value < 900 && color) {
+      stops.push({ value, color });
+    }
+  }
+
+  if (stops.length === 0) {
+    return null;
+  }
+
+  stops.sort((a, b) => a.value - b.value);
+
+  const minValue = stops[0].value;
+  const maxValue = stops[stops.length - 1].value;
+
+  let minStep = Infinity;
+  for (let i = 1; i < stops.length; i++) {
+    const delta = stops[i].value - stops[i - 1].value;
+    if (delta > 0 && delta < minStep) {
+      minStep = delta;
+    }
+  }
+
+  let decimals = 0;
+  if (Number.isFinite(minStep) && minStep > 0) {
+    decimals = Math.min(3, Math.max(0, Math.ceil(-Math.log10(minStep))));
+  } else if (Math.abs(maxValue - minValue) < 10) {
+    decimals = 1;
+  }
+
+  const metadata = { minValue, maxValue, decimals, stops };
+  colorbarPaletteMetadata[cacheKey] = metadata;
+  return metadata;
+};
+
+const ensureColorbarTooltip = () => {
+  let tooltip = document.getElementById('colorbar-tooltip');
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'colorbar-tooltip';
+    tooltip.className = 'colorbar-tooltip hidden';
+    document.body.appendChild(tooltip);
+  }
+  return tooltip;
+};
+
+const hideColorbarTooltip = () => {
+  const tooltip = document.getElementById('colorbar-tooltip');
+  if (tooltip) {
+    tooltip.classList.add('hidden');
+  }
+};
+
+const initColorbarHoverTooltips = () => {
+  const tooltip = ensureColorbarTooltip();
+  const attachColorbarHandler = (colorbarId, getProduct) => {
+    const colorbar = document.getElementById(colorbarId);
+    if (!colorbar) return;
+
+    colorbar.addEventListener('mousemove', (event) => {
+      if (colorbar.classList.contains('hidden')) {
+        hideColorbarTooltip();
+        return;
+      }
+
+      const product = getProduct();
+      const paletteKey = productToPaletteKey(product);
+      const metadata = getPaletteMetadata(paletteKey);
+
+      if (!metadata) {
+        hideColorbarTooltip();
+        return;
+      }
+
+      const rect = colorbar.getBoundingClientRect();
+      if (rect.width <= 0) {
+        hideColorbarTooltip();
+        return;
+      }
+
+      const relativeX = Math.min(Math.max(event.clientX - rect.left, 0), rect.width);
+      const ratio = rect.width === 0 ? 0 : relativeX / rect.width;
+      const value = metadata.minValue + (metadata.maxValue - metadata.minValue) * ratio;
+      const hoverColor = interpolateStopColor(metadata.stops, value);
+
+      tooltip.textContent = paletteKey === 'DHC'
+        ? getDhcTypeLabel(value)
+        : value.toFixed(metadata.decimals);
+      tooltip.style.left = `${event.clientX}px`;
+      tooltip.style.top = `${rect.top - 8}px`;
+      tooltip.style.background = `rgba(${hoverColor.r}, ${hoverColor.g}, ${hoverColor.b}, ${hoverColor.a})`;
+      tooltip.style.color = getContrastTextColor(hoverColor);
+      tooltip.classList.remove('hidden');
+    });
+
+    colorbar.addEventListener('mouseleave', hideColorbarTooltip);
+  };
+
+  attachColorbarHandler('colorbar-main', () => mainRadar.product);
+  attachColorbarHandler('colorbar-split', () => splitRadar.product);
+
+  document.addEventListener('scroll', hideColorbarTooltip, true);
+  window.addEventListener('resize', hideColorbarTooltip);
+};
 
 const updateColorbarForMap = (mainOrSplit, product) => {
   const colorbarId = mainOrSplit === 'split' ? 'colorbar-split' : 'colorbar-main';
@@ -283,39 +509,61 @@ const map = new Map({
   },
 });
 
+initColorbarHoverTooltips();
+
 // Construct the alert list
 const alertList = new AlertList(map.layers);
 
-// Keybinds
-// TODO: custom keybinds
-window.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; // Ignore if typing in input or textarea
+// Initialize inspector
+const inspector = new Inspector(map);
+var inspectorEnabled = false;
 
-  if (e.key === 'm') {
+// Keybinds
+window.addEventListener('keydown', (e) => {
+  const target = e.target;
+  const tagName = target?.tagName;
+  if (tagName === 'INPUT' || tagName === 'TEXTAREA' || target?.isContentEditable) return;
+
+  const pressedKey = String(e.key || '').toLowerCase();
+  const getShortcut = (key, fallback) => {
+    const value = window.settingsInstance?.getSetting(key);
+    if (typeof value !== 'string') return fallback;
+    return value.trim().slice(0, 1).toLowerCase();
+  };
+
+  if (pressedKey && pressedKey === getShortcut('shortcutToggleSplitView', 'm')) {
     if (map.isSplit()) {
       map.stopSplit();
     } else {
       map.splitMap('horizontal', { station: mainRadar.station, product: mainRadar.product });
     }
-  } else if (e.key === 's') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutShowRadarStatus', 's')) {
     const statusDialog = new RadarStatus(mainRadar.station);
-  } else if (e.key === 'h') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutShowMenu', 'h')) {
     menu.open();
-  } else if (e.key === 'l') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutShowLayerMenu', 'l')) {
     layerMenu.open();
-  } else if (e.key === 'd') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutDraw', 'd')) {
     startDraw();
-  } else if (e.key === 'f') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutFinder', 'f')) {
     new Finder(map).open();
-  } else if (e.key === '1') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutInspector', 'i')) {
+    // Toggle inspector
+    inspectorEnabled = !inspectorEnabled;
+    if (inspectorEnabled) {
+      inspector.enable();
+    } else {
+      inspector.disable();
+    }
+  } else if (pressedKey && pressedKey === getShortcut('shortcutProductReflectivity', '1')) {
     setRadar(null, 'N0B', 'main') // Reflectivity
-  } else if (e.key === '2') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutProductVelocity', '2')) {
     setRadar(null, 'N0G', 'main') // Velocity
-  } else if (e.key === '3') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutProductCorrelationCoefficient', '3')) {
     setRadar(null, 'N0C', 'main') // Correlation Coefficient
-  } else if (e.key === '4') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutProductHydrometeorClassification', '4')) {
     setRadar(null, 'N0H', 'main') // Hydrometer Classification
-  } else if (e.key === '5') {
+  } else if (pressedKey && pressedKey === getShortcut('shortcutProductSpecificDifferentialPhase', '5')) {
     setRadar(null, 'N0K', 'main') // Specific Differential Phase
   }
 });
@@ -338,6 +586,12 @@ try {
 
 document.addEventListener('settingsChanged', (event) => {
   const { key, value } = event?.detail || {};
+  if (key === 'enableLocation') {
+    locationServices.setEnabled(Boolean(value));
+    if (!value && window.spotterNetworkInstance?.shareLocation) {
+      window.spotterNetworkInstance.setLocationSharing(false);
+    }
+  }
   if (key === 'cacheMaxSlots' && Number.isFinite(Number(value))) {
     radar.setCacheSize(Number(value));
   }
@@ -364,10 +618,7 @@ map.currentMainStation = initialStation;
 
 // Initialize layer menu toggles
 layerMenu.init(map);
-
-// Initialize inspector
-const inspector = new Inspector(map);
-var inspectorEnabled = false;
+layerMenu.initOrderPanel(map);
 
 // Initial map render
 map.map.on('load', async () => {
@@ -376,6 +627,14 @@ map.map.on('load', async () => {
 
     // Add radar
     await setRadar(null, null, 'main');
+
+    // Re-apply current layer order after initial load to ensure correct order
+    setTimeout(() => {
+      const currentOrder = map.layers?.getLayerOrder?.();
+      if (Array.isArray(currentOrder) && currentOrder.length > 0) {
+        map.layers.setLayerOrder([...currentOrder]);
+      }
+    }, 15 * 1000);
 
     // Subscribe to real-time alert updates via SSE
     map.subscribeToAlerts();
@@ -485,7 +744,7 @@ let lastCheckedRadar = { main: null, split: null }; // Track last checked radar 
 let baselineCheckCount = { main: 0, split: 0 }; // Track how many checks we've seen stable
 const STATION_CHANGE_DEBOUNCE = 5000; // 5 second debounce after station change
 const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
-var updateTimes = 12;
+var updateTimes = 0;
 var updateIntervalId = null;
 var autoUpdateEnabled = true;
 
@@ -513,6 +772,10 @@ setRadar = async function(station, product, mainOrSplit, options) {
   }
   return originalSetRadar(station, product, mainOrSplit, options);
 };
+
+const sn = new SpotterNetwork();
+window.spotterNetworkInstance = sn; // Expose globally
+sn.login();
 
 updateIntervalId = setInterval(async () => {
   if (!autoUpdateEnabled || updateInProgress) return;
@@ -587,10 +850,24 @@ updateIntervalId = setInterval(async () => {
       map.updateRadarStations();
       map.fetchOutlooks();
       map.fetchDiscussions();
+
+      try {
+        const layerSettings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+        if (layerSettings.lightningEnabled === true) {
+          map.fetchLightning();
+        }
+        if (layerSettings.spotterNetworkPositionsEnabled === true) {
+          map.fetchSpotterNetworkPositions();
+        }
+      } catch (error) {
+        console.error('Error loading layer settings for periodic updates:', error);
+      }
+
       updateTimes = 0;
     }
 
     // Update alerts and watches
+    console.log('[Debug] invoking periodic fetches: alerts, watches, storm-centers');
     map.fetchAlerts();
     map.fetchWatches();
     map.fetchStormCenters();

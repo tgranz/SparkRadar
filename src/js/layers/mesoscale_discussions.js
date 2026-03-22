@@ -7,7 +7,14 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
-import { waitForRadarLayer, pointInPolygon, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+
+const EMPTY_FEATURE_COLLECTION = {
+    type: 'FeatureCollection',
+    features: []
+};
+
+const SYNC_PENDING_STALE_MS = 15000;
 
 class MesoscaleDiscussionLayer {
     constructor(mapInstance) {
@@ -17,6 +24,7 @@ class MesoscaleDiscussionLayer {
         this.mesoscaleDiscussions = [];
         this.mdCache = { main: new globalThis.Map(), dual: new globalThis.Map() };
         this.mdSyncPending = { main: false, dual: false };
+        this.mdSyncPendingSince = { main: 0, dual: 0 };
 
         // Listen for settings changes to update layer colors
         this.settingsChangeListener = (event) => {
@@ -219,18 +227,29 @@ class MesoscaleDiscussionLayer {
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
 
-        if (map.isStyleLoaded && map.isStyleLoaded()) {
+        if (hasUsableMapStyle(map)) {
+            this.mdSyncPending[target] = false;
+            this.mdSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncMDsToMap(target);
             });
             return;
         }
 
-        if (this.mdSyncPending[target]) return;
-        this.mdSyncPending[target] = true;
-
-        map.once('load', () => {
+        if (this.mdSyncPending[target]) {
+            const pendingAge = Date.now() - (this.mdSyncPendingSince[target] || 0);
+            if (pendingAge < SYNC_PENDING_STALE_MS) {
+                return;
+            }
+            console.warn(`[MesoscaleDiscussionLayer] Resetting stale sync pending flag for ${target} (age=${pendingAge}ms)`);
             this.mdSyncPending[target] = false;
+        }
+        this.mdSyncPending[target] = true;
+        this.mdSyncPendingSince[target] = Date.now();
+
+        waitForMapStyleReady(map).then(() => {
+            this.mdSyncPending[target] = false;
+            this.mdSyncPendingSince[target] = 0;
             waitForRadarLayer(map, target).then(() => {
                 this._syncMDsToMap(target);
             });
@@ -332,17 +351,16 @@ class MesoscaleDiscussionLayer {
     }
 
     _areMesoscaleDiscussionsEnabled() {
-        const checkbox = document.getElementById('toggle-mesoscale-discussions-layer');
-        if (checkbox) {
-            return checkbox.checked;
-        }
-
         try {
             const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-            return settings.mesoscaleDiscussionsEnabled !== undefined ? settings.mesoscaleDiscussionsEnabled : false;
+            if (typeof settings.mesoscaleDiscussionsEnabled === 'boolean') {
+                return settings.mesoscaleDiscussionsEnabled;
+            }
         } catch {
-            return false;
         }
+
+        const checkbox = document.getElementById('toggle-mesoscale-discussions-layer');
+        return checkbox ? checkbox.checked : false;
     }
 
     displayMesoscaleDiscussionsOnMap(target = 'main') {
@@ -371,7 +389,11 @@ class MesoscaleDiscussionLayer {
 
         const cache = target === 'main' ? this.mdCache.main : this.mdCache.dual;
         for (const key of cache.keys()) {
-            this._removeMDFromMap(target, key);
+            const sourceId = target === 'main' ? `md-source-${key}` : `md-source-${key}-dual`;
+            const source = map.getSource(sourceId);
+            if (source) {
+                source.setData(EMPTY_FEATURE_COLLECTION);
+            }
         }
         cache.clear();
     }
