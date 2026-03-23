@@ -814,10 +814,13 @@ function generateAlertSettings(settingsInstance, container) {
                 const sounds = [
                     { name: 'Silent', value: 'none' },
                     { name: 'Default', value: 'warning.mp3' },
+                    { name: 'Alert', value: 'alert.mp3' },
                     { name: 'Beep', value: 'singlebeep.mp3' },
                     { name: 'Double Beep', value: 'doublebeep.mp3' },
                     { name: 'EAS Tone', value: 'eas.mp3' },
                     { name: 'Max Velocity', value: 'maxvelocity.mp3' },
+                    { name: 'Ryan Hall - Tornado Emergency', value: 'ryanhall_tore.mp3' },
+                    { name: 'Ryan Hall - PDS Tornado Warning', value: 'ryanhall_pdstor.mp3' },
                     { name: 'Ryan Hall - Tornado Warning', value: 'ryanhall_tor.mp3' },
                     { name: 'Ryan Hall - Severe Thunderstorm Warning', value: 'ryanhall_svr.mp3' },
                 ];
@@ -892,6 +895,7 @@ export default class Settings {
             shortcutDraw: 'd',
             shortcutFinder: 'f',
             shortcutInspector: 'i',
+            shortcutMeasure: 'n',
             shortcutProductReflectivity: '1',
             shortcutProductVelocity: '2',
             shortcutProductCorrelationCoefficient: '3',

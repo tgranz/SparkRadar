@@ -12,7 +12,6 @@ class RadarStationsLayer {
 
         this.markers = { main: [], dual: [] };
         this.fetchInProgress = false;
-        this.filteredStations = [];
     }
 
     _createMarkerElement(icao, isOperational) {
@@ -161,7 +160,6 @@ class RadarStationsLayer {
                         }
                     });
                 }
-                this.filteredStations = filteredFeatures;
 
                 // Add markers to main map
                 filteredFeatures.forEach((feature) => {
@@ -230,10 +228,6 @@ class RadarStationsLayer {
             .finally(() => {
                 this.fetchInProgress = false;
             });
-    }
-
-    getStations() {
-        return Array.isArray(this.filteredStations) ? this.filteredStations : [];
     }
 
     /**

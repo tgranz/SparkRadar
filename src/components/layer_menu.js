@@ -147,12 +147,9 @@ menu.innerHTML = `
         </div>
         <p style="margin: 0px 10px 10px 10px; color: lightgray; font-size: 0.8em;">&copy; Spotter Network Inc. (NFP). SparkRadar is not affiliated in any way with Spotter Network, Inc.</p>
         <div class="layer-menu-section">
-            <div class="layer-menu-item with-hint">
-                <div>
-                    <h3>Spotter Positions</h3>
-                    <p class="tag new">NEW</p>
-                </div>
-                <p class="hint">Updates every 60 seconds.</p>
+            <div class="layer-menu-item">
+                <h3>Spotter Positions</h3>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-spotter-network-positions-layer" class="switch">
@@ -187,15 +184,6 @@ menu.innerHTML = `
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-hurricanes-layer" class="switch">
-            </div>
-        </div>
-        <div class="layer-menu-section">
-            <div class="layer-menu-item">
-                <h3>Weather Radios</h3>
-                <p class="tag inprogress">WIP</p>
-            </div>
-            <div class="layer-menu-item">
-                <input type="checkbox" id="toggle-weather-radios-layer" class="switch">
             </div>
         </div>
         <div class="layer-menu-section">
@@ -345,7 +333,7 @@ function initializeLayerToggles(mapInstance) {
     // Listen for connection status changes
     if (connectionStatusElement) {
         document.addEventListener('alertConnectionStatusChanged', (e) => {
-            const status = e.detail.status;
+            var status = e.detail.status;
             if (status === "ISSUES") status = "RECONNECTING...";
             connectionStatusElement.textContent = status;
             

@@ -266,7 +266,7 @@ export function pointInPolygon(point, rings) {
 // ─── Layer Ordering ──────────────────────────────────────────────────────────
 
 export const DEFAULT_LAYER_ORDER = [
-    'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'signatures', 'labels', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'radar', 'outlook'
+    'signatures', 'labels', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
 ];
 
 export const LAYER_ORDER_LABELS = {

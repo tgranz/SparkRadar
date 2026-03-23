@@ -33,6 +33,7 @@ import AlertList from "./js/ui/alert_list.js";
 import Draw from "./js/ui/draw.js";
 import ArchiveBrowser from "./js/ui/archive_browser.js";
 import Inspector from "./js/ui/inspector.js";
+import Measure from "./js/ui/measure.js";
 import Palettes from './js/palettes.js';
 import Finder from './js/ui/finder.js';
 import AnimationController from './js/ui/radar_animation.js';
@@ -86,7 +87,23 @@ function formatVcpDisplay(vcp) {
 
 // Function to draw on the map
 function startDraw() {
+  if (Measure.instance) {
+    Measure.instance.close();
+  }
   new Draw();
+}
+
+function startMeasure() {
+  if (Draw.instance) {
+    Draw.instance.close();
+  }
+
+  if (Measure.instance) {
+    Measure.instance.close();
+    return;
+  }
+
+  new Measure(map);
 }
 
 // Function to store and set the current radars
@@ -343,7 +360,7 @@ const initColorbarHoverTooltips = () => {
 
       tooltip.textContent = paletteKey === 'DHC'
         ? getDhcTypeLabel(value)
-        : value.toFixed(metadata.decimals);
+        : value.toFixed(1);
       tooltip.style.left = `${event.clientX}px`;
       tooltip.style.top = `${rect.top - 8}px`;
       tooltip.style.background = `rgba(${hoverColor.r}, ${hoverColor.g}, ${hoverColor.b}, ${hoverColor.a})`;
@@ -623,6 +640,8 @@ window.addEventListener('keydown', (e) => {
     } else {
       inspector.disable();
     }
+  } else if (pressedKey && pressedKey === getShortcut('shortcutMeasure', 'n')) {
+    startMeasure();
   } else if (pressedKey && pressedKey === getShortcut('shortcutProductReflectivity', '1')) {
     setRadar(null, 'N0B', 'main') // Reflectivity
   } else if (pressedKey && pressedKey === getShortcut('shortcutProductVelocity', '2')) {
@@ -771,7 +790,8 @@ const toolbar = createToolbar(
       mainRadar.level,
       'main'
     );
-  }
+  },
+  () => { startMeasure(); }
 );
 
 // Add the toolbar to the page

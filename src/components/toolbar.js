@@ -1,6 +1,6 @@
 import Toast from "../js/ui/toast";
 
-export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick) {    
+export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick, onMeasureClick) {    
     // Create main toolbar
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
@@ -130,6 +130,22 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     drawDiv.appendChild(drawButton);
     drawDiv.appendChild(drawLabel);
 
+    const measureDiv = document.createElement('div');
+    const measureButton = document.createElement('button');
+    measureButton.type = 'button';
+    measureButton.id = 'measure-button';
+    measureButton.innerHTML = '<i class="ti ti-ruler-2"></i>';
+    measureButton.title = 'Measure distance';
+    measureButton.addEventListener('click', () => {
+        if (typeof onMeasureClick === 'function') {
+            onMeasureClick();
+        }
+    });
+    const measureLabel = document.createElement('span');
+    measureLabel.textContent = 'Measure';
+    measureDiv.appendChild(measureButton);
+    measureDiv.appendChild(measureLabel);
+
     const inspectorDiv = document.createElement('div');
     const inspectorButton = document.createElement('button');
     inspectorButton.type = 'button';
@@ -241,6 +257,7 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     // Assemble toolbox
     toolbox.appendChild(inspectorDiv);
     toolbox.appendChild(drawDiv);
+    toolbox.appendChild(measureDiv);
     toolbox.appendChild(animationDiv);
     toolbox.appendChild(clearCacheDiv);
     document.body.appendChild(toolbox);

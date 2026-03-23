@@ -134,7 +134,7 @@ export default function openAbout() {
         try {
             const response = await fetch('https://api.sparkradar.app/connections');
             const data = await response.json();
-            const count = typeof data?.count === 'number' ? data.count : 0;
+            const count = typeof data?.connections === 'number' ? data.connections : 0;
             activeUsersEl.textContent = String(count);
         } catch {
             activeUsersEl.textContent = '0';
