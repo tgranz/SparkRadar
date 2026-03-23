@@ -275,10 +275,10 @@ class Radar {
             };
 
             worker.onmessage = (event) => {
-                const { type, geojson, meshData, bounds, metadata, message } = event.data || {};
+                const { type, geojson, meshData, bounds, metadata, timing, message } = event.data || {};
                 if (type === 'result') {
                     cleanup();
-                    resolve({ geojson, meshData, bounds, metadata });
+                    resolve({ geojson, meshData, bounds, metadata, timing: timing || null });
                 } else if (type === 'error') {
                     cleanup();
                     reject(new Error(message || 'Radar worker failed'));
@@ -490,6 +490,13 @@ class Radar {
 
     async getRadarLayer(radarStation, layer, options = {}) {
         const isLevel3 = this._isLevel3Layer(layer);
+        const nowEpochMs = () => performance.timeOrigin + performance.now();
+        const timing = {
+            fileFetchedAtMs: null,
+            parserFinishedAtMs: null,
+            meshFinishedAtMs: null,
+            source: 'network'
+        };
 
         try {
             let latestFileName = null;
@@ -507,6 +514,11 @@ class Radar {
 
                 if (cached) {
                     console.log(`[getRadarLayer] Using cached data for ${radarStation}/${layer}/${cacheTilt}/${latestTimeIso}`);
+                    const cachedNow = nowEpochMs();
+                    timing.fileFetchedAtMs = cachedNow;
+                    timing.parserFinishedAtMs = cachedNow;
+                    timing.meshFinishedAtMs = cachedNow;
+                    timing.source = 'cache';
 
                     if (isLevel3) {
                         this.latestRadarFiles.L3[layer] = latestFileName;
@@ -538,7 +550,8 @@ class Radar {
                         geojson: null,
                         meshData: cached.meshData,
                         bounds: cached.bounds,
-                        metadata: cached.metadata
+                        metadata: cached.metadata,
+                        timing
                     };
                 }
             }
@@ -561,6 +574,7 @@ class Radar {
 
             console.log(`[getRadarLayer] Loaded file: ${radarFile.fileName}`);
             const rawData = radarFile.data;
+            timing.fileFetchedAtMs = nowEpochMs();
 
             const includeGeojson = options.includeGeojson === true;
             let geojson = null;
@@ -577,9 +591,15 @@ class Radar {
                 meshData = result.meshData || null;
                 bounds = result.bounds || null;
                 metadata = result.metadata || null;
+                if (result.timing) {
+                    timing.parserFinishedAtMs = Number.isFinite(result.timing.parserEndMs) ? result.timing.parserEndMs : null;
+                    timing.meshFinishedAtMs = Number.isFinite(result.timing.meshEndMs) ? result.timing.meshEndMs : null;
+                }
             } else if (isLevel3) {
                 const { radar, radarLocation } = await this._fetchLevel3RadarData(radarStation, layer, rawData);
+                timing.parserFinishedAtMs = nowEpochMs();
                 const processed = await this._processLevel3RadarData(radar, radarLocation, layer, { ...options, includeGeojson });
+                timing.meshFinishedAtMs = nowEpochMs();
                 geojson = processed.geojson;
                 meshData = processed.meshData;
                 bounds = processed.bounds;
@@ -591,7 +611,9 @@ class Radar {
                 };
             } else {
                 const { radar, radarLocation, extent, header } = await this._fetchRadarData(radarStation, options, rawData);
+                timing.parserFinishedAtMs = nowEpochMs();
                 const processed = await this._processRadarData(radar, radarLocation, extent, layer, { ...options, includeGeojson });
+                timing.meshFinishedAtMs = nowEpochMs();
                 geojson = processed.geojson;
                 meshData = processed.meshData;
                 bounds = processed.bounds;
@@ -663,7 +685,7 @@ class Radar {
 
             console.log('Done processing radar layer.');
             document.title = `SparkRadar | ${radarStation}`;
-            return { geojson, meshData, bounds, metadata };
+            return { geojson, meshData, bounds, metadata, timing };
         } catch (error) {
             console.error(`Error adding radar layer: ${error.message}`);
             return null;

@@ -16,6 +16,7 @@ import Layers from "../layers.js";
 import RadarStationsLayer from "../layers/radar_stations.js";
 import Radar3D from "../3dradar.js";
 import Notification from './notification.js';
+import RightClickHandler from './rightclick.js';
 
 class Map {
     // Constructor function
@@ -79,6 +80,7 @@ class Map {
 
         // Radar station markers, handlers and timers
         this.radarStationsLayer = new RadarStationsLayer(this);
+        this.rightClickHandler = new RightClickHandler(this);
 
         // Reflectivity gate filter (for filtering out weak reflectivity values)
         // Initialize from localStorage if available, otherwise use default
@@ -211,6 +213,7 @@ class Map {
             ...this.params,
             container: dualContainer,
         });
+        this.rightClickHandler?.attachDualMap();
 
         // Again, force apply projection to the second map
         this.applyProjection(this.dualMap, this.params.projection);
@@ -650,6 +653,7 @@ class Map {
         }
 
         if (this.dualMap) {
+            this.rightClickHandler?.detachDualMap(this.dualMap);
             this.dualMap.remove();
             this.dualMap = null;
         }
@@ -1196,9 +1200,13 @@ class Map {
         return null;
     }
 
-    _renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product = null) {
+    _renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product = null, renderOptions = null) {
         const vertexCount = vertexData.length / 6;
         console.log(`[WebGL] Rendering layer ${layerId}, vertices: ${vertexCount}, map valid: ${!!map}`);
+        let firstFrameReported = false;
+        const onFirstVisibleFrame = renderOptions && typeof renderOptions.onFirstVisibleFrame === 'function'
+            ? renderOptions.onFirstVisibleFrame
+            : null;
 
         if (map.getLayer(layerId)) {
             console.log(`[WebGL] Removing existing layer ${layerId}`);
@@ -1317,6 +1325,13 @@ class Map {
                 gl.useProgram(highlightLayer.program);
                 gl.uniformMatrix4fv(highlightLayer.uMatrix, false, matrix);
                 gl.drawArrays(gl.TRIANGLES, 0, highlightLayer.vertexCount);
+
+                if (!firstFrameReported && onFirstVisibleFrame) {
+                    firstFrameReported = true;
+                    requestAnimationFrame(() => {
+                        onFirstVisibleFrame();
+                    });
+                }
             }
         };
 
@@ -1395,7 +1410,7 @@ class Map {
         }
     }
 
-    addWebGlRadarLayer(radarGeoJson, targetMap = null, product = null) {
+    addWebGlRadarLayer(radarGeoJson, targetMap = null, product = null, renderOptions = null) {
         let map = this.map;
         let layerId = 'radar-webgl';
         let isMainLayer = true;
@@ -1451,10 +1466,10 @@ class Map {
         }
 
         const vertexData = this._buildVertexData(radarGeoJson);
-        this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product);
+        this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product, renderOptions);
     }
 
-    addWebGlRadarMesh(meshData, bounds, targetMap = null, product = null) {
+    addWebGlRadarMesh(meshData, bounds, targetMap = null, product = null, renderOptions = null) {
         let map = this.map;
         let layerId = 'radar-webgl';
         let isMainLayer = true;
@@ -1505,7 +1520,7 @@ class Map {
         }
 
         const vertexData = this._getOrBuildVertexDataFromMesh(meshData);
-        this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product);
+        this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product, renderOptions);
     }
 
     updateRadarStations() {

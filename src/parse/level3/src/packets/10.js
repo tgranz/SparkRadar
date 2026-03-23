@@ -1,7 +1,7 @@
 const code = 16;
 const description = 'Digital Radial Data Array Packet';
 
-const parser = (raf, productDescription) => {
+const parser = (raf, productDescription, options = {}) => {
 	// packet header
 	const packetCode = raf.readUShort();
 
@@ -17,8 +17,9 @@ const parser = (raf, productDescription) => {
 		rangeScale: raf.readShort() / 1000,
 		numberRadials: raf.readShort(),
 	};
-	// also providethe packet code in hex
-	result.packetCodeHex = packetCode.toString(16);
+	if (options.includePacketMetadata !== false) {
+		result.packetCodeHex = packetCode.toString(16);
+	}
 
 	// set up scaling or defaults
 	const scaling = {
@@ -50,35 +51,49 @@ const parser = (raf, productDescription) => {
 	// loop through the radials and bins
 	// return a structure of [radial][bin]
 	// radials provides scaled values per the product's scaling, radialsRaw provides bytes as read from the file
-	const radials = [];
-	const radialsRaw = [];
+	const includeRawBinData = options.includeRawBinData !== false;
+	const radials = new Array(result.numberRadials);
+	const radialsRaw = includeRawBinData ? new Array(result.numberRadials) : null;
+	const decoded = [];
+	decoded[0] = null;
+	decoded[1] = 'rf';
 	for (let r = 0; r < result.numberRadials; r += 1) {
 		const bytesInRadial = raf.readShort();
+		const bins = new Array(result.numberBins);
+		const binsRaw = includeRawBinData ? new Array(result.numberBins) : null;
 		const radial = {
 			startAngle: raf.readShort() / 10,
 			angleDelta: raf.readShort() / 10,
-			bins: [],
+			bins,
 		};
-		const radialRaw = { ...radial, bins: [] };
+		const radialRaw = includeRawBinData
+			? {
+				startAngle: radial.startAngle,
+				angleDelta: radial.angleDelta,
+				bins: binsRaw,
+			}
+			: null;
 		for (let i = 0; i < result.numberBins; i += 1) {
 			const value = raf.readByte();
-			// per documentation 0 = below threshold, 1 = range folding
-			if (value === 0) {
-				radial.bins.push(null); // below threshold
-			} else if (value === 1) {
-				radial.bins.push('rf'); // range folding
-			} else {
-				radial.bins.push(scaled[value]);
+			if (decoded[value] === undefined) {
+				decoded[value] = scaled[value];
 			}
-			radialRaw.bins.push(value);
+			bins[i] = decoded[value];
+			if (includeRawBinData) {
+				binsRaw[i] = value;
+			}
 		}
-		radials.push(radial);
-		radialsRaw.push(radialRaw);
+		radials[r] = radial;
+		if (includeRawBinData) {
+			radialsRaw[r] = radialRaw;
+		}
 		// must end on a halfword boundary, skip any additional data if required
 		if (bytesInRadial !== result.numberBins) raf.skip(bytesInRadial - result.numberBins);
 	}
 	result.radials = radials;
-	result.radialsRaw = radialsRaw;
+	if (includeRawBinData) {
+		result.radialsRaw = radialsRaw;
+	}
 
 	return result;
 };

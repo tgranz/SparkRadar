@@ -36,7 +36,7 @@ const packetsRaw = [
     toPacket(packetAf1fModule)
 ];
 
-const packet17Parser = (raf) => {
+const packet17Parser = (raf, productDescription, options) => {
     const packetCode = raf.readUShort();
     const lengthOfBlock = raf.readShort();
     const endPos = raf.getPos() + lengthOfBlock;
@@ -44,7 +44,7 @@ const packet17Parser = (raf) => {
         packets: [],
     };
     while (raf.getPos() < endPos) {
-        result.packets.push(parser(raf));
+        result.packets.push(parser(raf, productDescription, options));
     }
     result.packetCodeHex = packetCode.toString(16);
     return result;
@@ -74,14 +74,15 @@ packetsRaw.forEach((packet) => {
 packets[packet17.code] = packet17;
 packets[packet18.code] = packet18;
 
-const parser = (raf, productDescription) => {
-    const packetCode = raf.readUShort();
-    raf.skip(-2);
+const parser = (raf, productDescription, options) => {
+    const packetCode = raf.peekUShort();
 
-    const packetCodeHex = packetCode.toString(16).padStart(4, '0');
     const packet = packets[packetCode];
-    if (!packet) throw new Error(`Unsupported packet code 0x${packetCodeHex}`);
-    return packet.parser(raf, productDescription);
+    if (!packet) {
+        const packetCodeHex = packetCode.toString(16).padStart(4, '0');
+        throw new Error(`Unsupported packet code 0x${packetCodeHex}`);
+    }
+    return packet.parser(raf, productDescription, options);
 };
 
 setPacketParser(parser);

@@ -88,9 +88,16 @@ class RandomAccessFile {
 		return short;
 	}
 
+	// peek an unsigned short without advancing the cursor
+	peekUShort() {
+		return this.readUIntLocal(this.offset, 2);
+	}
+
 	// read a byte from the buffer
 	readByte() {
-		return this.read()[0];
+		const value = this.buffer[this.offset];
+		this.offset += 1;
+		return value;
 	}
 
 	// read a set number of bytes from the buffer and return as an array

@@ -2402,6 +2402,75 @@ select:hover {
   color: white !important;
 }
 
+.map-rightclick-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 200px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  backdrop-filter: blur(10px);
+}
+
+.map-rightclick-menu.hidden {
+  display: none;
+}
+
+.map-rightclick-title {
+  color: var(--primary-color);
+  font-weight: 700;
+  font-size: 0.9em;
+  padding: 4px 6px;
+}
+
+.map-rightclick-empty {
+  color: #cfd7e6;
+  font-size: 0.85em;
+  padding: 4px 6px;
+}
+
+.map-rightclick-stations-wrapper {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.map-rightclick-button {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'Onest', sans-serif;
+  font-size: 0.9em;
+  font-weight: bold;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  width: 100%;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.map-rightclick-button:hover {
+  border-color: var(--primary-color);
+  background: rgba(39, 190, 255, 0.18);
+}
+
+.map-rightclick-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 4px 0;
+}
+
+.map-rightclick-share {
+  text-align: center;
+}
+
 .menu-external-links {
   display: flex;
   flex-direction: row;
@@ -2558,4 +2627,12 @@ select:hover {
 .settings-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--primary-color);
+}
+
+p.code {
+  font-family: monospace;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 5px;
+  border-radius: 5px;
+  font-size: 1em;
 }

@@ -1,9 +1,7 @@
-import { expand4_4 } from './utilities/rle.js';
-
 const code = 0xaf1f;
 const description = 'Radial Data Packet (16 Data Levels)';
 
-const parser = (raf) => {
+const parser = (raf, productDescription, options = {}) => {
 	// packet header
 	const packetCode = raf.readUShort();
 
@@ -19,24 +17,40 @@ const parser = (raf) => {
 		rangeScale: raf.readShort() / 1000,
 		numRadials: raf.readShort(),
 	};
-	// also providethe packet code in hex
-	result.packetCodeHex = packetCode.toString(16);
+	if (options.includePacketMetadata !== false) {
+		result.packetCodeHex = packetCode.toString(16);
+	}
 
 	// loop through the radials and bins
 	// return a structure of [radial][bin]
-	const radials = [];
+	const radials = new Array(result.numRadials);
 	for (let r = 0; r < result.numRadials; r += 1) {
 		// get the rle length
 		const rleLength = raf.readShort() * 2;
+		const bins = new Array(result.numberBins);
 		const radial = {
 			startAngle: raf.readShort() / 10,
 			angleDelta: raf.readShort() / 10,
-			bins: [],
+			bins,
 		};
+		let binIndex = 0;
 		for (let i = 0; i < rleLength; i += 1) {
-			radial.bins.push(...(expand4_4(raf.readByte())));
+			const value = raf.readByte();
+			const run = value >> 4;
+			const data = value & 0x0F;
+			const nextBinIndex = Math.min(binIndex + run, result.numberBins);
+			if (nextBinIndex > binIndex) {
+				bins.fill(data, binIndex, nextBinIndex);
+				binIndex = nextBinIndex;
+			}
+			if (binIndex >= result.numberBins) {
+				continue;
+			}
 		}
-		radials.push(radial);
+		if (binIndex < result.numberBins) {
+			bins.length = binIndex;
+		}
+		radials[r] = radial;
 	}
 	result.radials = radials;
 

@@ -2,6 +2,8 @@ import { Buffer } from 'buffer';
 import { Level2Radar } from '../../parse/level2/src/index.js';
 import nexradLevel3Data from '../../parse/level3/src/browser.js';
 
+const LEVEL3_PARSE_MODE = 'fast';
+
 const EARTH_RADIUS = 6371000;
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
@@ -264,13 +266,38 @@ self.onmessage = (event) => {
     }
 
     try {
+        const toEpochMs = (monotonicMs) => performance.timeOrigin + monotonicMs;
+        const parserStartMs = toEpochMs(performance.now());
+        let parserEndMs = null;
+        let meshEndMs = null;
         const upperLayer = typeof layer === 'string' ? layer.toUpperCase() : '';
         const isLevel2Product = upperLayer === 'REF' || upperLayer === 'VEL' || upperLayer === 'CC' || upperLayer === 'KDP' || upperLayer === 'SW';
         const isLevel3 = !isLevel2Product;
         const buffer = Buffer.from(arrayBuffer);
 
         if (isLevel3) {
-            const radar = nexradLevel3Data(buffer);
+            const requestedParseMode = typeof options?.level3ParseMode === 'string'
+                ? options.level3ParseMode.toLowerCase()
+                : null;
+            const level3ParseMode = requestedParseMode === 'full' ? 'full' : LEVEL3_PARSE_MODE;
+            const radar = nexradLevel3Data(
+                buffer,
+                level3ParseMode === 'fast'
+                    ? {
+                        logger: false,
+                        parseGraphic: false,
+                        parseTabular: false,
+                        parseFormatted: false,
+                        includeRawBinData: false,
+                        includePacketMetadata: false,
+                        parseFirstRadialPacketOnly: true,
+                        minimalOutput: true
+                    }
+                    : {
+                        logger: false
+                    }
+            );
+            parserEndMs = toEpochMs(performance.now());
             const radarLat = radar.productDescription?.latitude;
             const radarLon = radar.productDescription?.longitude;
             if (radarLat == null || radarLon == null) {
@@ -278,6 +305,7 @@ self.onmessage = (event) => {
             }
             const radarLocation = [radarLat, radarLon];
             const { meshData, bounds, geojson } = processLevel3Data(radar, radarLocation, options);
+            meshEndMs = toEpochMs(performance.now());
             const { timeIso, elevationAngle, vcp } = getLevel3Metadata(radar);
             const metadata = {
                 station: options?.station || null,
@@ -287,9 +315,21 @@ self.onmessage = (event) => {
                 vcp
             };
 
-            self.postMessage({ type: 'result', geojson, meshData, bounds, metadata }, [meshData.buffer]);
+            self.postMessage({
+                type: 'result',
+                geojson,
+                meshData,
+                bounds,
+                metadata,
+                timing: {
+                    parserStartMs,
+                    parserEndMs,
+                    meshEndMs
+                }
+            }, [meshData.buffer]);
         } else {
             const radar = new Level2Radar(buffer);
+            parserEndMs = toEpochMs(performance.now());
 
             const elevations = radar.listElevations();
             if (options?.elevation && elevations.includes(options.elevation)) {
@@ -303,6 +343,7 @@ self.onmessage = (event) => {
             const extent = header.radial_length;
 
             const { meshData, bounds, geojson } = processRadarData(radar, radarLocation, extent, layer, options);
+            meshEndMs = toEpochMs(performance.now());
             const metadata = {
                 timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds - 3600000).toISOString(),
                 elevationAngle: header.elevation_angle,
@@ -310,7 +351,18 @@ self.onmessage = (event) => {
                 vcp: Number.isFinite(header.vcp) ? header.vcp : null
             };
 
-            self.postMessage({ type: 'result', geojson, meshData, bounds, metadata }, [meshData.buffer]);
+            self.postMessage({
+                type: 'result',
+                geojson,
+                meshData,
+                bounds,
+                metadata,
+                timing: {
+                    parserStartMs,
+                    parserEndMs,
+                    meshEndMs
+                }
+            }, [meshData.buffer]);
         }
     } catch (error) {
         self.postMessage({ type: 'error', message: error?.message || String(error) });

@@ -70,6 +70,9 @@ export function renderAlert(alert) {
     const originalProductName = alert?.productName.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
 
     // Now re-render the title
+    if (alert?.productName.toLowerCase() == "Severe Weather Statement".toLowerCase()) {
+        alert.productName = "Severe Thunderstorm Warning";
+    }
     if (alert?.productName.toLowerCase() == "tornado warning") {
         if (is_emergency) {
             alert.productName = "Tornado Emergency";

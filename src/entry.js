@@ -47,7 +47,6 @@ import { hideLoadingAnimation, showLoadingAnimation } from "./js/ui/loader.js";
 import { layerMenu } from "./components/layer_menu.js";
 
 // Set custom colors
-
 import Settings from './js/ui/settings.js';
 window.settingsInstance = new Settings(); // Expose globally for color customization
 
@@ -376,6 +375,45 @@ const updateColorbarForMap = (mainOrSplit, product) => {
   colorbar.style.background = gradientCSS;
 };
 
+const getNowEpochMs = () => performance.timeOrigin + performance.now();
+
+const isFiniteMs = (value) => Number.isFinite(value);
+
+const formatMs = (value) => `${value.toFixed(2)} ms`;
+
+const logRadarTimingIfComplete = (timing, context = {}) => {
+  const { renderCalledAtMs, fileFetchedAtMs, parserFinishedAtMs, meshFinishedAtMs, visibleAtMs } = timing || {};
+  if (!isFiniteMs(renderCalledAtMs) || !isFiniteMs(fileFetchedAtMs) || !isFiniteMs(parserFinishedAtMs) || !isFiniteMs(meshFinishedAtMs) || !isFiniteMs(visibleAtMs)) {
+    return;
+  }
+
+  const renderToFetch = fileFetchedAtMs - renderCalledAtMs;
+  const fetchToParse = parserFinishedAtMs - fileFetchedAtMs;
+  const parseToMesh = meshFinishedAtMs - parserFinishedAtMs;
+  const meshToVisible = visibleAtMs - meshFinishedAtMs;
+  const totalRenderToVisible = visibleAtMs - renderCalledAtMs;
+  const sourceLabel = context.source === 'cache' ? 'cache' : 'network';
+  const targetLabel = context.target || 'main';
+  const stationLabel = context.station || 'unknown';
+  const productLabel = context.product || 'unknown';
+
+  const titleStyle = 'background:#111827;color:#86efac;padding:2px 8px;border-radius:3px;font-weight:700;';
+  const rowLabelStyle = 'color:#93c5fd;font-weight:700;';
+  const rowValueStyle = 'color:#f8fafc;font-weight:600;';
+  const totalStyle = 'color:#facc15;font-weight:800;';
+
+  console.groupCollapsed(
+    `%c[Radar Timing] ${stationLabel} ${productLabel} (${targetLabel}, ${sourceLabel})`,
+    titleStyle
+  );
+  console.log('%cRender call → File fetched:%c %s', rowLabelStyle, rowValueStyle, formatMs(renderToFetch));
+  console.log('%cFile fetched → Parser finished:%c %s', rowLabelStyle, rowValueStyle, formatMs(fetchToParse));
+  console.log('%cParser finished → Mesh computed:%c %s', rowLabelStyle, rowValueStyle, formatMs(parseToMesh));
+  console.log('%cMesh computed → Visible on map:%c %s', rowLabelStyle, rowValueStyle, formatMs(meshToVisible));
+  console.log('%cTotal (Render call → Visible):%c %s', totalStyle, totalStyle, formatMs(totalRenderToVisible));
+  console.groupEnd();
+};
+
 // Function to set the current radar on the map
 async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     if (!map) return;
@@ -417,6 +455,13 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
     
     try {
       showLoadingAnimation();
+      const renderTiming = {
+        renderCalledAtMs: getNowEpochMs(),
+        fileFetchedAtMs: null,
+        parserFinishedAtMs: null,
+        meshFinishedAtMs: null,
+        visibleAtMs: null,
+      };
       const picker = mainOrSplit === 'split' ? map.splitRadarPicker : map.radarPicker;
       const radarResult = await radar.getRadarLayer(station, product, {
         ...options,
@@ -439,8 +484,26 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
           }
         }
       });
+      if (radarResult?.timing) {
+        renderTiming.fileFetchedAtMs = radarResult.timing.fileFetchedAtMs;
+        renderTiming.parserFinishedAtMs = radarResult.timing.parserFinishedAtMs;
+        renderTiming.meshFinishedAtMs = radarResult.timing.meshFinishedAtMs;
+      }
+
+      const handleFirstVisibleFrame = () => {
+        renderTiming.visibleAtMs = getNowEpochMs();
+        logRadarTimingIfComplete(renderTiming, {
+          station,
+          product,
+          target: mainOrSplit,
+          source: radarResult?.timing?.source,
+        });
+      };
+
       if (radarResult?.meshData instanceof Float32Array) {
-        map.addWebGlRadarMesh(radarResult.meshData, radarResult.bounds, mainOrSplit, product);
+        map.addWebGlRadarMesh(radarResult.meshData, radarResult.bounds, mainOrSplit, product, {
+          onFirstVisibleFrame: handleFirstVisibleFrame,
+        });
         updateColorbarForMap(mainOrSplit, product);
         if (mainOrSplit === 'main') {
           map.inspectBounds = radarResult.bounds
@@ -448,7 +511,9 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
             : null;
         }
       } else if (radarResult?.geojson) {
-        map.addWebGlRadarLayer(radarResult.geojson, mainOrSplit, product);
+        map.addWebGlRadarLayer(radarResult.geojson, mainOrSplit, product, {
+          onFirstVisibleFrame: handleFirstVisibleFrame,
+        });
         updateColorbarForMap(mainOrSplit, product);
         if (mainOrSplit === 'main' && map.currentGeojson) {
           map.inspectBounds = map._computeBounds(map.currentGeojson);
@@ -475,13 +540,16 @@ if (isMobile) {
 
 // Map style (bad): https://tgranz.github.io/maps/bold.json
 // (old): https://api.maptiler.com/maps/01991750-e542-745a-bb74-f8f5646a978c/style.json?key=UMONrX6MjViuKZoR882u
+var startLat = urlParams.get('lat') || 35.4;
+var startLng = urlParams.get('lon') || -97.1;
+var startZoom = urlParams.get('zoom') || 5;
 
 const map = new Map({
     container: "map",
     style: 'https://tgranz.github.io/maps/spark.json',
-    center: [-97.1, 35.4],
-    zoom: 5,
-    minZoom: 3,
+    center: [startLng, startLat],
+    zoom: startZoom,
+    minZoom: 2,
     maxZoom: 17,
     projection: 'mercator',
     attributionControl: false,

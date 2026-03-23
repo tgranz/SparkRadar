@@ -77,7 +77,15 @@ const combineOptions = (newOptions) => {
     let logger = newOptions?.logger ?? console;
     if (logger === false) logger = nullLogger;
     return {
-        ...newOptions, logger,
+        parseSymbology: newOptions?.parseSymbology !== false,
+        parseGraphic: newOptions?.parseGraphic !== false,
+        parseTabular: newOptions?.parseTabular !== false,
+        parseFormatted: newOptions?.parseFormatted !== false,
+        includeRawBinData: newOptions?.includeRawBinData !== false,
+        parseFirstRadialPacketOnly: newOptions?.parseFirstRadialPacketOnly === true,
+        minimalOutput: newOptions?.minimalOutput === true,
+        ...newOptions,
+        logger,
     };
 };
 
@@ -89,32 +97,40 @@ const nullLogger = {
 
 const nexradLevel3Data = (file, _options) => {
     const options = combineOptions(_options);
+    const minimalOutput = options.minimalOutput === true;
 
     const raf = new RandomAccessFile(file);
     const result = {};
 
-    result.textHeader = textHeader(raf);
+    const parsedTextHeader = textHeader(raf);
+    if (!minimalOutput) {
+        result.textHeader = parsedTextHeader;
+    }
 
     const textHeaderLength = raf.getPos();
 
-    if (!result.textHeader.fileType.startsWith('SDUS')) {
-        throw new Error(`Incorrect file type header: ${result.textHeader.fileType}`);
+    if (!parsedTextHeader.fileType.startsWith('SDUS')) {
+        throw new Error(`Incorrect file type header: ${parsedTextHeader.fileType}`);
     }
-    if (!productAbbreviations.includes(result.textHeader.type)) {
-        throw new Error(`Unsupported product type: ${result.textHeader.type}`);
+    if (!productAbbreviations.includes(parsedTextHeader.type)) {
+        throw new Error(`Unsupported product type: ${parsedTextHeader.type}`);
     }
 
-    result.messageHeader = messageHeader(raf);
-    const product = products[result.messageHeader.code.toString()];
+    const parsedMessageHeader = messageHeader(raf);
+    if (!minimalOutput) {
+        result.messageHeader = parsedMessageHeader;
+    }
+    const product = products[parsedMessageHeader.code.toString()];
 
     if (!product) {
-        throw new Error(`Unsupported product code: ${result.messageHeader.code}`);
+        throw new Error(`Unsupported product code: ${parsedMessageHeader.code}`);
     }
 
-    result.productDescription = parseProductDescription(raf, product);
+    const parsedProductDescription = parseProductDescription(raf, product);
+    result.productDescription = parsedProductDescription;
 
     let decompressed;
-    if (result.productDescription.compressionMethod > 0) {
+    if (parsedProductDescription.compressionMethod > 0) {
         const rafPos = raf.getPos();
         const compressed = raf.read(raf.getLength() - raf.getPos());
         const data = bzip.decode(compressed);
@@ -129,15 +145,18 @@ const nexradLevel3Data = (file, _options) => {
     }
 
     try {
-        if (result.productDescription.offsetSymbology !== 0) {
-            const offsetSymbologyBytes = textHeaderLength + result.productDescription.offsetSymbology * 2;
+        if (options.parseSymbology && parsedProductDescription.offsetSymbology !== 0) {
+            const offsetSymbologyBytes = textHeaderLength + parsedProductDescription.offsetSymbology * 2;
             if (offsetSymbologyBytes > decompressed.getLength()) {
-                throw new Error(`Invalid symbology offset: ${result.productDescription.offsetSymbology}`);
+                throw new Error(`Invalid symbology offset: ${parsedProductDescription.offsetSymbology}`);
             }
             decompressed.seek(offsetSymbologyBytes);
 
-            result.symbology = symbologyHeader(decompressed);
-            result.radialPackets = radialPackets(decompressed, result.productDescription, result.symbology.numberLayers, options);
+            const parsedSymbology = symbologyHeader(decompressed);
+            if (!minimalOutput) {
+                result.symbology = parsedSymbology;
+            }
+            result.radialPackets = radialPackets(decompressed, parsedProductDescription, parsedSymbology.numberLayers, options);
         }
     } catch (error) {
         options.logger.warn(error.stack);
@@ -145,10 +164,10 @@ const nexradLevel3Data = (file, _options) => {
     }
 
     try {
-        if (result.productDescription.offsetGraphic !== 0) {
-            const offsetGraphicBytes = textHeaderLength + result.productDescription.offsetGraphic * 2;
+        if (options.parseGraphic && parsedProductDescription.offsetGraphic !== 0) {
+            const offsetGraphicBytes = textHeaderLength + parsedProductDescription.offsetGraphic * 2;
             if (offsetGraphicBytes > decompressed.getLength()) {
-                throw new Error(`Invalid graphic offset: ${result.productDescription.offsetGraphic}`);
+                throw new Error(`Invalid graphic offset: ${parsedProductDescription.offsetGraphic}`);
             }
             decompressed.seek(offsetGraphicBytes);
             result.graphic = graphicHeader(decompressed);
@@ -159,10 +178,10 @@ const nexradLevel3Data = (file, _options) => {
     }
 
     try {
-        if (result.productDescription.offsetTabular !== 0) {
-            const offsetTabularBytes = textHeaderLength + result.productDescription.offsetTabular * 2;
+        if (options.parseTabular && parsedProductDescription.offsetTabular !== 0) {
+            const offsetTabularBytes = textHeaderLength + parsedProductDescription.offsetTabular * 2;
             if (offsetTabularBytes > decompressed.getLength()) {
-                throw new Error(`Invalid tabular offset: ${result.productDescription.offsetTabular}`);
+                throw new Error(`Invalid tabular offset: ${parsedProductDescription.offsetTabular}`);
             }
             decompressed.seek(offsetTabularBytes);
             result.tabular = tabularHeader(decompressed, product);
@@ -173,8 +192,10 @@ const nexradLevel3Data = (file, _options) => {
     }
 
     try {
-        const formatted = product?.formatter?.(result);
-        if (formatted) result.formatted = formatted;
+        if (options.parseFormatted) {
+            const formatted = product?.formatter?.(result);
+            if (formatted) result.formatted = formatted;
+        }
     } catch (error) {
         options.logger.warn(error.stack);
         options.logger.warn('Unable to parse formatted tabular data');
