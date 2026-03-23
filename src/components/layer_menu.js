@@ -651,7 +651,7 @@ function renderOrderPanel(panel, mapInstance) {
         'radar': { type: 'icon' , value: 'ti ti-radar-2' },
         'labels': { type: 'icon' , value: 'ti ti-label' },
         'watches': { type: 'icon' , value: 'ti ti-eye' },
-        'lightning': { type: 'image' , value: '/assets/lightningmarker.png' },
+        'lightning': { type: 'image' , value: 'https://i.ibb.co/jkfmTDbt/lightningmarker.png' },
         'signatures': { type: 'icon' , value: 'ti ti-cloud-storm' },
         'spotterNetworkPositions': { type: 'image' , value: 'https://i.ibb.co/Md3GvZm/IMG-1278.webp' },
         'surfaceAnalysis': { type: 'icon' , value: 'ti ti-wind' },

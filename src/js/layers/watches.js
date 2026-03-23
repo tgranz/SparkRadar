@@ -126,8 +126,22 @@ class WatchLayer {
     }
 
     _convertWatchToGeoJSON(watch) {
-        if (!watch || watch.type !== 'Feature') return null;
-        return watch;
+        if (!watch) return null;
+
+        if (watch.type === 'Feature' && watch.geometry) {
+            return watch;
+        }
+
+        if (watch.geometry) {
+            return {
+                type: 'Feature',
+                properties: watch.properties || {},
+                geometry: watch.geometry,
+                ...(watch.id !== undefined ? { id: watch.id } : {})
+            };
+        }
+
+        return null;
     }
 
     _getWatchColor(watch) {
@@ -335,7 +349,10 @@ class WatchLayer {
         const dualMap = this.map?.dualMap;
         const map = target === 'main' ? mainMap : dualMap;
         if (!map) return;
-        if (map.isStyleLoaded && !map.isStyleLoaded()) return;
+        if (!hasUsableMapStyle(map)) {
+            this._scheduleWatchSync(target);
+            return;
+        }
 
         const cache = target === 'main' ? this.watchCache.main : this.watchCache.dual;
         const nextKeys = new Set();
@@ -426,6 +443,8 @@ class WatchLayer {
                 cache.delete(key);
             }
         }
+
+        this.map?.layers?.applyLayerOrder(target);
     }
 
     _areWatchesEnabled() {
