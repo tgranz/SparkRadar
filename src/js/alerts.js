@@ -20,6 +20,7 @@ class AlertService {
         this.sseReconnectAttempts = 0;
         this.sseMaxReconnectAttempts = 5;
         this.sseReconnectDelay = 3000; // 3 seconds
+        this.shouldLogSseConnection = true;
 
         // Polling tracking
         this.alertPollingInterval = null;
@@ -77,7 +78,12 @@ class AlertService {
         }
 
         // Create EventSource for real-time updates
-        this.eventSource = new EventSource(`${API_BASE_URL}/subscribe`);
+        const streamUrl = new URL(`${API_BASE_URL}/subscribe`);
+        if (this.shouldLogSseConnection) {
+            streamUrl.searchParams.set('log', 'true');
+            this.shouldLogSseConnection = false;
+        }
+        this.eventSource = new EventSource(streamUrl.toString());
 
         this.eventSource.onopen = () => {
             console.log('[AlertService] Connected to alert stream');
