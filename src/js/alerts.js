@@ -79,14 +79,17 @@ class AlertService {
 
         // Create EventSource for real-time updates
         const streamUrl = new URL(`${API_BASE_URL}/subscribe`);
-        if (this.shouldLogSseConnection) {
+        const includeSseLogParam = this.shouldLogSseConnection;
+        if (includeSseLogParam) {
             streamUrl.searchParams.set('log', 'true');
-            this.shouldLogSseConnection = false;
         }
         this.eventSource = new EventSource(streamUrl.toString());
 
         this.eventSource.onopen = () => {
             console.log('[AlertService] Connected to alert stream');
+            if (includeSseLogParam) {
+                this.shouldLogSseConnection = false;
+            }
             this.sseReconnectAttempts = 0;
             this.sseConnected = true;
             this._updateConnectionStatus();
