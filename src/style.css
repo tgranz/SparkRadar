@@ -102,16 +102,18 @@ button {
   height: 38px;
   display: flex;
   cursor: pointer;
-  border-radius: 100px;
+  border-radius: 10px;
   color: white;
   background-color: transparent;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s, color 0.2s;
+  border: 1px solid transparent;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
 }
 
 button:hover {
-  background-color: var(--secondary-color);
+  background-color: var(--secondary-border-color);
+  border: 1px solid var(--primary-color) !important;
   color: white;
 }
 
@@ -128,6 +130,7 @@ button:hover {
 
 .selected {
   background-color: var(--secondary-color) !important;
+  border: 1px solid transparent;
   color: white !important;
 }
 
@@ -889,7 +892,7 @@ button:hover {
   font-size: 0.9em;
   cursor: pointer;
   transition: width 0.2s ease, gap 0.2s ease;
-  width: 24px;
+  width: 30px;
   overflow: hidden;
 }
 
@@ -900,14 +903,14 @@ button:hover {
 
 .attribution-icon {
   font-weight: bold;
-  font-size: 1em;
+  font-size: 1.1em;
   color: white;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
 }
 
 .attribution-text {

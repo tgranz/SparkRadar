@@ -98,6 +98,17 @@ class RadarStationsLayer {
         });
     }
 
+    _checkLatency(isoTimestamp) {
+        if (!isoTimestamp) return false;
+        const timestamp = Date.parse(isoTimestamp);
+        if (isNaN(timestamp)) return false;
+
+        const now = Date.now();
+        const latencyMinutes = (now - timestamp) / 60000;
+        console.log(`[RadarStationsLayer] Station latency: ${latencyMinutes.toFixed(1)} minutes`);
+        return latencyMinutes < 15; // Consider good if data is less than 15 minutes old
+    }
+
     update() {
         const mapInstance = this.map;
         const mainMap = mapInstance.map;
@@ -151,12 +162,14 @@ class RadarStationsLayer {
                     }
 
                     const isOperational = station.properties?.rda?.properties?.status === 'Operate';
+                    const isUp = isOperational ? this._checkLatency(station?.properties?.latency?.levelTwoLastReceivedTime) : false;
+
                     filteredFeatures.push({
                         type: 'Feature',
                         geometry: station.geometry,
                         properties: {
                             ...properties,
-                            isOperational: isOperational ? 1 : 0
+                            isOperational: isUp ? 1 : 0
                         }
                     });
                 }
