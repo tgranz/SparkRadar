@@ -134,13 +134,37 @@ const inferLevelFromProduct = (product) => {
   return 'L3';
 };
 
+const isCrossSectionProductSupported = (product) => {
+  if (!product) return false;
+
+  const upper = String(product).toUpperCase();
+  if (inferLevelFromProduct(upper) === 'L2') return false;
+
+  if (upper === 'DAA' || upper === 'DTA') return false;
+  if (/^N[0-3]S$/.test(upper)) return false;
+
+  return /^N[0-3][A-Z]$/.test(upper);
+};
+
+const updateCrossSectionButtonState = (product) => {
+  const button = document.getElementById('cross-section-button');
+  if (!button) return;
+
+  const supported = isCrossSectionProductSupported(product);
+  button.disabled = !supported;
+  button.setAttribute('aria-disabled', String(!supported));
+  button.title = supported
+    ? 'Cross-section view'
+    : 'Cross-section unavailable for this product';
+};
+
 // Function to map L3 product codes to palette keys
 const productToPaletteKey = (product) => {
   if (!product) return 'REF';
   const upper = product.toUpperCase();
   
   // If it's already a palette key, return it
-  if (upper === 'REF' || upper === 'VEL' || upper === 'CC' || upper === 'KDP' || upper === 'SW' || upper === 'ZDR' || upper === 'DHC') {
+  if (upper === 'REF' || upper === 'VEL' || upper === 'SRV' || upper === 'CC' || upper === 'KDP' || upper === 'SW' || upper === 'ZDR' || upper === 'DHC' || upper === 'DAA' || upper === 'DTA') {
     return upper;
   }
   
@@ -148,11 +172,14 @@ const productToPaletteKey = (product) => {
   const productMap = {
     'N0B': 'REF', 'N1B': 'REF', 'N2B': 'REF', 'N3B': 'REF', // Base Reflectivity
     'N0G': 'VEL', 'N1G': 'VEL', 'N2G': 'VEL', 'N3G': 'VEL', // Base Velocity
+    'N0U': 'SRV', 'N1U': 'SRV', 'N2U': 'SRV', 'N3U': 'SRV', // Storm Relative Velocity
+    'N0S': 'SRV', 'N1S': 'SRV', 'N2S': 'SRV', 'N3S': 'SRV', // Storm Relative Velocity
     'N0C': 'CC', 'N1C': 'CC', 'N2C': 'CC', 'N3C': 'CC',     // Correlation Coefficient
     'N0K': 'KDP', 'N1K': 'KDP', 'N2K': 'KDP', 'N3K': 'KDP', // Specific Differential Phase
     'N0H': 'DHC', 'N1H': 'DHC', 'N2H': 'DHC', 'N3H': 'DHC', // Hydrometer Classification
     'N0W': 'SW', 'N1W': 'SW', 'N2W': 'SW', 'N3W': 'SW',     // Spectrum Width
     'N0Z': 'ZDR', 'N1Z': 'ZDR', 'N2Z': 'ZDR', 'N3Z': 'ZDR', // Differential Reflectivity
+    'DAA': 'DAA', 'DTA': 'DTA',                             // Precipitation Accumulation
   };
   
   return productMap[upper] || 'REF'; // Default to REF if not found
@@ -440,6 +467,10 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
         if (!product) product = mainRadar.product;
         const level = inferLevelFromProduct(product);
         mainRadar = { station, product, level, options };
+      updateCrossSectionButtonState(product);
+        if (!isCrossSectionProductSupported(product) && map?.crossSection?.enabled) {
+          map.disableCrossSection();
+        }
         // Track the current main station
         map.currentMainStation = station;
         // Dispatch event for station change
@@ -603,6 +634,19 @@ const alertList = new AlertList(map.layers);
 const inspector = new Inspector(map);
 var inspectorEnabled = false;
 
+const toggleSplitMap = () => {
+  if (map.crossSection?.enabled) {
+    return;
+  }
+
+  if (map.isSplit()) {
+    map.stopSplit();
+    return;
+  }
+
+  map.splitMap('horizontal', { station: mainRadar.station, product: mainRadar.product });
+};
+
 // Keybinds
 window.addEventListener('keydown', (e) => {
   const target = e.target;
@@ -617,10 +661,19 @@ window.addEventListener('keydown', (e) => {
   };
 
   if (pressedKey && pressedKey === getShortcut('shortcutToggleSplitView', 'm')) {
-    if (map.isSplit()) {
-      map.stopSplit();
+    toggleSplitMap();
+  } else if (pressedKey && pressedKey === getShortcut('shortcutToggleCrossSection', 'x')) {
+    if (map.crossSection?.enabled) {
+      map.disableCrossSection();
     } else {
-      map.splitMap('horizontal', { station: mainRadar.station, product: mainRadar.product });
+      if (map.isSplit()) {
+        map.stopSplit();
+        requestAnimationFrame(() => {
+          map.enableCrossSection(mainRadar.station, mainRadar.product);
+        });
+      } else {
+        map.enableCrossSection(mainRadar.station, mainRadar.product);
+      }
     }
   } else if (pressedKey && pressedKey === getShortcut('shortcutShowRadarStatus', 's')) {
     const statusDialog = new RadarStatus(mainRadar.station);
@@ -736,23 +789,26 @@ animationController.initialize(radar, map);
 
 // Build the main toolbar
 const toolbar = createToolbar(
-  () => { 
-    if (map.isSplit()) {
-      map.stopSplit();
-    } else {
-      // Update splitRadar state to match what we're opening
+  () => {
+    if (map.crossSection?.enabled) {
+      return;
+    }
+
+    if (!map.isSplit()) {
       const newProduct = inferLevelFromProduct(mainRadar.product) === 'L3' ? 'N0G' : 'VEL';
-      splitRadar = { 
-        station: mainRadar.station, 
-        product: newProduct, 
-        level: inferLevelFromProduct(newProduct), 
-        options: { gate_limit: -30 } 
+      splitRadar = {
+        station: mainRadar.station,
+        product: newProduct,
+        level: inferLevelFromProduct(newProduct),
+        options: { gate_limit: -30 }
       };
-      // Set debounce before opening split map to prevent immediate update checks
       lastStationChangeTime.split = Date.now();
       lastCheckedRadar.split = null;
       map.splitMap('horizontal', { station: mainRadar.station, product: newProduct });
-    } 
+      return;
+    }
+
+    toggleSplitMap();
   },
   () => { menu.open();},
   () => { new RadarStatus(mainRadar.station); },
@@ -766,10 +822,17 @@ const toolbar = createToolbar(
     }},
   () => { startDraw(); },
   () => { 
-    if (map.isSplit()) {
-      map.stopSplit();
+    if (map.crossSection?.enabled) {
+      map.disableCrossSection();
     } else {
-      map.splitGl();
+      if (map.isSplit()) {
+        map.stopSplit();
+        requestAnimationFrame(() => {
+          map.enableCrossSection(mainRadar.station, mainRadar.product);
+        });
+      } else {
+        map.enableCrossSection(mainRadar.station, mainRadar.product);
+      }
     }
   },
   () => {
@@ -796,6 +859,7 @@ const toolbar = createToolbar(
 
 // Add the toolbar to the page
 document.body.appendChild(toolbar);
+updateCrossSectionButtonState(mainRadar.product);
 
 // Function to load radar from archive URL and disable auto-updates
 window.loadRadarFromArchive = async function(url, station) {
@@ -947,6 +1011,12 @@ updateIntervalId = setInterval(async () => {
         if (layerSettings.spotterNetworkPositionsEnabled === true) {
           map.fetchSpotterNetworkPositions();
         }
+        if (layerSettings.metarStationsEnabled === true) {
+          map.fetchMetarStations();
+        }
+        if (layerSettings.nwsTornadoReportsEnabled === true || layerSettings.nwsWindReportsEnabled === true || layerSettings.nwsHailReportsEnabled === true) {
+          map.fetchNwsStormReports();
+        }
       } catch (error) {
         console.error('Error loading layer settings for periodic updates:', error);
       }
@@ -966,6 +1036,27 @@ updateIntervalId = setInterval(async () => {
     updateInProgress = false;
   }
 }, 10 * 1000); // Run updates every 10 seconds
+
+window.enableAutoUpdates = function() {
+  autoUpdateEnabled = true;
+  archiveMode.main = null;
+  archiveMode.split = null;
+  console.log('Auto-updates re-enabled.');
+  // Rebuild product picker to show all products
+  map.rebuildRadarPicker('main', false);
+  if (map.hasSplitMap()) {
+    map.rebuildRadarPicker('split', false);
+  }
+};
+
+window.disableAutoUpdates = function() {
+  autoUpdateEnabled = false;
+  console.log('Auto-updates disabled.');
+};
+
+window.isAutoUpdateEnabled = function() {
+  return autoUpdateEnabled;
+};
 
 // Post a notice to users opening the console
 setTimeout(() => {

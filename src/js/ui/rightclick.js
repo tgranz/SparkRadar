@@ -324,7 +324,7 @@ class RightClickHandler {
                 text: "Copy URL",
                 className: "",
                 click: () => {
-                    navigator.clipboard.writeText(window.location.href).then(() => {
+                    navigator.clipboard.writeText(`https://sparkradar.app?lat=${context.lngLat.lat.toFixed(6)}&lon=${context.lngLat.lng.toFixed(6)}&zoom=12&station=${nearestStation.id}`).then(() => {
                         const successMessage = document.getElementById('copied-to-clipboard-success');
                         if (successMessage) {
                             successMessage.textContent = 'URL copied to clipboard!';

@@ -54,10 +54,11 @@ export function renderAlert(alert) {
 
     // Check props
     const alertMessage = alert?.message || "";
-    const _is_destructive = alertMessage.toLowerCase().includes('destructive') || alertMessage.toLowerCase().includes('catastrophic') || false;
-    const _is_consid = !_is_destructive && alertMessage.toLowerCase().includes('considerable') || false;
-    const is_emergency = alertMessage.includes('TORNADO EMERGENCY') || alertMessage.includes('FLASH FLOOD EMERGENCY') || false;
-    const is_pds = alertMessage.toLowerCase().includes('particularly dangerous situation') || false;
+    const latestAlertMessage = alert?.message.split('#####')[0] || alertMessage;
+    const _is_destructive = latestAlertMessage.toLowerCase().includes('destructive') || latestAlertMessage.toLowerCase().includes('catastrophic') || false;
+    const _is_consid = !_is_destructive && latestAlertMessage.toLowerCase().includes('considerable') || false;
+    const is_emergency = latestAlertMessage.includes('TORNADO EMERGENCY') || latestAlertMessage.includes('FLASH FLOOD EMERGENCY') || false;
+    const is_pds = latestAlertMessage.toLowerCase().includes('particularly dangerous situation') || false;
     const damagelevel = _is_destructive ? 'destructive' : _is_consid ? 'considerable' : 'normal';
     const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
     const maxHailSize = hailMatch ? hailMatch[1].trim() : null;

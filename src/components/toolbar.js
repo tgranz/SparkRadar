@@ -30,21 +30,12 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
 
     const startSplitLayoutButton = document.createElement('button');
     startSplitLayoutButton.type = 'button';
+    startSplitLayoutButton.id = 'dual-map-button';
     startSplitLayoutButton.innerHTML = '<i class="ti ti-layout-rows"></i>';
     startSplitLayoutButton.title = 'Dual-radar view';
     startSplitLayoutButton.addEventListener('click', () => {
         if (typeof onSplitMap === 'function') {
             onSplitMap();
-        }
-    });
-
-    const start3dButton = document.createElement('button');
-    start3dButton.type = 'button';
-    start3dButton.innerHTML = '<i class="ti ti-chart-scatter"></i>';
-    start3dButton.title = '3D radar view';
-    start3dButton.addEventListener('click', () => {
-        if (typeof onSplit3d === 'function') {
-            onSplit3d();
         }
     });
 
@@ -188,24 +179,22 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     animationLabel.textContent = 'Animate';
     animationDiv.appendChild(animationButton);
     animationDiv.appendChild(animationLabel);
-    
-    const clearCacheDiv = document.createElement('div');
-    const clearCacheButton = document.createElement('button');
-    clearCacheButton.type = 'button';
-    clearCacheButton.id = 'clear-cache-button';
-    clearCacheButton.innerHTML = '<i class="ti ti-forbid-2"></i>';
-    clearCacheButton.title = 'Clear Cache';
-    clearCacheButton.addEventListener('click', () => {
-        // Clear cache by user request
-        if (typeof window !== 'undefined' && window.radarInstance?.clearCache) {
-            window.radarInstance.clearCache();
-            new Toast('Radar cache cleared.').show();
+
+    const crossSectionDiv = document.createElement('div');
+    const crossSectionButton = document.createElement('button');
+    crossSectionButton.type = 'button';
+    crossSectionButton.id = 'cross-section-button';
+    crossSectionButton.innerHTML = '<i class="ti ti-line"></i>';
+    crossSectionButton.title = 'Cross-section view';
+    crossSectionButton.addEventListener('click', () => {
+        if (typeof onSplit3d === 'function') {
+            onSplit3d();
         }
     });
-    const clearCacheLabel = document.createElement('span');
-    clearCacheLabel.textContent = 'Clear Cache';
-    clearCacheDiv.appendChild(clearCacheButton);
-    clearCacheDiv.appendChild(clearCacheLabel);
+    const crossSectionLabel = document.createElement('span');
+    crossSectionLabel.textContent = 'Cross-section';
+    crossSectionDiv.appendChild(crossSectionButton);
+    crossSectionDiv.appendChild(crossSectionLabel);
 
     // Create bottom UI elements
     const loader = document.createElement('div');
@@ -259,7 +248,7 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     toolbox.appendChild(drawDiv);
     toolbox.appendChild(measureDiv);
     toolbox.appendChild(animationDiv);
-    toolbox.appendChild(clearCacheDiv);
+    toolbox.appendChild(crossSectionDiv);
     document.body.appendChild(toolbox);
 
     // Assemble station info

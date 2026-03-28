@@ -58,6 +58,21 @@ class Radar {
         return 'L3';
     }
 
+    _getLevel2MomentForLayer(layer) {
+        if (!layer || typeof layer !== 'string') {
+            return null;
+        }
+
+        const upper = layer.toUpperCase();
+        if (upper === 'REF') return 'reflect';
+        if (upper === 'VEL') return 'velocity';
+        if (upper === 'CC') return 'rho';
+        if (upper === 'KDP') return 'phi';
+        if (upper === 'SW') return 'spectrum';
+        if (upper === 'ZDR') return 'zdr';
+        return null;
+    }
+
     _getLevel3Metadata(radar) {
         const productDescription = radar?.productDescription;
         if (!productDescription) return null;
@@ -219,8 +234,10 @@ class Radar {
         const radarFile = rawDataOverride ? { data: rawDataOverride } : await loadLatestL2RadarFile(station);
         const rawData = radarFile.data;
 
+        const requestedMoment = this._getLevel2MomentForLayer(options?.layer);
+
         // Create a Level2Radar instance
-        const radar = new Level2Radar(rawData);
+        const radar = new Level2Radar(rawData, requestedMoment ? { includeMoments: [requestedMoment] } : undefined);
 
         // Set the desired elevation angle (in whole numbers starting at 1)
         const elevations = radar.listElevations();
@@ -507,7 +524,7 @@ class Radar {
                 console.log(`[getRadarLayer] Latest file available: ${latestFileName}`);
 
                 const latestTimeIso = this._parseFilenameToIso(latestFileName);
-                const cacheTilt = this._getCacheTiltKey(layer, options);
+                const cacheTilt = this._getCacheTiltKey(layer, options) || 0;
                 const cached = latestTimeIso
                     ? this.cache.get(radarStation, layer, cacheTilt, latestTimeIso)
                     : null;
@@ -539,7 +556,7 @@ class Radar {
                         options.onMetadata({
                             timeString,
                             timeIso: cached.metadata.timeIso,
-                            tilt: cached.metadata.elevationAngle,
+                            tilt: cached.metadata.elevationAngle ?? 0,
                             vcp: cached.metadata.vcp ?? null
                         });
                     }
@@ -610,7 +627,7 @@ class Radar {
                     ...(level3Meta ?? {})
                 };
             } else {
-                const { radar, radarLocation, extent, header } = await this._fetchRadarData(radarStation, options, rawData);
+                const { radar, radarLocation, extent, header } = await this._fetchRadarData(radarStation, { ...options, layer }, rawData);
                 timing.parserFinishedAtMs = nowEpochMs();
                 const processed = await this._processRadarData(radar, radarLocation, extent, layer, { ...options, includeGeojson });
                 timing.meshFinishedAtMs = nowEpochMs();
@@ -653,13 +670,13 @@ class Radar {
                 options.onMetadata({
                     timeString,
                     timeIso: metadata.timeIso,
-                    tilt: metadata.elevationAngle,
+                    tilt: metadata.elevationAngle ?? 0,
                     vcp: metadata.vcp ?? null
                 });
             }
 
             if (meshData && cacheTimeIso) {
-                const cacheTilt = this._getCacheTiltKey(layer, options, metadata);
+                const cacheTilt = this._getCacheTiltKey(layer, options, metadata) ?? 0;
                 this.cache.set(
                     radarStation,
                     layer,

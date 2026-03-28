@@ -17,6 +17,8 @@ import StormCentersLayer from "./layers/storm_centers.js";
 import SurfaceAnalysisLayer from "./layers/surface_analysis.js";
 import LightningLayer from "./layers/lightning.js";
 import SpotterNetworkPositionsLayer from "./layers/spotter_network_positions.js";
+import MetarStationsLayer from "./layers/metar_stations.js";
+import NWSStormReportsLayer from "./layers/nws_storm_reports.js";
 import { applyLayerOrder, DEFAULT_LAYER_ORDER } from "./layers/layer_utils.js";
 
 class Layers {
@@ -25,6 +27,8 @@ class Layers {
         this.openPopup = null;  // Track currently open popup
         this.stormCenterHovered = false;  // Flag set when hovering over storm center marker
         this.spotterNetworkPositionHovered = false;  // Flag set when hovering over Spotter position marker
+        this.metarStationHovered = false; // Flag set when hovering over METAR station marker
+        this.nwsStormReportHovered = false; // Flag set when hovering over NWS storm report marker
 
         // Initialize AlertService
         this.alertService = new AlertService();
@@ -38,6 +42,8 @@ class Layers {
         this.surfaceAnalysisLayer = new SurfaceAnalysisLayer(mapInstance);
         this.lightningLayer = new LightningLayer(mapInstance);
         this.spotterNetworkPositionsLayer = new SpotterNetworkPositionsLayer(mapInstance);
+        this.metarStationsLayer = new MetarStationsLayer(mapInstance);
+        this.nwsStormReportsLayer = new NWSStormReportsLayer(mapInstance);
 
         // Layer ordering — load from localStorage or use default
         try {
@@ -90,8 +96,7 @@ class Layers {
             }
             
             if (settings.outlookEnabled) {
-                const day = settings.outlookDay || 1;
-                this.fetchOutlook(day);
+                this.fetchOutlooks();
             }
             
             if (settings.stormCentersEnabled) {
@@ -108,6 +113,19 @@ class Layers {
 
             if (settings.spotterNetworkPositionsEnabled) {
                 this.fetchSpotterNetworkPositions();
+            }
+
+            if (settings.metarStationsEnabled) {
+                this.fetchMetarStations();
+            }
+
+            if (settings.nwsTornadoReportsEnabled || settings.nwsWindReportsEnabled || settings.nwsHailReportsEnabled) {
+                this.nwsStormReportsLayer.setEnabledTypes({
+                    tornado: settings.nwsTornadoReportsEnabled === true,
+                    wind: settings.nwsWindReportsEnabled === true,
+                    hail: settings.nwsHailReportsEnabled === true
+                });
+                this.fetchNwsStormReports();
             }
         } catch (error) {
             console.error('Error loading initial layer settings:', error);
@@ -187,7 +205,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.map?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered) {
                 return;
             }
             
@@ -235,7 +253,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.dualMap?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered) {
                 return;
             }
             
@@ -470,6 +488,14 @@ class Layers {
         return this.spotterNetworkPositionsLayer.getSpotterNetworkPositions();
     }
 
+    get metarStations() {
+        return this.metarStationsLayer.getMetarStations();
+    }
+
+    get nwsStormReports() {
+        return this.nwsStormReportsLayer.getNwsStormReports();
+    }
+
     /**
      * Get current outlook day
      */
@@ -603,14 +629,34 @@ class Layers {
     async fetchOutlooks() {
         try {
             const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-            const activeDay = [1, 2, 3].includes(settings.outlookDay) ? settings.outlookDay : this.currentOutlookDay;
-            if (!activeDay) {
+            const selections = [];
+            const productsByDay = settings.outlookProducts || {};
+
+            for (const day of [1, 2, 3]) {
+                const dayProducts = productsByDay[day] || productsByDay[String(day)] || {};
+                for (const type of ['cat', 'torn', 'wind', 'hail']) {
+                    if (dayProducts[type] === true) {
+                        selections.push({ day, type });
+                    }
+                }
+            }
+
+            if (selections.length === 0) {
                 this._setLayerCache('outlook', null);
+                this.outlookLayer.setOutlookData(null, null, 'cat');
                 this.displayOutlook();
                 return null;
             }
 
-            return await this.fetchOutlook(activeDay);
+            const outlookData = await this.outlookLayer.fetchOutlookSelections(selections);
+            if (outlookData?.features?.length) {
+                this._setLayerCache('outlook', outlookData);
+                this.displayOutlook();
+            } else {
+                this._setLayerCache('outlook', null);
+                this.displayOutlook();
+            }
+            return outlookData;
         } catch (error) {
             console.error('[Layers] Error fetching outlooks:', error);
             this._setLayerCache('outlook', null);
@@ -683,6 +729,20 @@ class Layers {
         }
     }
 
+    displayMetarStations() {
+        this.displayMetarStationsOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayMetarStationsOnMap('dual');
+        }
+    }
+
+    displayNwsStormReports() {
+        this.displayNwsStormReportsOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayNwsStormReportsOnMap('dual');
+        }
+    }
+
     displayAlertsOnMap(target = 'main') {
         this.alertLayer.displayAlertsOnMap(target);
     }
@@ -713,6 +773,14 @@ class Layers {
 
     displaySpotterNetworkPositionsOnMap(target = 'main') {
         this.spotterNetworkPositionsLayer.displaySpotterNetworkPositionsOnMap(target);
+    }
+
+    displayMetarStationsOnMap(target = 'main') {
+        this.metarStationsLayer.displayMetarStationsOnMap(target);
+    }
+
+    displayNwsStormReportsOnMap(target = 'main') {
+        this.nwsStormReportsLayer.displayNwsStormReportsOnMap(target);
     }
 
     // Display on dual map methods
@@ -748,6 +816,14 @@ class Layers {
         this.displaySpotterNetworkPositionsOnMap('dual');
     }
 
+    displayMetarStationsOnDualMap() {
+        this.displayMetarStationsOnMap('dual');
+    }
+
+    displayNwsStormReportsOnDualMap() {
+        this.displayNwsStormReportsOnMap('dual');
+    }
+
     // Clear methods - delegate to layer classes
     clearAlerts(target = 'main') {
         this.alertLayer.clearAlerts(target);
@@ -781,9 +857,17 @@ class Layers {
         this.spotterNetworkPositionsLayer.clearSpotterNetworkPositions(target);
     }
 
+    clearMetarStations(target = 'main') {
+        this.metarStationsLayer.clearMetarStations(target);
+    }
+
+    clearNwsStormReports(target = 'main') {
+        this.nwsStormReportsLayer.clearNwsStormReports(target);
+    }
+
     // Outlook methods - delegate to OutlookLayer
-    async fetchOutlook(day) {
-        const outlookData = await this.outlookLayer.fetchOutlook(day);
+    async fetchOutlook(day, type = 'cat') {
+        const outlookData = await this.outlookLayer.fetchOutlook(day, type);
         if (outlookData?.features) {
             this._setLayerCache('outlook', outlookData);
             this.displayOutlook();
@@ -820,6 +904,20 @@ class Layers {
         const result = await this.spotterNetworkPositionsLayer.fetchSpotterNetworkPositions();
         this._setLayerCache('spotterNetworkPositions', result);
         this.displaySpotterNetworkPositions();
+        return result;
+    }
+
+    async fetchMetarStations() {
+        const result = await this.metarStationsLayer.fetchMetarStations();
+        this._setLayerCache('metarStations', result);
+        this.displayMetarStations();
+        return result;
+    }
+
+    async fetchNwsStormReports() {
+        const result = await this.nwsStormReportsLayer.fetchNwsStormReports();
+        this._setLayerCache('nwsStormReports', result);
+        this.displayNwsStormReports();
         return result;
     }
 

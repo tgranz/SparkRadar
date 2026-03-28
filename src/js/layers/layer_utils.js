@@ -266,7 +266,7 @@ export function pointInPolygon(point, rings) {
 // ─── Layer Ordering ──────────────────────────────────────────────────────────
 
 export const DEFAULT_LAYER_ORDER = [
-    'signatures', 'labels', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
+    'signatures', 'labels', 'metarStations', 'nwsStormReports', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
 ];
 
 export const LAYER_ORDER_LABELS = {
@@ -278,6 +278,8 @@ export const LAYER_ORDER_LABELS = {
     surfaceAnalysis:       'Surface Fronts',
     lightning:             'Lightning',
     spotterNetworkPositions:'Spotter Network Positions',
+    nwsStormReports:       'NWS Storm Reports',
+    metarStations:         'METAR Stations',
     outlook:               'SPC Outlook',
     roads:                 'Roads',
     radar:                 'Radar',
@@ -326,6 +328,8 @@ function _getGroupLayerIds(map, group, target) {
             case 'surfaceAnalysis':     return id.startsWith('surface-analysis-');
             case 'lightning':           return id.startsWith('lightning-');
             case 'spotterNetworkPositions': return id.startsWith('spotter-network-position-');
+            case 'nwsStormReports':     return id.startsWith('nws-storm-report-');
+            case 'metarStations':       return id.startsWith('metar-station-');
             case 'outlook':             return id.startsWith('outlook-layer');
             case 'signatures':          return id.startsWith('center-');
             case 'alertFills':          return id.startsWith('alerts-combined')

@@ -1,4 +1,7 @@
 // parse message type 1
+const shouldParseMoment = (options, momentName) => !options?.includeMoments
+	|| options.includeMoments.has(momentName);
+
 export default (raf, message, options) => {
 	// record starting offset
 	const startingOffset = raf.getPos();
@@ -37,7 +40,7 @@ export default (raf, message, options) => {
 	};
 
 	// process reflectivity
-	if (message.record.surveillance_pointer > 0) {
+	if (message.record.surveillance_pointer > 0 && shouldParseMoment(options, 'reflect')) {
 		// jump to offset
 		raf.seek(startingOffset + message.record.surveillance_pointer);
 
@@ -47,14 +50,14 @@ export default (raf, message, options) => {
 			if ((raf.getPos() + message.record.number_of_surveillance_bins) >= raf.getLength()) throw new Error('Message Type 1: Invalid surveillance (reflectivity) length');
 
 			// extract the data
-			const reflectivity = [];
+			const reflectivity = new Array(message.record.number_of_surveillance_bins);
 			for (let i = 0; i < message.record.number_of_surveillance_bins; i += 1) {
 				const bin = raf.read();
 				// per documentation 0 = below threshold, 1 = range folding
 				if (bin >= 2) {
-					reflectivity.push((bin / 2.0) - 33.0);
+					reflectivity[i] = (bin / 2.0) - 33.0;
 				} else {
-					reflectivity.push(null);
+					reflectivity[i] = null;
 				}
 			}
 			message.record.reflect = reflectivity;
@@ -64,7 +67,7 @@ export default (raf, message, options) => {
 	}
 
 	// process velocity
-	if (message.record.velocity_pointer > 0) {
+	if (message.record.velocity_pointer > 0 && shouldParseMoment(options, 'velocity')) {
 		// jump to offset
 		raf.seek(startingOffset + message.record.velocity_pointer);
 
@@ -74,14 +77,15 @@ export default (raf, message, options) => {
 			if ((raf.getPos() + message.record.number_of_doppler_bins) >= raf.getLength()) throw new Error('Message Type 1: Invalid doppler (velocity) length');
 
 			// extract the data
-			const velocity = [];
+			const velocity = new Array(message.record.number_of_doppler_bins);
+			const resolution = message.record.doppler_velocity_resolution;
 			for (let i = 0; i < message.record.number_of_doppler_bins; i += 1) {
 				const bin = raf.read();
 				// per documentation 0 = below threshold, 1 = range folding
 				if (bin >= 2) {
-					velocity.push((bin - 127) * message.record.doppler_velocity_resolution);
+					velocity[i] = (bin - 127) * resolution;
 				} else {
-					velocity.push(null);
+					velocity[i] = null;
 				}
 			}
 			message.record.velocity = velocity;

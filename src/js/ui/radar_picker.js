@@ -14,6 +14,9 @@ const productLabels = {
     'N_K': 'Specific Differential Phase',
     'N_H': 'Hydrometer Classification',
     'N_X': 'Differential Reflectivity',
+    'N_S': 'Storm Relative Velocity',
+    'DAA': '1-hr Precipitation Accumulation',
+    'DTA': 'Storm Total Accumulation',
     'REF': 'Super-Res Base Reflectivity',
     'VEL': 'Super-Res Base Velocity',
     'CC': 'Super-Res Correlation Coefficient',
@@ -30,6 +33,9 @@ const productEntries = [
     { type: 'item', code: 'N_X', hasTiltOptions: true },
     { type: 'item', code: 'N_K', hasTiltOptions: true },
     { type: 'item', code: 'N_H', hasTiltOptions: true },
+    { type: 'item', code: 'N_S', hasTiltOptions: false },
+    { type: 'item', code: 'DAA', hasTiltOptions: false },
+    { type: 'item', code: 'DTA', hasTiltOptions: false },
     { type: 'header', label: 'Super-Res Products (Level II)' },
     { type: 'item', code: 'REF', hasTiltOptions: false },
     { type: 'item', code: 'VEL', hasTiltOptions: false },
@@ -209,7 +215,7 @@ class RadarPicker {
             else minutesOld = 0;
         }
 
-        this.timeAndTilt.innerHTML = `<div class="timeAndTiltSub"><p id="timeElem">${time || '--:--:--'}</p><p>• ${tilt ?? '--'}</p></div>`;
+        this.timeAndTilt.innerHTML = `<div class="timeAndTiltSub"><p id="timeElem">${time || '--:--:--'}</p>${tilt != '0.0°' ? `<p>• ${tilt ?? '--'}</p>` : ''}</div>`;
 
         const timeElem = this.timeAndTilt.querySelector('#timeElem');
         if (ignoreAgeColoring) {

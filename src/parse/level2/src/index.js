@@ -5,6 +5,7 @@ import combineData from './combinedata.js';
 /**
  * @typedef {object} ParserOptions parser options
  * @property {(object | boolean)} [logger=console] By default error and information messages will be written to the console. These can be suppressed by passing false, or a custom logger can be provided. A custom logger must provide the log() and error() functions.
+ * @property {string[]|Set<string>} [includeMoments] Optional list of moment names to decode. Supported names are reflect, velocity, spectrum, zdr, phi, and rho. Metadata blocks are always parsed.
  */
 
 class Level2Radar {
@@ -312,9 +313,31 @@ class Level2Radar {
 const combineOptions = (newOptions) => {
 	let logger = newOptions?.logger ?? console;
 	if (logger === false) logger = nullLogger;
+	const includeMoments = normalizeMomentFilter(newOptions?.includeMoments);
 	return {
-		...newOptions, logger,
+		...newOptions, logger, includeMoments,
 	};
+};
+
+const VALID_MOMENTS = new Set(['reflect', 'velocity', 'spectrum', 'zdr', 'phi', 'rho']);
+
+const normalizeMomentFilter = (includeMoments) => {
+	if (includeMoments == null) return null;
+
+	const values = includeMoments instanceof Set
+		? Array.from(includeMoments)
+		: Array.isArray(includeMoments)
+			? includeMoments
+			: [includeMoments];
+
+	const normalized = new Set();
+	values.forEach((value) => {
+		if (typeof value !== 'string') return;
+		const momentName = value.trim().toLowerCase();
+		if (VALID_MOMENTS.has(momentName)) normalized.add(momentName);
+	});
+
+	return normalized.size > 0 ? normalized : null;
 };
 
 // null logger for options.logger = false

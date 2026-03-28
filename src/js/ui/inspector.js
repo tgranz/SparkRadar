@@ -101,12 +101,17 @@ export default class Inspector {
             case 'N1G':
             case 'N2G':
             case 'N3G':
+            case 'VEL':
+            return 'mph';
             case 'N0U':
             case 'N1U':
             case 'N2U':
             case 'N3U':
-            case 'VEL':
-            return 'mph';
+            case 'N0S':
+            case 'N1S':
+            case 'N2S':
+            case 'N3S':
+            return 'kt';
             case 'N0C':
             case 'N1C':
             case 'N2C':
@@ -132,6 +137,9 @@ export default class Inspector {
             return 'TYPE';
             case 'SW':
             return 'mph';
+            case 'DAA':
+            case 'DTA':
+            return 'in';
             default:
             return '';
         }

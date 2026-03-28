@@ -1,5 +1,9 @@
 import { MESSAGE_HEADER_SIZE } from '../constants.js';
 
+const shouldParseMoment = (options, momentName) => !momentName
+	|| !options?.includeMoments
+	|| options.includeMoments.has(momentName);
+
 // parse message type 31
 export default (raf, message, offset, options) => {
 	const record = {
@@ -80,6 +84,7 @@ export default (raf, message, offset, options) => {
 
 		try {
 			const { name } = blockName(raf);
+			const friendlyName = blockTypesFriendly[name];
 			// no error was thrown, store the previous record
 			if (prevRecord && blockTypesFriendly[prevRecord.name]) {
 				// store the record under a friendly name
@@ -103,7 +108,7 @@ export default (raf, message, offset, options) => {
 					thisRecord = parseRadialData(raf);
 					break;
 				default:
-					thisRecord = parseMomentData(raf);
+					thisRecord = parseMomentData(raf, shouldParseMoment(options, friendlyName));
 				}
 				// store returned value for validation checking on next block
 				prevRecord = thisRecord;
@@ -203,7 +208,7 @@ const parseRadialData = (raf) => ({
  *
  * @param raf
  */
-const parseMomentData = (raf) => {
+const parseMomentData = (raf, includeMomentData = true) => {
 	// initial offset for moment data
 	const data = {
 		block_type: raf.readString(1),
@@ -218,30 +223,28 @@ const parseMomentData = (raf) => {
 		data_size: raf.read(),
 		scale: raf.readFloat(),
 		offset: raf.readFloat(),
-		moment_data: [],
+		moment_data: null,
 	};
 
-	// allow for different sized data blocks
-	let getDataBlock = raf.read.bind(raf);
-	let inc = 1;
-	if (data.data_size === 16) {
-		getDataBlock = raf.readShort.bind(raf);
-		inc = 2;
+	const is16BitData = data.data_size === 16;
+	const gateWidth = is16BitData ? 2 : 1;
+	if (!includeMomentData) {
+		raf.skip(data.gate_count * gateWidth);
+		return false;
 	}
 
-	// const endI = data.gate_count * inc + MESSAGE_HEADER_SIZE;
-	const endI = data.gate_count * inc;
+	const { gate_count: gateCount, offset, scale } = data;
+	const momentData = new Array(gateCount);
+	data.moment_data = momentData;
 
-	// raf.skip(MESSAGE_HEADER_SIZE);
-	for (let i = 0; i < endI; i += inc) {
-		const val = getDataBlock();
-		// per documentation 0 = below threshold, 1 = range folding
-		if (val === 0) {
-			data.moment_data.push(null); // below threshold
-		} else if (val === 1) {
-			data.moment_data.push('rf'); // range folding
+	for (let i = 0; i < gateCount; i += 1) {
+		const value = is16BitData ? raf.readShort() : raf.read();
+		if (value === 0) {
+			momentData[i] = null;
+		} else if (value === 1) {
+			momentData[i] = 'rf';
 		} else {
-			data.moment_data.push((val - data.offset) / data.scale);
+			momentData[i] = (value - offset) / scale;
 		}
 	}
 	return data;

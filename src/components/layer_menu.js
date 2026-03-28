@@ -65,7 +65,6 @@ menu.innerHTML = `
             <div class="layer-menu-item with-hint">
                 <div>
                     <h3>Lightning</h3>
-                    <p class="tag new">NEW</p>
                 </div>
                 <p class="hint">Provided by the <a href="https://saratoga-weather.org" target="_blank">Saratoga Weather</a> lightning placefile, powered by <a href="https://www.blitzortung.org" target="_blank">Blitzortung</a>.</p>
             </div>
@@ -76,6 +75,7 @@ menu.innerHTML = `
 
         <div class="layer-menu-section-header">
             Outlooks
+            <i id="more-products-btn" class="ti ti-chevron-right"></i>
         </div>
         <div class="layer-menu-section">
             <div class="layer-menu-item">
@@ -117,7 +117,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Tornado Reports</h3>
-                <p class="tag inprogress">WIP</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-tornado-reports-layer" class="switch">
@@ -126,7 +126,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Wind Reports</h3>
-                <p class="tag inprogress">WIP</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-wind-reports-layer" class="switch">
@@ -135,7 +135,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Hail Reports</h3>
-                <p class="tag inprogress">WIP</p>
+                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-hail-reports-layer" class="switch">
@@ -149,7 +149,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Spotter Positions</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-spotter-network-positions-layer" class="switch">
@@ -171,10 +170,18 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Surface Fronts</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-surface-analysis-layer" class="switch">
+            </div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item">
+                <h3>METAR Stations</h3>
+                <p class="tag new">NEW</p>
+            </div>
+            <div class="layer-menu-item">
+                <input type="checkbox" id="toggle-metars-layer" class="switch">
             </div>
         </div>
         <div class="layer-menu-section">
@@ -188,21 +195,59 @@ menu.innerHTML = `
         </div>
         <div class="layer-menu-section">
             <div class="layer-menu-item">
-                <h3>METAR Stations</h3>
-                <p class="tag inprogress">WIP</p>
-            </div>
-            <div class="layer-menu-item">
-                <input type="checkbox" id="toggle-metars-layer" class="switch">
-            </div>
-        </div>
-        <div class="layer-menu-section">
-            <div class="layer-menu-item">
                 <h3>Wildfires</h3>
                 <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-wildfires-layer" class="switch">
             </div>
+        </div>
+    </div>
+    <div id="layer-menu-outlook-products" class="layer-menu-content" style="display:none">
+        <div class="layer-menu-section-header">
+            <span><i id="outlook-products-back" class="ti ti-chevron-left" style="margin-right: 8px;"></i> Outlook Products</span>
+        </div>
+
+        <div class="layer-menu-section-header">Day 1</div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Categorical</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-1-outlook-cat-layer" class="switch"></div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Tornado</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-1-outlook-torn-layer" class="switch"></div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Wind</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-1-outlook-wind-layer" class="switch"></div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Hail</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-1-outlook-hail-layer" class="switch"></div>
+        </div>
+
+        <div class="layer-menu-section-header">Day 2</div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Categorical</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-2-outlook-cat-layer" class="switch"></div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Tornado</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-2-outlook-torn-layer" class="switch"></div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Wind</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-2-outlook-wind-layer" class="switch"></div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Hail</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-2-outlook-hail-layer" class="switch"></div>
+        </div>
+
+        <div class="layer-menu-section-header">Day 3</div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item"><h3>Categorical</h3></div>
+            <div class="layer-menu-item"><input type="checkbox" id="toggle-day-3-outlook-cat-layer" class="switch"></div>
         </div>
     </div>
     <div id="layer-menu-order" class="layer-menu-content layer-order-panel" style="display:none">
@@ -214,21 +259,46 @@ document.body.appendChild(menu);
 
 // Tab switching
 const tabs = menu.querySelectorAll('.layer-menu-tab');
-const tabPanels = { all: document.getElementById('layer-menu-all'), order: document.getElementById('layer-menu-order') };
+const allPanel = document.getElementById('layer-menu-all');
+const orderPanel = document.getElementById('layer-menu-order');
+const outlookProductsPanel = document.getElementById('layer-menu-outlook-products');
+const tabPanels = { all: allPanel, order: orderPanel };
+const showOutlookProductsPanel = (show) => {
+    if (!allPanel || !outlookProductsPanel) return;
+    allPanel.style.display = show ? 'none' : '';
+    outlookProductsPanel.style.display = show ? '' : 'none';
+};
 tabs.forEach(tab => {
     tab.addEventListener('click', () => {
         tabs.forEach(t => t.classList.remove('selected'));
         tab.classList.add('selected');
         const target = tab.dataset.tab;
+        if (target === 'all') showOutlookProductsPanel(false);
         Object.entries(tabPanels).forEach(([key, panel]) => {
             panel.style.display = key === target ? '' : 'none';
         });
     });
 });
 
+const moreProductsButton = document.getElementById('more-products-btn');
+const outlookProductsBack = document.getElementById('outlook-products-back');
+
+if (moreProductsButton && allPanel && outlookProductsPanel) {
+    moreProductsButton.addEventListener('click', () => {
+        showOutlookProductsPanel(true);
+    });
+}
+
+if (outlookProductsBack && allPanel && outlookProductsPanel) {
+    outlookProductsBack.addEventListener('click', () => {
+        showOutlookProductsPanel(false);
+    });
+}
+
 // Map closing actions
 document.getElementById('close-layer-menu').addEventListener('click', () => {
     menu.classList.add('layer-menu-hidden');
+    showOutlookProductsPanel(false);
 
     // Update the button
     const openLayerPickerButton = document.getElementById('open-layer-picker-button');
@@ -240,6 +310,7 @@ document.getElementById('close-layer-menu').addEventListener('click', () => {
 document.onkeydown = (e) => {
     if (e.key === 'Escape') {
         menu.classList.add('layer-menu-hidden');
+        showOutlookProductsPanel(false);
 
         // Update the button
         const openLayerPickerButton = document.getElementById('open-layer-picker-button');
@@ -251,10 +322,53 @@ document.onkeydown = (e) => {
 
 // Initialize layer toggle handlers (called from entry.js after map is ready)
 function initializeLayerToggles(mapInstance) {
+    const normalizeOutlookProducts = (savedProducts, fallbackDay = null) => {
+        const normalized = {
+            1: { cat: false, torn: false, wind: false, hail: false },
+            2: { cat: false, torn: false, wind: false, hail: false },
+            3: { cat: false, torn: false, wind: false, hail: false },
+        };
+
+        for (const day of [1, 2, 3]) {
+            const rawDay = savedProducts?.[day] || savedProducts?.[String(day)] || {};
+            normalized[day] = {
+                cat: rawDay.cat === true,
+                torn: rawDay.torn === true,
+                wind: rawDay.wind === true,
+                hail: rawDay.hail === true,
+            };
+        }
+
+        const hasAny = [1, 2, 3].some((day) => Object.values(normalized[day]).some(Boolean));
+        if (!hasAny && [1, 2, 3].includes(fallbackDay)) {
+            normalized[fallbackDay].cat = true;
+        }
+
+        return normalized;
+    };
+
+    const getFirstEnabledOutlookDay = (outlookProducts) => {
+        for (const day of [1, 2, 3]) {
+            if (Object.values(outlookProducts?.[day] || {}).some(Boolean)) {
+                return day;
+            }
+        }
+        return null;
+    };
+
+    const hasAnyEnabledOutlookProducts = (outlookProducts) => {
+        return [1, 2, 3].some((day) => Object.values(outlookProducts?.[day] || {}).some(Boolean));
+    };
+
+    const getDayToggleStateFromProducts = (outlookProducts, day) => {
+        return outlookProducts?.[day]?.cat === true;
+    };
+
     // Load saved layer settings from localStorage
     const loadLayerSettings = () => {
         try {
             const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            const outlookProducts = normalizeOutlookProducts(settings.outlookProducts, settings.outlookDay || null);
             return {
                 alertsEnabled: settings.alertsEnabled !== undefined ? settings.alertsEnabled : true,
                 watchesEnabled: settings.watchesEnabled !== undefined ? settings.watchesEnabled : true,
@@ -263,11 +377,31 @@ function initializeLayerToggles(mapInstance) {
                 hailSignaturesEnabled: settings.hailSignaturesEnabled !== undefined ? settings.hailSignaturesEnabled : false,
                 surfaceAnalysisEnabled: settings.surfaceAnalysisEnabled !== undefined ? settings.surfaceAnalysisEnabled : false,
                 lightningEnabled: settings.lightningEnabled !== undefined ? settings.lightningEnabled : false,
+                nwsTornadoReportsEnabled: settings.nwsTornadoReportsEnabled !== undefined ? settings.nwsTornadoReportsEnabled : false,
+                nwsWindReportsEnabled: settings.nwsWindReportsEnabled !== undefined ? settings.nwsWindReportsEnabled : false,
+                nwsHailReportsEnabled: settings.nwsHailReportsEnabled !== undefined ? settings.nwsHailReportsEnabled : false,
                 spotterNetworkPositionsEnabled: settings.spotterNetworkPositionsEnabled !== undefined ? settings.spotterNetworkPositionsEnabled : false,
-                outlookDay: settings.outlookDay || null // 1, 2, 3, or null
+                metarStationsEnabled: settings.metarStationsEnabled !== undefined ? settings.metarStationsEnabled : false,
+                outlookDay: settings.outlookDay || getFirstEnabledOutlookDay(outlookProducts) || null,
+                outlookProducts,
             };
         } catch (e) {
-            return { alertsEnabled: true, watchesEnabled: true, mesoscaleDiscussionsEnabled: false, tvsSignaturesEnabled: false, hailSignaturesEnabled: false, surfaceAnalysisEnabled: false, lightningEnabled: false, spotterNetworkPositionsEnabled: false, outlookDay: null };
+            return {
+                alertsEnabled: true,
+                watchesEnabled: true,
+                mesoscaleDiscussionsEnabled: false,
+                tvsSignaturesEnabled: false,
+                hailSignaturesEnabled: false,
+                surfaceAnalysisEnabled: false,
+                lightningEnabled: false,
+                nwsTornadoReportsEnabled: false,
+                nwsWindReportsEnabled: false,
+                nwsHailReportsEnabled: false,
+                spotterNetworkPositionsEnabled: false,
+                metarStationsEnabled: false,
+                outlookDay: null,
+                outlookProducts: normalizeOutlookProducts(null, null),
+            };
         }
     };
 
@@ -282,9 +416,46 @@ function initializeLayerToggles(mapInstance) {
     const day1OutlookCheckbox = document.getElementById('toggle-day-1-outlook-layer');
     const day2OutlookCheckbox = document.getElementById('toggle-day-2-outlook-layer');
     const day3OutlookCheckbox = document.getElementById('toggle-day-3-outlook-layer');
+    const day1OutlookCatCheckbox = document.getElementById('toggle-day-1-outlook-cat-layer');
+    const day1OutlookTornCheckbox = document.getElementById('toggle-day-1-outlook-torn-layer');
+    const day1OutlookWindCheckbox = document.getElementById('toggle-day-1-outlook-wind-layer');
+    const day1OutlookHailCheckbox = document.getElementById('toggle-day-1-outlook-hail-layer');
+    const day2OutlookCatCheckbox = document.getElementById('toggle-day-2-outlook-cat-layer');
+    const day2OutlookTornCheckbox = document.getElementById('toggle-day-2-outlook-torn-layer');
+    const day2OutlookWindCheckbox = document.getElementById('toggle-day-2-outlook-wind-layer');
+    const day2OutlookHailCheckbox = document.getElementById('toggle-day-2-outlook-hail-layer');
+    const day3OutlookCatCheckbox = document.getElementById('toggle-day-3-outlook-cat-layer');
+    const day3OutlookTornCheckbox = document.getElementById('toggle-day-3-outlook-torn-layer');
+    const day3OutlookWindCheckbox = document.getElementById('toggle-day-3-outlook-wind-layer');
+    const day3OutlookHailCheckbox = document.getElementById('toggle-day-3-outlook-hail-layer');
+
+    const outlookTypeCheckboxByDay = {
+        1: {
+            cat: day1OutlookCatCheckbox,
+            torn: day1OutlookTornCheckbox,
+            wind: day1OutlookWindCheckbox,
+            hail: day1OutlookHailCheckbox,
+        },
+        2: {
+            cat: day2OutlookCatCheckbox,
+            torn: day2OutlookTornCheckbox,
+            wind: day2OutlookWindCheckbox,
+            hail: day2OutlookHailCheckbox,
+        },
+        3: {
+            cat: day3OutlookCatCheckbox,
+            torn: day3OutlookTornCheckbox,
+            wind: day3OutlookWindCheckbox,
+            hail: day3OutlookHailCheckbox,
+        },
+    };
     const surfaceAnalysisCheckbox = document.getElementById('toggle-surface-analysis-layer');
     const lightningCheckbox = document.getElementById('toggle-lightning-layer');
+    const nwsTornadoReportsCheckbox = document.getElementById('toggle-nws-tornado-reports-layer');
+    const nwsWindReportsCheckbox = document.getElementById('toggle-nws-wind-reports-layer');
+    const nwsHailReportsCheckbox = document.getElementById('toggle-nws-hail-reports-layer');
     const spotterNetworkPositionsCheckbox = document.getElementById('toggle-spotter-network-positions-layer');
+    const metarsCheckbox = document.getElementById('toggle-metars-layer');
     const connectionStatusElement = document.getElementById('alerts-connection-status');
     
     // Set initial checkbox states
@@ -304,13 +475,21 @@ function initializeLayerToggles(mapInstance) {
         hailSignaturesCheckbox.checked = settings.hailSignaturesEnabled;
     }
     if (day1OutlookCheckbox) {
-        day1OutlookCheckbox.checked = settings.outlookDay === 1;
+        day1OutlookCheckbox.checked = getDayToggleStateFromProducts(settings.outlookProducts, 1);
     }
     if (day2OutlookCheckbox) {
-        day2OutlookCheckbox.checked = settings.outlookDay === 2;
+        day2OutlookCheckbox.checked = getDayToggleStateFromProducts(settings.outlookProducts, 2);
     }
     if (day3OutlookCheckbox) {
-        day3OutlookCheckbox.checked = settings.outlookDay === 3;
+        day3OutlookCheckbox.checked = getDayToggleStateFromProducts(settings.outlookProducts, 3);
+    }
+    for (const day of [1, 2, 3]) {
+        const typeCheckboxes = outlookTypeCheckboxByDay[day];
+        for (const type of ['cat', 'torn', 'wind', 'hail']) {
+            if (typeCheckboxes[type]) {
+                typeCheckboxes[type].checked = settings.outlookProducts[day][type] === true;
+            }
+        }
     }
     if (surfaceAnalysisCheckbox) {
         surfaceAnalysisCheckbox.checked = settings.surfaceAnalysisEnabled;
@@ -318,8 +497,20 @@ function initializeLayerToggles(mapInstance) {
     if (lightningCheckbox) {
         lightningCheckbox.checked = settings.lightningEnabled;
     }
+    if (nwsTornadoReportsCheckbox) {
+        nwsTornadoReportsCheckbox.checked = settings.nwsTornadoReportsEnabled;
+    }
+    if (nwsWindReportsCheckbox) {
+        nwsWindReportsCheckbox.checked = settings.nwsWindReportsEnabled;
+    }
+    if (nwsHailReportsCheckbox) {
+        nwsHailReportsCheckbox.checked = settings.nwsHailReportsEnabled;
+    }
     if (spotterNetworkPositionsCheckbox) {
         spotterNetworkPositionsCheckbox.checked = settings.spotterNetworkPositionsEnabled;
+    }
+    if (metarsCheckbox) {
+        metarsCheckbox.checked = settings.metarStationsEnabled;
     }
 
     // Initialize storm center enabled types based on saved settings
@@ -327,6 +518,14 @@ function initializeLayerToggles(mapInstance) {
         mapInstance.layers.stormCentersLayer.setEnabledTypes({
             tvs: settings.tvsSignaturesEnabled,
             hail: settings.hailSignaturesEnabled
+        });
+    }
+
+    if (mapInstance.layers && mapInstance.layers.nwsStormReportsLayer) {
+        mapInstance.layers.nwsStormReportsLayer.setEnabledTypes({
+            tornado: settings.nwsTornadoReportsEnabled,
+            wind: settings.nwsWindReportsEnabled,
+            hail: settings.nwsHailReportsEnabled
         });
     }
 
@@ -487,49 +686,84 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
-    // Outlook toggle handlers - only one can be active at a time
+    const persistOutlookProducts = (outlookProducts) => {
+        const activeDay = getFirstEnabledOutlookDay(outlookProducts);
+        try {
+            const saved = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+            saved.outlookProducts = outlookProducts;
+            saved.outlookDay = activeDay;
+            localStorage.setItem('layerSettings', JSON.stringify(saved));
+        } catch (error) {
+            console.error('Error saving layer settings:', error);
+        }
+    };
+
+    const syncDayCheckboxesFromOutlookProducts = (outlookProducts) => {
+        if (day1OutlookCheckbox) day1OutlookCheckbox.checked = getDayToggleStateFromProducts(outlookProducts, 1);
+        if (day2OutlookCheckbox) day2OutlookCheckbox.checked = getDayToggleStateFromProducts(outlookProducts, 2);
+        if (day3OutlookCheckbox) day3OutlookCheckbox.checked = getDayToggleStateFromProducts(outlookProducts, 3);
+    };
+
+    const syncOutlookTypeCheckboxesFromProducts = (outlookProducts) => {
+        for (const day of [1, 2, 3]) {
+            const typeCheckboxes = outlookTypeCheckboxByDay[day];
+            for (const type of ['cat', 'torn', 'wind', 'hail']) {
+                if (typeCheckboxes[type]) {
+                    typeCheckboxes[type].checked = outlookProducts?.[day]?.[type] === true;
+                }
+            }
+        }
+    };
+
+    const setSingleOutlookSelection = (day, type, enabled) => {
+        const nextOutlookProducts = normalizeOutlookProducts(settings.outlookProducts);
+
+        for (const d of [1, 2, 3]) {
+            nextOutlookProducts[d] = { cat: false, torn: false, wind: false, hail: false };
+        }
+
+        if (enabled) {
+            nextOutlookProducts[day][type] = true;
+        }
+
+        settings.outlookProducts = nextOutlookProducts;
+        syncOutlookTypeCheckboxesFromProducts(nextOutlookProducts);
+        syncDayCheckboxesFromOutlookProducts(nextOutlookProducts);
+        persistOutlookProducts(nextOutlookProducts);
+        refreshOutlooksFromSettings();
+    };
+
+    const refreshOutlooksFromSettings = () => {
+        mapInstance.layers.fetchOutlooks();
+    };
+
+    // Outlook day toggle handlers
     const handleOutlookToggle = (day, checkbox) => {
         if (!checkbox) return;
 
         checkbox.addEventListener('change', (e) => {
-            const isChecked = e.target.checked;
-
-            if (isChecked) {
-                // Uncheck other outlook checkboxes
-                if (day !== 1 && day1OutlookCheckbox) day1OutlookCheckbox.checked = false;
-                if (day !== 2 && day2OutlookCheckbox) day2OutlookCheckbox.checked = false;
-                if (day !== 3 && day3OutlookCheckbox) day3OutlookCheckbox.checked = false;
-
-                // Save to localStorage
-                try {
-                    const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-                    settings.outlookDay = day;
-                    localStorage.setItem('layerSettings', JSON.stringify(settings));
-                } catch (error) {
-                    console.error('Error saving layer settings:', error);
-                }
-
-                // Re-display any cached outlook immediately, then refresh in background.
-                mapInstance.layers.displayOutlook();
-                mapInstance.layers.fetchOutlook(day);
-            } else {
-                // Save to localStorage
-                try {
-                    const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-                    settings.outlookDay = null;
-                    localStorage.setItem('layerSettings', JSON.stringify(settings));
-                } catch (error) {
-                    console.error('Error saving layer settings:', error);
-                }
-
-                mapInstance.layers.displayOutlook();
-            }
+            setSingleOutlookSelection(day, 'cat', e.target.checked);
         });
     };
 
     handleOutlookToggle(1, day1OutlookCheckbox);
     handleOutlookToggle(2, day2OutlookCheckbox);
     handleOutlookToggle(3, day3OutlookCheckbox);
+
+    const handleOutlookTypeToggle = (day, type, checkbox) => {
+        if (!checkbox) return;
+
+        checkbox.addEventListener('change', (e) => {
+            setSingleOutlookSelection(day, type, e.target.checked);
+        });
+    };
+
+    for (const day of [1, 2, 3]) {
+        handleOutlookTypeToggle(day, 'cat', outlookTypeCheckboxByDay[day].cat);
+        handleOutlookTypeToggle(day, 'torn', outlookTypeCheckboxByDay[day].torn);
+        handleOutlookTypeToggle(day, 'wind', outlookTypeCheckboxByDay[day].wind);
+        handleOutlookTypeToggle(day, 'hail', outlookTypeCheckboxByDay[day].hail);
+    }
 
     if (surfaceAnalysisCheckbox) {
         surfaceAnalysisCheckbox.addEventListener('change', (e) => {
@@ -571,6 +805,46 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    const syncNwsStormReportLayer = () => {
+        const enabledTypes = {
+            tornado: nwsTornadoReportsCheckbox ? nwsTornadoReportsCheckbox.checked : false,
+            wind: nwsWindReportsCheckbox ? nwsWindReportsCheckbox.checked : false,
+            hail: nwsHailReportsCheckbox ? nwsHailReportsCheckbox.checked : false,
+        };
+
+        if (mapInstance.layers?.nwsStormReportsLayer) {
+            mapInstance.layers.nwsStormReportsLayer.setEnabledTypes(enabledTypes);
+        }
+
+        if (enabledTypes.tornado || enabledTypes.wind || enabledTypes.hail) {
+            mapInstance.layers.displayNwsStormReports();
+            mapInstance.layers.fetchNwsStormReports();
+        } else {
+            mapInstance.layers.displayNwsStormReports();
+        }
+    };
+
+    const handleNwsStormReportToggle = (checkbox, settingKey) => {
+        if (!checkbox) return;
+
+        checkbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings[settingKey] = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            syncNwsStormReportLayer();
+        });
+    };
+
+    handleNwsStormReportToggle(nwsTornadoReportsCheckbox, 'nwsTornadoReportsEnabled');
+    handleNwsStormReportToggle(nwsWindReportsCheckbox, 'nwsWindReportsEnabled');
+    handleNwsStormReportToggle(nwsHailReportsCheckbox, 'nwsHailReportsEnabled');
+
     if (spotterNetworkPositionsCheckbox) {
         spotterNetworkPositionsCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
@@ -591,6 +865,26 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    if (metarsCheckbox) {
+        metarsCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings.metarStationsEnabled = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            if (isChecked) {
+                mapInstance.layers.displayMetarStations();
+                mapInstance.layers.fetchMetarStations();
+            } else {
+                mapInstance.layers.displayMetarStations();
+            }
+        });
+    }
+
     // Fetch alerts/watches if they're enabled, but wait for radar to load first
     // Check actual checkbox state at fetch time, not initial settings
     setTimeout(() => {
@@ -606,12 +900,8 @@ function initializeLayerToggles(mapInstance) {
         if (tvsSignaturesCheckbox && tvsSignaturesCheckbox.checked) {
             mapInstance.layers.fetchStormCenters();
         }
-        if (day1OutlookCheckbox && day1OutlookCheckbox.checked) {
-            mapInstance.layers.fetchOutlook(1);
-        } else if (day2OutlookCheckbox && day2OutlookCheckbox.checked) {
-            mapInstance.layers.fetchOutlook(2);
-        } else if (day3OutlookCheckbox && day3OutlookCheckbox.checked) {
-            mapInstance.layers.fetchOutlook(3);
+        if (hasAnyEnabledOutlookProducts(settings.outlookProducts)) {
+            mapInstance.layers.fetchOutlooks();
         }
         if (surfaceAnalysisCheckbox && surfaceAnalysisCheckbox.checked) {
             mapInstance.layers.fetchSurfaceAnalysis();
@@ -619,8 +909,14 @@ function initializeLayerToggles(mapInstance) {
         if (lightningCheckbox && lightningCheckbox.checked) {
             mapInstance.layers.fetchLightning();
         }
+        if ((nwsTornadoReportsCheckbox && nwsTornadoReportsCheckbox.checked) || (nwsWindReportsCheckbox && nwsWindReportsCheckbox.checked) || (nwsHailReportsCheckbox && nwsHailReportsCheckbox.checked)) {
+            mapInstance.layers.fetchNwsStormReports();
+        }
         if (spotterNetworkPositionsCheckbox && spotterNetworkPositionsCheckbox.checked) {
             mapInstance.layers.fetchSpotterNetworkPositions();
+        }
+        if (metarsCheckbox && metarsCheckbox.checked) {
+            mapInstance.layers.fetchMetarStations();
         }
     }, 5000);
 }
@@ -642,6 +938,8 @@ function renderOrderPanel(panel, mapInstance) {
         'lightning': { type: 'image' , value: 'https://i.ibb.co/jkfmTDbt/lightningmarker.png' },
         'signatures': { type: 'icon' , value: 'ti ti-cloud-storm' },
         'spotterNetworkPositions': { type: 'image' , value: 'https://i.ibb.co/Md3GvZm/IMG-1278.webp' },
+        'nwsStormReports': { type: 'icon' , value: 'ti ti-map-pin' },
+        'metarStations': { type: 'icon' , value: 'ti ti-temperature' },
         'surfaceAnalysis': { type: 'icon' , value: 'ti ti-wind' },
         'outlook': { type: 'icon' , value: 'ti ti-calendar-event' },
     };

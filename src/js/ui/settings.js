@@ -13,7 +13,10 @@ const paletteKeyMap = {
     uploadPaletteZDR: 'ZDR',
     uploadPaletteKDP: 'KDP',
     uploadPaletteSW: 'SW',
-    uploadPaletteDHC: 'DHC'
+    uploadPaletteDHC: 'DHC',
+    uploadPaletteSRV: 'SRV',
+    uploadPaletteDAA: 'DAA',
+    uploadPaletteDTA: 'DTA'
 };
 
 // Alert type configurations organized by category
@@ -889,6 +892,7 @@ export default class Settings {
             borderColor: '#808080',
             secondaryBorderColor: '#27beff',
             shortcutToggleSplitView: 'm',
+            shortcutToggleCrossSection: 'x',
             shortcutShowRadarStatus: 's',
             shortcutShowMenu: 'h',
             shortcutShowLayerMenu: 'l',

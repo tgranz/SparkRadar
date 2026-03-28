@@ -182,21 +182,59 @@ class MesoscaleDiscussionLayer {
             .then(htmlText => {
                 const preMatch = htmlText.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
                 let preText = '';
+                let preTextRaw = '';
                 if (preMatch && preMatch[1]) {
-                    preText = preMatch[1]
+                    preTextRaw = preMatch[1];
+                    preText = preTextRaw
                         .replace(/\r?\n/g, '<br>')
                         .replace(/\s{2,}/g, ' ');
                 }
+
+                const watchProb = preTextRaw.match(/Probability of Watch Issuance\.+(\d+)/i)?.[1] ?? null;
+                const extractPeakMetric = (metricLabel, unit) => {
+                    const regex = new RegExp(
+                        `most probable peak ${metricLabel}\\.+(?:up to\\s*)?(\\d+(?:\\.\\d+)?)(?:\\s*-\\s*(\\d+(?:\\.\\d+)?))?\\s*${unit}`,
+                        'i'
+                    );
+                    const match = preTextRaw.match(regex);
+                    if (!match) return null;
+
+                    const start = match[1];
+                    const end = match[2] ?? null;
+                    const display = end ? `${start}-${end}` : start;
+                    // Use the upper bound when present so color mapping reflects worst-case potential.
+                    const numeric = parseFloat(end ?? start);
+                    return {
+                        display,
+                        numeric: Number.isFinite(numeric) ? numeric : null
+                    };
+                };
+
+                const peakWind = extractPeakMetric('wind gust', 'mph');
+                const peakHail = extractPeakMetric('hail size', 'in');
+                const peakTornado = extractPeakMetric('tornado intensity', 'mph');
+
+                const severityColorScale = ['#ffffd5', '#ffed9a', '#ffbf64', '#ff8d2e', '#ec4412', '#d80000', '#ff2eff'];
+
+                const windColor = peakWind?.numeric != null ? severityColorScale[Math.min(Math.max(0, Math.floor((peakWind.numeric - 60) / 5)), severityColorScale.length - 1)] : null;
+                const hailColor = peakHail?.numeric != null ? severityColorScale[Math.min(Math.max(0, Math.floor((peakHail.numeric - 1.0) / 0.5)), severityColorScale.length - 1)] : null;
+                const tornadoColor = peakTornado?.numeric != null ? severityColorScale[Math.min(Math.max(0, Math.floor((peakTornado.numeric - 90) / 10)), severityColorScale.length - 1)] : null;
+                const watchProbColor = watchProb ? severityColorScale[Math.min(Math.round(parseFloat(watchProb) / 100 * 6), severityColorScale.length - 1)] : null;
+
                 const html = `
                     <div style="max-width: 600px;">
-                        <div style="margin-bottom: 20px; padding: 15px; background: ${color}30; border-left: 4px solid ${color}; border-radius: 10px;">
-                            <h3 style="margin: 0; text-align: left; color: ${color};">${title}</h3>
-                            <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
-                                ${validTime ? `<strong>Valid Time:</strong> <span>${formatDate(validTime)}</span>` : ''}
-                            </div>
-                        </div>
 
-                        <img src="https://www.spc.noaa.gov/products/md/mcd${String(num).padStart(4, '0')}.png?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; margin-bottom: 15px; height: auto;">
+                        <img src="https://www.spc.noaa.gov/products/md/mcd${String(num).padStart(4, '0')}.png?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; margin: 0; height: auto;">
+
+                        ${watchProb || peakHail || peakWind || peakTornado ? 
+                            `<div class="product-highlight-strip">
+                                ${watchProb ? `<div style="background: ${watchProbColor}55" class="product-highlight"><strong>Watch Probability:</strong> ${watchProb}%</div>` : ''}
+                                ${peakTornado ? `<div style="background: ${tornadoColor}55" class="product-highlight"><strong>Peak Tornado Intensity:</strong> ${peakTornado.display} MPH</div>` : ''}
+                                ${peakWind ? `<div style="background: ${windColor}55" class="product-highlight"><strong>Peak Wind Gust:</strong> ${peakWind.display} MPH</div>` : ''}
+                                ${peakHail ? `<div style="background: ${hailColor}55" class="product-highlight"><strong>Peak Hail Size:</strong> ${peakHail.display} IN</div>` : ''}
+                            </div>`
+                            : ''
+                        }
 
                         ${preText ? `<div style="margin-bottom: 15px;">
                             <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${preText}</p>

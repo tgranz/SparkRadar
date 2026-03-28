@@ -8,6 +8,26 @@ const EARTH_RADIUS = 6371000;
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
 
+const getLevel2MomentForLayer = (layer) => {
+    const upperLayer = typeof layer === 'string' ? layer.toUpperCase() : '';
+    switch (upperLayer) {
+    case 'REF':
+        return 'reflect';
+    case 'VEL':
+        return 'velocity';
+    case 'CC':
+        return 'rho';
+    case 'KDP':
+        return 'phi';
+    case 'SW':
+        return 'spectrum';
+    case 'ZDR':
+        return 'zdr';
+    default:
+        return null;
+    }
+};
+
 const createRadarProjector = (radarLat, radarLon) => {
     const lat1 = radarLat * DEG_TO_RAD;
     const lon1 = radarLon * DEG_TO_RAD;
@@ -217,7 +237,40 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
         const bins = radial.bins || [];
 
         for (let binIndex = 0; binIndex < Math.min(bins.length, numberBins); binIndex++) {
-            const value = bins[binIndex];
+            var value = bins[binIndex];
+            if (value == null) {
+                continue;
+            }
+
+            // Few Products are weird. Perhaps the parser is incorrect? Apply quirk fixes:
+            let scaleFactor = 250;
+            //console.log("Product code:", radar.productDescription.code);
+
+            if (radar.productDescription.code === 56) {
+                // SRV
+                scaleFactor = 1000;
+                if (value === 15) value = 'rf';
+                else if (value == 14) value = 64;
+                else if (value == 13) value = 50;
+                else if (value == 12) value = 36;
+                else if (value == 11) value = 26;
+                else if (value == 10) value = 20;
+                else if (value == 9) value = 10;
+                else if (value == 8) value = 0;
+                else if (value == 7) value = -1;
+                else if (value == 6) value = -10;
+                else if (value == 5) value = -20;
+                else if (value == 4) value = -26;
+                else if (value == 3) value = -36;
+                else if (value == 2) value = -50;
+                else if (value == 1) value = -64;
+                else if (value == 0) value = null;
+            } else if (radar.productDescription.code === 170 || radar.productDescription.code === 172) {
+                // DAA & DTA
+                scaleFactor = 1000;
+                if (value == 'rf') value = 0;
+            }
+
             if (value == null) {
                 continue;
             }
@@ -225,8 +278,8 @@ const processLevel3Data = (radar, radarLocation, options = {}) => {
                 continue;
             }
 
-            const r1 = (firstBin + (binIndex * rangeScaleKm)) * 250;
-            const r2 = (firstBin + ((binIndex + 1) * rangeScaleKm)) * 250;
+            const r1 = (firstBin + (binIndex * rangeScaleKm)) * scaleFactor;
+            const r2 = (firstBin + ((binIndex + 1) * rangeScaleKm)) * scaleFactor;
 
             const coords = buildPolygon(project, sinAz1, cosAz1, sinAz2, cosAz2, r1, r2);
             builder.pushQuad(coords, value);
@@ -328,7 +381,11 @@ self.onmessage = (event) => {
                 }
             }, [meshData.buffer]);
         } else {
-            const radar = new Level2Radar(buffer);
+            const requestedMoment = getLevel2MomentForLayer(layer);
+            const radar = new Level2Radar(buffer, {
+                logger: false,
+                includeMoments: requestedMoment ? [requestedMoment] : undefined
+            });
             parserEndMs = toEpochMs(performance.now());
 
             const elevations = radar.listElevations();

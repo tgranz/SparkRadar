@@ -17,6 +17,7 @@ import RadarStationsLayer from "../layers/radar_stations.js";
 import Radar3D from "../3dradar.js";
 import Notification from './notification.js';
 import RightClickHandler from './rightclick.js';
+import CrossSection from './cross_section.js';
 
 class Map {
     // Constructor function
@@ -30,6 +31,7 @@ class Map {
         this.splitCanvas = null;
         this.splitCanvasResizeObserver = null;
         this.radar3D = null;
+        this.crossSection = null; // Cross-section visualization instance
         this.firstPaletteError = true;
 
         // Radar station tracking
@@ -600,10 +602,12 @@ class Map {
         // Clean up move listeners
         if (this.moveListeners.main) {
             this.map.off('move', this.moveListeners.main);
+            this.map.off('moveend', this.moveListeners.main);
             this.moveListeners.main = null;
         }
         if (this.moveListeners.dual && this.dualMap) {
             this.dualMap.off('move', this.moveListeners.dual);
+            this.dualMap.off('moveend', this.moveListeners.dual);
             this.moveListeners.dual = null;
         }
 
@@ -710,6 +714,92 @@ class Map {
         this.splitType = null;
     }
 
+    /**
+     * Enable cross-section mode (vertical slice of radar)
+     */
+    async enableCrossSection(station, product) {
+        if (this.isSplit()) {
+            this.stopSplit();
+        }
+
+        if (!this.crossSection) {
+            this.crossSection = new CrossSection(this);
+        }
+
+        showLoadingAnimation();
+        try {
+            await this.crossSection.enable(station, product);
+            // Set up listener to update cross-section when map movement/zoom ends
+            this.moveListeners.main = () => {
+                if (this.crossSection && this.crossSection.enabled) {
+                    this.crossSection.update();
+                }
+            };
+            this.map.on('moveend', this.moveListeners.main);
+        } catch (error) {
+            console.error('[CrossSection] Error enabling cross-section:', error);
+        } finally {
+            hideLoadingAnimation();
+        }
+    }
+
+    /**
+     * Disable cross-section mode
+     */
+    disableCrossSection() {
+        showLoadingAnimation();
+        try {
+            if (this.crossSection) {
+                this.crossSection.disable();
+            }
+
+            // Clean up move listener
+            if (this.moveListeners.main) {
+                this.map.off('move', this.moveListeners.main);
+                this.map.off('moveend', this.moveListeners.main);
+                this.moveListeners.main = null;
+            }
+
+            // Clean up UI
+            const mainContainer = this.map.getContainer();
+            const parent = mainContainer.parentElement;
+            if (!parent) {
+                hideLoadingAnimation();
+                return;
+            }
+
+            parent.classList.remove('split');
+            parent.style.removeProperty('grid-template-columns');
+            parent.style.removeProperty('grid-template-rows');
+
+            // Remove split toolbar
+            const splitToolbar = parent.querySelector('#split-toolbar');
+            if (splitToolbar) {
+                parent.removeChild(splitToolbar);
+            }
+
+            // Remove cross-section pane (new) or canvas (legacy)
+            const crossSectionPane = parent.querySelector('#cross-section-pane');
+            if (crossSectionPane) {
+                parent.removeChild(crossSectionPane);
+            }
+            const legacyCanvas = parent.querySelector('#cross-section-canvas');
+            if (legacyCanvas) {
+                parent.removeChild(legacyCanvas);
+            }
+
+            // Remove line marker
+            const lineMarker = mainContainer.querySelector('#cross-section-line-marker');
+            if (lineMarker) {
+                mainContainer.removeChild(lineMarker);
+            }
+
+            this.splitType = null;
+        } finally {
+            hideLoadingAnimation();
+        }
+    }
+
     // Method to set radar instance
     setRadar(radar) {
         this.radar = radar;
@@ -719,13 +809,21 @@ class Map {
     _getPaletteForProduct(product) {
         if (!product) return 'REF'; // Default to reflectivity
         
-        const lastChar = product.charAt(product.length - 1);
+        const upper = product.toUpperCase();
+        // Check for full product codes first (DAA, DTA, etc.)
+        if (upper === 'DAA' || upper === 'DTA') {
+            return upper;
+        }
+        
+        const lastChar = upper.charAt(upper.length - 1);
         console.log(`[Map] _getPaletteForProduct(${product}) -> lastChar='${lastChar}'`);
         
         switch (lastChar) {
             case 'G': // N0G, N1G, N2G, N3G = Base Velocity
-            case 'U': // N0U, N1U, N2U, N3U = Storm Relative Velocity
                 return 'VEL';
+            case 'U': // N0U, N1U, N2U, N3U = Storm Relative Velocity
+            case 'S': // N0S, N1S, N2S, N3S = Storm Relative Velocity
+                return 'SRV';
             case 'B':
                 return 'REF';
             case 'C':
@@ -740,8 +838,8 @@ class Map {
             case 'Z':
                 return 'ZDR';
             default:
-                console.log(`[Map] _getPaletteForProduct: unmatched case '${lastChar}', returning '${product.toUpperCase()}'`);
-                return product.toUpperCase();
+                console.log(`[Map] _getPaletteForProduct: unmatched case '${lastChar}', returning '${upper}'`);
+                return upper;
         }
     }
 
@@ -1548,6 +1646,14 @@ class Map {
 
     async fetchSpotterNetworkPositions() {
         return this.layers.fetchSpotterNetworkPositions();
+    }
+
+    async fetchMetarStations() {
+        return this.layers.fetchMetarStations();
+    }
+
+    async fetchNwsStormReports() {
+        return this.layers.fetchNwsStormReports();
     }
 
     async fetchOutlooks() {

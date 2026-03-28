@@ -13,7 +13,37 @@ const EMPTY_FEATURE_COLLECTION = {
     features: []
 };
 
+const OUTLOOK_TYPES = ['cat', 'torn', 'wind', 'hail'];
+const OUTLOOK_CIG_HATCH_IMAGE_ID = 'outlook-cig-hatch';
+
 const SYNC_PENDING_STALE_MS = 15000;
+
+function createCigHatchImage(size = 8) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.strokeStyle = 'rgba(230, 230, 230, 0.85)';
+    ctx.lineWidth = 1.5;
+
+    ctx.beginPath();
+    ctx.moveTo(-1, size - 1);
+    ctx.lineTo(size - 1, -1);
+    ctx.moveTo(3, size + 1);
+    ctx.lineTo(size + 1, 3);
+    ctx.stroke();
+
+    return ctx.getImageData(0, 0, size, size);
+}
+
+function hasCigLabel(feature) {
+    const label = feature?.properties?.LABEL;
+    return typeof label === 'string' && label.toUpperCase().includes('CIG');
+}
 
 class OutlookLayer {
     constructor(mapInstance) {
@@ -21,14 +51,16 @@ class OutlookLayer {
 
         // Outlook tracking
         this.currentOutlookDay = null; // 1, 2, 3, or null
+        this.currentOutlookType = 'cat';
         this.outlookData = null;
         this.outlookSyncPending = { main: false, dual: false };
         this.outlookSyncPendingSince = { main: 0, dual: 0 };
-        this._pendingDay = null; // tracks latest requested day to discard stale responses
+        this._pendingRequestKey = null;
     }
 
-    setOutlookData(day, data) {
+    setOutlookData(day, data, type = 'cat') {
         this.currentOutlookDay = day;
+        this.currentOutlookType = type;
         this.outlookData = data;
     }
 
@@ -40,38 +72,116 @@ class OutlookLayer {
         return this.currentOutlookDay;
     }
 
-    async fetchOutlook(day) {
+    _normalizeOutlookType(type) {
+        const normalized = String(type || 'cat').toLowerCase();
+        return OUTLOOK_TYPES.includes(normalized) ? normalized : 'cat';
+    }
+
+    _buildOutlookFetchUrl(day, type) {
+        return encodeURI(`https://cachefetch.sparkradar.app/cache?maxAge=1800&url=https://www.spc.noaa.gov/products/outlook/day${day}otlk_${type}.nolyr.geojson`);
+    }
+
+    async _fetchSingleOutlook(day, type) {
+        const url = this._buildOutlookFetchUrl(day, type);
+        const response = await fetch(url, {
+            headers: { 'Accept': 'Application/geo+json' },
+            signal: AbortSignal.timeout(5000)
+        });
+
+        if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data?.features)) {
+            return null;
+        }
+
+        return data;
+    }
+
+    async fetchOutlook(day, type = 'cat') {
         if (![1, 2, 3].includes(day)) {
             console.error('[OutlookLayer] Invalid outlook day:', day);
             return null;
         }
+        const normalizedType = this._normalizeOutlookType(type);
+        return this.fetchOutlookSelections([{ day, type: normalizedType }]);
+    }
 
-        this._pendingDay = day;
+    async fetchOutlookSelections(selections = []) {
+        const validSelections = (Array.isArray(selections) ? selections : [])
+            .map((item) => ({
+                day: Number(item?.day),
+                type: this._normalizeOutlookType(item?.type),
+            }))
+            .filter((item) => [1, 2, 3].includes(item.day));
+
+        const deduped = [];
+        const seen = new Set();
+        for (const item of validSelections) {
+            const key = `${item.day}:${item.type}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            deduped.push(item);
+        }
+
+        if (deduped.length === 0) {
+            this.currentOutlookDay = null;
+            this.currentOutlookType = 'cat';
+            this.outlookData = null;
+            return null;
+        }
+
+        const requestKey = deduped.map((item) => `${item.day}:${item.type}`).join('|');
+        this._pendingRequestKey = requestKey;
 
         try {
-            const url = encodeURI(`https://cachefetch.sparkradar.app/cache?maxAge=1800&url=https://www.spc.noaa.gov/products/outlook/day${day}otlk_cat.nolyr.geojson`);
-            const response = await fetch(url, {
-                headers: { 'Accept': 'Application/geo+json' },
-                signal: AbortSignal.timeout(5000)
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Network response was not ok: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
+            const results = await Promise.all(
+                deduped.map(async (item) => {
+                    try {
+                        return await this._fetchSingleOutlook(item.day, item.type);
+                    } catch (error) {
+                        console.error(`[OutlookLayer] Error fetching outlook day ${item.day} ${item.type}:`, error);
+                        return null;
+                    }
+                })
+            );
 
-            // Discard stale response if a newer request was made while this was in flight
-            if (this._pendingDay !== day) return null;
-            
-            if (data?.features) {
-                this.currentOutlookDay = day;
-                this.outlookData = data;
-                return data;
+            if (this._pendingRequestKey !== requestKey) {
+                return null;
             }
-            return null;
+
+            const mergedFeatures = [];
+            for (const data of results) {
+                if (Array.isArray(data?.features)) {
+                    mergedFeatures.push(...data.features.map((feature) => ({
+                        ...feature,
+                        properties: {
+                            ...(feature?.properties || {}),
+                            isCigHatched: hasCigLabel(feature)
+                        }
+                    })));
+                }
+            }
+
+            if (mergedFeatures.length === 0) {
+                this.currentOutlookDay = null;
+                this.currentOutlookType = 'cat';
+                this.outlookData = null;
+                return null;
+            }
+
+            this.currentOutlookDay = deduped[0].day;
+            this.currentOutlookType = deduped[0].type;
+            this.outlookData = {
+                type: 'FeatureCollection',
+                features: mergedFeatures,
+            };
+
+            return this.outlookData;
         } catch (error) {
-            console.error('[OutlookLayer] Error fetching outlook:', error);
+            console.error('[OutlookLayer] Error fetching outlook selections:', error);
             return null;
         }
     }
@@ -121,12 +231,18 @@ class OutlookLayer {
         const sourceId = target === 'main' ? 'outlook-source' : 'outlook-source-dual';
         const layerId = target === 'main' ? 'outlook-layer' : 'outlook-layer-dual';
         const fillLayerId = `${layerId}-fill`;
+        const cigFillLayerId = `${layerId}-cig-fill`;
         const fillBeforeId = getWeatherFillBeforeLayerId(map, target);
         const outlineBeforeId = getWeatherOutlineBeforeLayerId(map, target);
+
+        this._ensureCigHatchPattern(map);
 
         // Remove existing layers/sources
         if (map.getLayer(layerId)) {
             map.removeLayer(layerId);
+        }
+        if (map.getLayer(cigFillLayerId)) {
+            map.removeLayer(cigFillLayerId);
         }
         if (map.getLayer(fillLayerId)) {
             map.removeLayer(fillLayerId);
@@ -146,8 +262,20 @@ class OutlookLayer {
             id: fillLayerId,
             type: 'fill',
             source: sourceId,
+            filter: ['!=', ['get', 'isCigHatched'], true],
             paint: {
                 'fill-color': ['get', 'fill'],
+                'fill-opacity': 0.3
+            }
+        }, fillBeforeId);
+
+        map.addLayer({
+            id: cigFillLayerId,
+            type: 'fill',
+            source: sourceId,
+            filter: ['==', ['get', 'isCigHatched'], true],
+            paint: {
+                'fill-pattern': OUTLOOK_CIG_HATCH_IMAGE_ID,
                 'fill-opacity': 0.3
             }
         }, fillBeforeId);
@@ -163,6 +291,19 @@ class OutlookLayer {
                 'line-opacity': 1
             }
         }, outlineBeforeId);
+    }
+
+    _ensureCigHatchPattern(map) {
+        if (!map || map.hasImage(OUTLOOK_CIG_HATCH_IMAGE_ID)) {
+            return;
+        }
+
+        const image = createCigHatchImage();
+        if (!image) {
+            return;
+        }
+
+        map.addImage(OUTLOOK_CIG_HATCH_IMAGE_ID, image, { pixelRatio: 1 });
     }
 
     _getEnabledOutlookDay() {
@@ -191,8 +332,7 @@ class OutlookLayer {
     }
 
     displayOutlookOnMap(target = 'main') {
-        const enabledDay = this._getEnabledOutlookDay();
-        if (!enabledDay || !this.outlookData || this.currentOutlookDay !== enabledDay) {
+        if (!this.outlookData?.features?.length) {
             this.clearOutlook(target);
             return;
         }

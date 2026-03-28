@@ -11,7 +11,6 @@ export default class Popup {
     const popup = document.createElement('div');
     popup.classList.add('popup');
     popup.style.position = 'absolute';
-    popup.style.transform = 'translate(-50%, calc(-100% - 10px))';
 
     popup.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -86,9 +85,16 @@ export default class Popup {
 
     this._outsideClickCloseArmed = false;
 
-    if (this.popup.parentNode) {
-      this.popup.parentNode.removeChild(this.popup);
-    }
+    // Trigger close animation
+    this.popup.classList.add('popup-closing');
+
+    // Wait for animation to complete before removing
+    const animationDuration = 200; // matches popupOut animation duration
+    setTimeout(() => {
+      if (this.popup.parentNode) {
+        this.popup.parentNode.removeChild(this.popup);
+      }
+    }, animationDuration);
 
     if (this._escapeListener) {
       document.removeEventListener('keydown', this._escapeListener);
