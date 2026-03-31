@@ -2535,6 +2535,7 @@ select:hover {
   gap: 10px;
   justify-content: space-around;
   padding: 10px;
+  padding-top: 0px;
 }
 
 .menu-external-links div {
@@ -2558,6 +2559,49 @@ select:hover {
 .menu-external-links div:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--primary-color);
+}
+
+.menu-activity-starter-bar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 10px 10px 10px;
+}
+
+.menu-header-object {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: var(--primary-color);
+  margin: 10px;
+}
+
+.menu-activity-starter-item {
+  width: auto;
+  min-width: 180px;
+  flex: 1 1 180px;
+  height: auto;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: none;
+  color: white;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.95em;
+  flex-direction: column;
+}
+
+.menu-activity-starter-item i {
+  font-size: 1.8em;
+}
+
+.menu-activity-starter-item:hover {
+  border-color: var(--primary-color) !important;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 #active-users-badge {
@@ -2746,7 +2790,7 @@ p.code {
 }
 
 .cross-section-warning {
-  bottom: 82px;
+  bottom: 70px;
   right: 10px;
   padding: 5px;
   font-size: 0.9em;
@@ -2768,4 +2812,152 @@ p.code {
   pointer-events: none;
   white-space: nowrap;
   backdrop-filter: blur(20px);
+}
+
+.window {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  transform-origin: center;
+  will-change: transform, opacity, filter;
+}
+
+.window.window-animating {
+  pointer-events: none;
+}
+
+.window-titlebar {
+  background-color: #33333355;
+  color: #fff;
+  padding: 10px;
+  cursor: move;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.window-titlebar span {
+  font-weight: bold;
+}
+
+.window-titlebar i {
+  font-size: 1.5em;
+  color: var(--primary-color)
+}
+
+.window-controls {
+  display: flex;
+  gap: 5px;
+  flex-direction: row;
+}
+
+.window-resizer {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  z-index: 2;
+}
+
+.window-resizer-top-left {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.window-resizer-top-right {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.window-resizer-bottom-left {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.window-resizer-bottom-right {
+  bottom: 0;
+  right: 0;
+  cursor: nwse-resize;
+}
+
+.window-content {
+  flex: 1;
+  overflow: auto;
+  width: 100%;
+  height: 100%;
+}
+
+.taskbar-icon {
+  font-size: 1.5em;
+  border-radius: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  background-color: var(--secondary-color);
+  border-color: var(--border-color);
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, border-radius 0.2s ease;
+}
+
+.taskbar-icon:hover {
+  transform: scale(1.05);
+}
+
+.taskbar-icon:active {
+  border-radius: 50px;
+}
+
+.taskbar-icon.minimized {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--secondary-border-color);
+}
+
+.taskbar-icon.taskbar-icon-launch {
+  animation: taskbarIconLaunch 0.22s ease;
+}
+
+@keyframes taskbarIconLaunch {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+#taskbar {
+  position: fixed;
+  right: 10px;
+  top: 50%;
+  width: auto;
+  height: auto;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding: 0 10px;
+  z-index: 9999;
+  padding: 10px;
 }

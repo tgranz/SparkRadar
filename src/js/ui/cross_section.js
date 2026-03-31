@@ -304,11 +304,15 @@ export default class CrossSection {
         if (!this.worker) return;
 
         const mapInstance = this.map.map;
-        const canvas = mapInstance.getCanvas();
-        if (!canvas) return;
+        const container = mapInstance.getContainer();
+        if (!container) return;
 
-        const width = canvas.width;
-        const height = canvas.height;
+        // Use CSS pixel dimensions so sampling uses the same coordinate space
+        // as the visible center line overlay and Mapbox's unproject input.
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (!width || !height) return;
+
         const centerX = width / 2;
         const centerY = height / 2;
         const halfLength = width * 0.25;

@@ -11,6 +11,8 @@ import about from '../../components/about.js';
 import Settings from './settings.js';
 import debugConsole from './debug_console.js';
 import version from '../../VERSION.js';
+import EmbedPlayer from '../../components/embed_player.js';
+import Glossary from '../../components/glossary.js';
 
 class Menu {
     // Constructor function
@@ -52,6 +54,10 @@ class Menu {
             { label: 'Help', icon: 'help-circle', onClick: () => { window.location = 'https://wiki.sparkradar.app/'; } },
         ];
 
+        const activityItems = window.innerWidth > 800 ? [
+            { icon: 'video', label: 'PiP Embed Player', onClick: () => { new EmbedPlayer(`<p style="color: white; padding: 10px;">Open a YouTube video or livestream, click share > embed > copy; then paste above and click "Go".</p>`); } },
+            { icon: 'book', label: 'Glossary', onClick: () => { new Glossary(); } },
+        ] : [];
 
         menuItems.forEach((item, index) => {
             const li = document.createElement('li');
@@ -102,7 +108,46 @@ class Menu {
             menuList.appendChild(li);
         });
 
+        // Activity starter bar
+        const activityHeader = document.createElement('div');
+        activityHeader.classList.add('menu-header-object');
+        activityHeader.textContent = 'Activities (BETA)';
+        menuList.appendChild(activityHeader);
+
+        const activityBar = document.createElement('div');
+        activityBar.classList.add('menu-activity-starter-bar');
+
+        if (activityItems.length === 0) {
+            const placeholder = document.createElement('div');
+            placeholder.style.fontSize = '0.9em';
+            placeholder.style.color = 'rgba(255, 255, 255, 0.5)';
+            placeholder.style.fontStyle = 'italic';
+            placeholder.innerHTML = 'Activities unavailable on smaller screens';
+            placeholder.style.width = '100%';
+            placeholder.style.textAlign = 'center';
+            activityBar.appendChild(placeholder);
+        }
+
+        activityItems.forEach((item) => {
+            const activityButton = document.createElement('button');
+            activityButton.type = 'button';
+            activityButton.classList.add('menu-activity-starter-item');
+            activityButton.innerHTML = `<i class="ti ti-${item.icon}"></i><span>${item.label}</span>`;
+            activityButton.addEventListener('click', () => {
+                this.close();
+                setTimeout(() => item.onClick?.(), 200);
+            });
+            activityBar.appendChild(activityButton);
+        });
+
+        menuList.appendChild(activityBar);
+
         // External links
+        const linksHeader = document.createElement('div');
+        linksHeader.classList.add('menu-header-object');
+        linksHeader.textContent = 'More Apps';
+        menuList.appendChild(linksHeader);
+
         const wrapper = document.createElement('div');
         wrapper.classList.add('menu-external-links');
 

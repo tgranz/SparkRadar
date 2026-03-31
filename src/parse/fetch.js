@@ -10,7 +10,7 @@ Most of this file was written by ChatGPT.
 import { Buffer } from 'buffer';
 
 // Constants
-const BUCKET_URL = "https://unidata-nexrad-level2.s3.amazonaws.com";
+const BUCKET_URL = "https://unidata-nexrad-level2-chunks.s3.amazonaws.com";
 const LEVEL3_BUCKET_URL = "https://unidata-nexrad-level3.s3.amazonaws.com";
 const FETCH_TIMEOUT_MS = 8000;
 const LIST_CACHE_TTL_MS = 30000;
