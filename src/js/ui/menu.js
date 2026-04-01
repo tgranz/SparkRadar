@@ -54,10 +54,10 @@ class Menu {
             { label: 'Help', icon: 'help-circle', onClick: () => { window.location = 'https://wiki.sparkradar.app/'; } },
         ];
 
-        const activityItems = window.innerWidth > 800 ? [
+        const activityItems = [
             { icon: 'video', label: 'PiP Embed Player', onClick: () => { new EmbedPlayer(`<p style="color: white; padding: 10px;">Open a YouTube video or livestream, click share > embed > copy; then paste above and click "Go".</p>`); } },
             { icon: 'book', label: 'Glossary', onClick: () => { new Glossary(); } },
-        ] : [];
+        ]
 
         menuItems.forEach((item, index) => {
             const li = document.createElement('li');
@@ -116,17 +116,6 @@ class Menu {
 
         const activityBar = document.createElement('div');
         activityBar.classList.add('menu-activity-starter-bar');
-
-        if (activityItems.length === 0) {
-            const placeholder = document.createElement('div');
-            placeholder.style.fontSize = '0.9em';
-            placeholder.style.color = 'rgba(255, 255, 255, 0.5)';
-            placeholder.style.fontStyle = 'italic';
-            placeholder.innerHTML = 'Activities unavailable on smaller screens';
-            placeholder.style.width = '100%';
-            placeholder.style.textAlign = 'center';
-            activityBar.appendChild(placeholder);
-        }
 
         activityItems.forEach((item) => {
             const activityButton = document.createElement('button');

@@ -8,12 +8,18 @@ export default class Window {
         this.isMinimized = false;
         this.isAnimating = false;
 
+        this.isViewportSmall = window.innerWidth < 800;
+        if (this.isViewportSmall) {
+            options.width = options.width ? Math.min(options.width, window.innerWidth - 40) : window.innerWidth - 40;
+            options.height = options.height ? Math.min(options.height, window.innerHeight - 40) : window.innerHeight - 40;
+        }
+
         this.wrapper = document.createElement('div');
         this.wrapper.style.position = 'fixed';
         this.wrapper.style.zIndex = `${options.zIndex ?? 1000}`;
         this.wrapper.style.width = `${options.width ?? 300}px`;
         this.wrapper.style.height = `${options.height ?? 200}px`;
-        //Start centered
+        // Start centered
         this.wrapper.style.left = `calc(50% - ${options.width ? options.width / 2 : 150}px)`;
         this.wrapper.style.top = `calc(50% - ${options.height ? options.height / 2 : 100}px)`;
         this.wrapper.classList.add('window');
@@ -34,11 +40,14 @@ export default class Window {
         this.windowControls.classList.add('window-controls');
         this.titleBar.appendChild(this.windowControls);
 
-        this.windowMinimizer = document.createElement('button');
-        this.windowMinimizer.classList.add('window-minimize');
-        this.windowMinimizer.textContent = '−';
-        this.windowMinimizer.addEventListener('click', () => this.minimize());
-        this.windowControls.appendChild(this.windowMinimizer);
+        // No minimize function on small devices
+        if (!this.isViewportSmall) {
+            this.windowMinimizer = document.createElement('button');
+            this.windowMinimizer.classList.add('window-minimize');
+            this.windowMinimizer.textContent = '−';
+            this.windowMinimizer.addEventListener('click', () => this.minimize());
+            this.windowControls.appendChild(this.windowMinimizer);
+        }
 
         this.windowCloser = document.createElement('button');
         this.windowCloser.classList.add('window-close');
@@ -70,14 +79,14 @@ export default class Window {
         this._initResizeHandlers();
 
         // Ensure taskbar is in the DOM
-        if (!document.getElementById('taskbar')) {
+        if (!document.getElementById('taskbar') && !this.isViewportSmall) {
             const taskbar = document.createElement('div');
             taskbar.id = 'taskbar';
             document.body.appendChild(taskbar);
         }
 
         // Add icon to taskbar
-        if (document.getElementById('taskbar')) {
+        if (document.getElementById('taskbar') && !this.isViewportSmall) {
             this.taskbarIcon = document.createElement('div');
             this.taskbarIcon.classList.add('taskbar-icon');
             this.taskbarIcon.appendChild(this.icon.cloneNode(true));

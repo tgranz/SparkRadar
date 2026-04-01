@@ -2836,6 +2836,7 @@ p.code {
   background-color: #33333355;
   color: #fff;
   padding: 10px;
+  padding-left: 15px;
   cursor: move;
   display: flex;
   align-items: center;
@@ -2857,6 +2858,11 @@ p.code {
   display: flex;
   gap: 5px;
   flex-direction: row;
+}
+
+.window-controls button {
+  width: 28px;
+  height: 28px;
 }
 
 .window-resizer {
