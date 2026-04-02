@@ -178,24 +178,60 @@ export default class Window {
         let isDragging = false;
         let offsetX, offsetY;
 
-        this.titleBar.addEventListener('mousedown', (e) => {
+        const startDrag = (clientX, clientY) => {
             isDragging = true;
             const rect = this.wrapper.getBoundingClientRect();
-            offsetX = e.clientX - rect.left;
-            offsetY = e.clientY - rect.top;
+            offsetX = clientX - rect.left;
+            offsetY = clientY - rect.top;
             document.body.style.userSelect = 'none';
-        });
+        };
 
-        window.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                this.wrapper.style.left = `${e.clientX - offsetX}px`;
-                this.wrapper.style.top = `${e.clientY - offsetY}px`;
-            }
-        });
+        const moveDrag = (clientX, clientY) => {
+            if (!isDragging) return;
+            this.wrapper.style.left = `${clientX - offsetX}px`;
+            this.wrapper.style.top = `${clientY - offsetY}px`;
+        };
 
-        window.addEventListener('mouseup', () => {
+        const stopDrag = () => {
             isDragging = false;
             document.body.style.userSelect = '';
+        };
+
+        this.titleBar.addEventListener('mousedown', (e) => {
+            if (e.button !== 0) return;
+            if (e.target.closest('.window-controls')) return;
+            startDrag(e.clientX, e.clientY);
+        });
+
+        this.titleBar.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return;
+            if (e.target.closest('.window-controls')) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            startDrag(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        window.addEventListener('mousemove', (e) => {
+            moveDrag(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length < 1) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            moveDrag(touch.clientX, touch.clientY);
+        }, { passive: false });
+
+        window.addEventListener('mouseup', () => {
+            stopDrag();
+        });
+
+        window.addEventListener('touchend', () => {
+            stopDrag();
+        });
+
+        window.addEventListener('touchcancel', () => {
+            stopDrag();
         });
     }
 
@@ -211,55 +247,90 @@ export default class Window {
             let isResizing = false;
             let startX, startY, startWidth, startHeight, startLeft, startTop;
 
-            resizer.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
+            const startResize = (clientX, clientY) => {
                 isResizing = true;
                 const rect = this.wrapper.getBoundingClientRect();
-                startX = e.clientX;
-                startY = e.clientY;
+                startX = clientX;
+                startY = clientY;
                 startWidth = rect.width;
                 startHeight = rect.height;
                 startLeft = rect.left;
                 startTop = rect.top;
                 document.body.style.userSelect = 'none';
-            });
+            };
 
-            window.addEventListener('mousemove', (e) => {
-                if (isResizing) {
-                    const dx = e.clientX - startX;
-                    const dy = e.clientY - startY;
-                    let newWidth = startWidth;
-                    let newHeight = startHeight;
-                    let newLeft = startLeft;
-                    let newTop = startTop;
+            const resizeAt = (clientX, clientY) => {
+                if (!isResizing) return;
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+                let newWidth = startWidth;
+                let newHeight = startHeight;
+                let newLeft = startLeft;
+                let newTop = startTop;
 
-                    if (dir.includes('right')) {
-                        newWidth = Math.max(MIN_WIDTH, startWidth + dx);
-                    } else if (dir.includes('left')) {
-                        const candidateWidth = startWidth - dx;
-                        newWidth = Math.max(MIN_WIDTH, candidateWidth);
-                        newLeft = startLeft + (startWidth - newWidth);
-                    }
-
-                    if (dir.includes('bottom')) {
-                        newHeight = Math.max(MIN_HEIGHT, startHeight + dy);
-                    } else if (dir.includes('top')) {
-                        const candidateHeight = startHeight - dy;
-                        newHeight = Math.max(MIN_HEIGHT, candidateHeight);
-                        newTop = startTop + (startHeight - newHeight);
-                    }
-
-                    this.wrapper.style.width = `${newWidth}px`;
-                    this.wrapper.style.height = `${newHeight}px`;
-                    this.wrapper.style.left = `${newLeft}px`;
-                    this.wrapper.style.top = `${newTop}px`;
+                if (dir.includes('right')) {
+                    newWidth = Math.max(MIN_WIDTH, startWidth + dx);
+                } else if (dir.includes('left')) {
+                    const candidateWidth = startWidth - dx;
+                    newWidth = Math.max(MIN_WIDTH, candidateWidth);
+                    newLeft = startLeft + (startWidth - newWidth);
                 }
-            });
 
-            window.addEventListener('mouseup', () => {
+                if (dir.includes('bottom')) {
+                    newHeight = Math.max(MIN_HEIGHT, startHeight + dy);
+                } else if (dir.includes('top')) {
+                    const candidateHeight = startHeight - dy;
+                    newHeight = Math.max(MIN_HEIGHT, candidateHeight);
+                    newTop = startTop + (startHeight - newHeight);
+                }
+
+                this.wrapper.style.width = `${newWidth}px`;
+                this.wrapper.style.height = `${newHeight}px`;
+                this.wrapper.style.left = `${newLeft}px`;
+                this.wrapper.style.top = `${newTop}px`;
+            };
+
+            const stopResize = () => {
                 isResizing = false;
                 document.body.style.userSelect = '';
+            };
+
+            resizer.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.button !== 0) return;
+                startResize(e.clientX, e.clientY);
+            });
+
+            resizer.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const touch = e.touches[0];
+                startResize(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            window.addEventListener('mousemove', (e) => {
+                resizeAt(e.clientX, e.clientY);
+            });
+
+            window.addEventListener('touchmove', (e) => {
+                if (!isResizing || e.touches.length < 1) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                resizeAt(touch.clientX, touch.clientY);
+            }, { passive: false });
+
+            window.addEventListener('mouseup', () => {
+                stopResize();
+            });
+
+            window.addEventListener('touchend', () => {
+                stopResize();
+            });
+
+            window.addEventListener('touchcancel', () => {
+                stopResize();
             });
         });
     }
