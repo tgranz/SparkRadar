@@ -309,6 +309,11 @@ export default class AlertList {
             return;
         }
 
+        // Select nearest radar station to the alert center
+        const centerLng = (minLng + maxLng) / 2;
+        const centerLat = (minLat + maxLat) / 2;
+        this._selectNearestStation(centerLng, centerLat);
+
         // Zoom to bounds with padding
         try {
             map.fitBounds(
@@ -317,6 +322,38 @@ export default class AlertList {
             );
         } catch (error) {
             console.error('Error zooming to alert:', error);
+        }
+    }
+
+    _selectNearestStation(centerLng, centerLat) {
+        const stations = window.radarStationFeatures || [];
+        let nearestId = null;
+        let nearestDist = Infinity;
+
+        for (const station of stations) {
+            const id = station?.properties?.id;
+            const coords = station?.geometry?.coordinates;
+            if (!id || !Array.isArray(coords) || coords.length < 2) continue;
+            if (!/^[KPR]?[A-Z]{3}$/.test(id)) continue;
+
+            const toRad = (v) => v * (Math.PI / 180);
+            const dLat = toRad(Number(coords[1]) - centerLat);
+            const dLon = toRad(Number(coords[0]) - centerLng);
+            const a = Math.sin(dLat / 2) ** 2
+                + Math.sin(dLon / 2) ** 2 * Math.cos(toRad(centerLat)) * Math.cos(toRad(Number(coords[1])));
+            const dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestId = id;
+            }
+        }
+
+        if (nearestId) {
+            const callbacks = this.layersInstance?.map?.callbacks;
+            if (typeof callbacks?.onSelectStation === 'function') {
+                callbacks.onSelectStation(nearestId);
+            }
         }
     }
 }

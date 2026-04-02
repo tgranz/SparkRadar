@@ -157,6 +157,7 @@ class Layers {
 
         this.alertService.onAlertNotificationViewMap = (alertData) => {
             this.alertLayer.zoomToAlert(alertData);
+            this._selectNearestStationForAlert(alertData);
         };
 
         this.alertService.onAlertNotificationViewProduct = (alertData) => {
@@ -165,6 +166,71 @@ class Layers {
 
         // Set up unified click handler for all layer types
         this._setupClickHandlers();
+    }
+
+    _selectNearestStationForAlert(alert) {
+        if (!alert?.geometry) return;
+
+        const geometry = alert.geometry;
+        const coordinates = geometry.type && Array.isArray(geometry.coordinates)
+            ? geometry.coordinates
+            : geometry;
+
+        let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+        let rings = [];
+        if (Array.isArray(coordinates) && coordinates.length > 0) {
+            if (geometry.type === 'MultiPolygon') {
+                rings = coordinates.flat();
+            } else if (Array.isArray(coordinates[0]) && coordinates[0].length === 2 && typeof coordinates[0][0] === 'number') {
+                rings = [coordinates];
+            } else if (Array.isArray(coordinates[0]) && Array.isArray(coordinates[0][0])) {
+                rings = coordinates;
+            }
+        }
+
+        for (const ring of rings) {
+            for (const coord of ring) {
+                const lng = Number(coord[0]);
+                const lat = Number(coord[1]);
+                if (Number.isNaN(lng) || Number.isNaN(lat)) continue;
+                minLng = Math.min(minLng, lng);
+                minLat = Math.min(minLat, lat);
+                maxLng = Math.max(maxLng, lng);
+                maxLat = Math.max(maxLat, lat);
+            }
+        }
+
+        if (!Number.isFinite(minLng) || !Number.isFinite(minLat)) return;
+
+        const centerLng = (minLng + maxLng) / 2;
+        const centerLat = (minLat + maxLat) / 2;
+
+        const stations = window.radarStationFeatures || [];
+        let nearestId = null;
+        let nearestDist = Infinity;
+
+        for (const station of stations) {
+            const id = station?.properties?.id;
+            const coords = station?.geometry?.coordinates;
+            if (!id || !Array.isArray(coords) || coords.length < 2) continue;
+            if (!/^[KPR]?[A-Z]{3}$/.test(id)) continue;
+
+            const toRad = (v) => v * (Math.PI / 180);
+            const dLat = toRad(Number(coords[1]) - centerLat);
+            const dLon = toRad(Number(coords[0]) - centerLng);
+            const a = Math.sin(dLat / 2) ** 2
+                + Math.sin(dLon / 2) ** 2 * Math.cos(toRad(centerLat)) * Math.cos(toRad(Number(coords[1])));
+            const dist = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearestId = id;
+            }
+        }
+
+        if (nearestId && typeof this.map?.callbacks?.onSelectStation === 'function') {
+            this.map.callbacks.onSelectStation(nearestId);
+        }
     }
 
     _getWindowLayerCache() {
