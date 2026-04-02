@@ -1,4 +1,21 @@
 export default class Popup {
+  static _getPopupHost() {
+    let host = document.getElementById('popup-host');
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'popup-host';
+      host.style.position = 'fixed';
+      host.style.left = '0';
+      host.style.top = '0';
+      host.style.width = '100%';
+      host.style.height = '100%';
+      host.style.pointerEvents = 'none';
+      host.style.zIndex = '999';
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
   constructor(htmlContent, options = {}) {
     this.htmlContent = htmlContent;
     this.options = options;
@@ -30,7 +47,7 @@ export default class Popup {
 
   addToMap(map) {
     this.map = map;
-    map.getContainer().appendChild(this.popup);
+    Popup._getPopupHost().appendChild(this.popup);
 
     // Remove when escape key is pressed
     this._escapeListener = (e) => {
@@ -65,11 +82,12 @@ export default class Popup {
 
   _updatePosition() {
     if (!this.map || !this.lngLat) return;
-    
+
     const point = this.map.project(this.lngLat);
+    const mapRect = this.map.getContainer().getBoundingClientRect();
     const el = this.popup;
-    el.style.left = `${point.x}px`;
-    el.style.top = `${point.y}px`;
+    el.style.left = `${mapRect.left + point.x}px`;
+    el.style.top = `${mapRect.top + point.y}px`;
   }
 
   removeFromMap() {

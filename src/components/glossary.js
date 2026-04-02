@@ -114,8 +114,8 @@ export default class Glossary {
             .map((entry) => {
                 return `
                     <div style="border: 1px solid var(--border-color); border-radius: 10px; padding: 12px; background: rgba(0, 0, 0, 0.18);">
-                        <div style="font-weight: 700; color: var(--primary-color); margin-bottom: 6px;">${this._escapeHtml(entry.term)}</div>
-                        <div style="white-space: pre-wrap; line-height: 1.35;">${this._escapeHtml(entry.definition)}</div>
+                        <div style="font-weight: bold; color: var(--primary-color); margin-bottom: 6px;">${this._escapeHtml(entry.term)}</div>
+                        <div style="white-space: pre-wrap; font-size: 0.85em;">${this._escapeHtml(entry.definition)}</div>
                     </div>
                 `;
             })

@@ -881,12 +881,13 @@ export default class Settings {
             showProductPicker: true,
             showTimeAndTilt: true,
             enableLocation: false,
+            alertDetailsAppearIn: 'dialogs',
             reflectivityGateFilter: -10,
             enableSplitCursorMarker: true,
             vcpDisplayFormat: 'descriptive',
-            cacheMaxSlots: 12,
-            cacheMaxSizeGB: 0.5,
-            animationFrameCount: 15,
+            cacheMaxSlots: 24,
+            cacheMaxSizeGB: 1,
+            animationFrameCount: 6,
             primaryColor: '#27beff',
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
@@ -1036,6 +1037,11 @@ export default class Settings {
     }
 
     _normalizeSettings() {
+        const alertDetailsAppearIn = this.settings.alertDetailsAppearIn;
+        if (alertDetailsAppearIn !== 'dialogs' && alertDetailsAppearIn !== 'windows') {
+            this.settings.alertDetailsAppearIn = 'dialogs';
+        }
+
         const cacheSlots = Number(this.settings.cacheMaxSlots);
         const effectiveMax = Number.isFinite(cacheSlots) ? Math.max(3, Math.round(cacheSlots)) : 40;
 

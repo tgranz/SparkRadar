@@ -288,7 +288,7 @@ button:hover {
   display: flex;
   flex-direction: column;
   position: fixed;
-  z-index: 1000;
+  z-index: 998;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
@@ -2855,6 +2855,10 @@ p.code {
   color: var(--primary-color)
 }
 
+.window-title {
+  text-align: center;
+}
+
 .window-controls {
   display: flex;
   gap: 5px;
@@ -2968,4 +2972,6 @@ p.code {
   padding: 0 10px;
   z-index: 9999;
   padding: 10px;
+  max-height: calc(100% - 200px);
+  overflow: auto;
 }

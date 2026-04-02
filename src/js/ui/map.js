@@ -174,6 +174,17 @@ class Map {
         });
     }
 
+    _updateSplitToolbarPosition(layout) {
+        const splitToolbar = document.getElementById('split-toolbar');
+        if (!splitToolbar) return;
+
+        splitToolbar.style.position = 'fixed';
+        splitToolbar.style.left = '50%';
+        splitToolbar.style.top = layout === 'vertical' ? '45%' : '50%';
+        splitToolbar.style.transform = 'translate(-50%, -50%)';
+        splitToolbar.style.zIndex = '1002';
+    }
+
     // Function to open dual map view
     splitMap(layout = 'vertical', options = {}) {
         if (this.isSplit()) {
@@ -204,7 +215,7 @@ class Map {
 
         // Set grid layout early so containers are sized correctly
         parent.style.setProperty('grid-template-columns', layout === 'horizontal' ? '1fr 1fr' : '1fr');
-        parent.style.setProperty('grid-template-rows', layout === 'vertical' ? '1fr 1fr' : '1fr');
+        parent.style.setProperty('grid-template-rows', layout === 'vertical' ? '45% 55%' : '1fr');
 
         const dualContainer = document.createElement('div');
         dualContainer.id = 'map-dual';
@@ -242,6 +253,7 @@ class Map {
         // Show the split map toolbar
         const splitToolbar = createSplitToolbar(() => this.setSplitLayout(), () => this.stopSplit());
         parent.appendChild(splitToolbar);
+        this._updateSplitToolbarPosition(layout);
 
         // Create radar pickers now that dualMap exists
         this._createSplitRadarPickers(layout);
@@ -510,6 +522,7 @@ class Map {
 
         const splitToolbar = createSplitToolbar(() => this.setSplitLayout(), () => this.stopSplit());
         parent.appendChild(splitToolbar);
+        this._updateSplitToolbarPosition(layout);
 
         this.setSplitLayout(layout);
         hideLoadingAnimation();
@@ -545,7 +558,8 @@ class Map {
         }
 
         parent.style.setProperty('grid-template-columns', layout === 'horizontal' ? '1fr 1fr' : '1fr');
-        parent.style.setProperty('grid-template-rows', layout === 'vertical' ? '1fr 1fr' : '1fr');
+        parent.style.setProperty('grid-template-rows', layout === 'vertical' ? '45% 55%' : '1fr');
+        this._updateSplitToolbarPosition(layout);
 
         this.currentLayout = layout;
     }
@@ -571,7 +585,7 @@ class Map {
         } else {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
-            this.splitRadarPicker = new RadarPicker('N0G', ['calc(50% + 10px)', '10px', null, null], (product, tiltIndex) => {
+            this.splitRadarPicker = new RadarPicker('N0G', ['calc(45% + 10px)', '10px', null, null], (product, tiltIndex) => {
                 if (typeof this.callbacks.onChangeProduct === 'function') {
                     this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
                 }
@@ -1745,7 +1759,7 @@ class Map {
             }
             const coords = this.currentLayout === 'horizontal' 
                 ? ['10px', '10px', null, null]
-                : ['calc(50% + 10px)', '10px', null, null];
+                : ['calc(45% + 10px)', '10px', null, null];
             
             try { this.splitRadarPicker?.destroy(); } catch {}
             this.splitRadarPicker = new RadarPicker(product, coords, (prod, tiltIndex) => {

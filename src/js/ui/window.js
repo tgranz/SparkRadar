@@ -57,7 +57,7 @@ export default class Window {
 
         this.content = document.createElement('div');
         this.content.classList.add('window-content');
-        this.content.innerHTML = options.html ?? '';
+        this.content.innerHTML = options.html || options.content || '';
 
         this.wrapper.appendChild(this.titleBar);
         this.wrapper.appendChild(this.content);

@@ -7,6 +7,7 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
+import Window from "../ui/window.js";
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
@@ -36,6 +37,15 @@ class MesoscaleDiscussionLayer {
             }
         };
         document.addEventListener('settingsChanged', this.settingsChangeListener);
+    }
+
+    _getAlertDetailsSurface() {
+        const setting = window.settingsInstance?.getSetting('alertDetailsAppearIn');
+        return setting === 'windows' ? 'windows' : 'dialogs';
+    }
+
+    _getAlertDetailsSurfaceLabel() {
+        return this._getAlertDetailsSurface() === 'windows' ? 'Window' : 'Dialog';
     }
 
     setMesoscaleDiscussions(mds) {
@@ -222,26 +232,34 @@ class MesoscaleDiscussionLayer {
                 const watchProbColor = watchProb ? severityColorScale[Math.min(Math.round(parseFloat(watchProb) / 100 * 6), severityColorScale.length - 1)] : null;
 
                 const html = `
-                    <div style="max-width: 600px;">
+                    <img src="https://www.spc.noaa.gov/products/md/mcd${String(num).padStart(4, '0')}.png?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; margin: 0; height: auto;">
 
-                        <img src="https://www.spc.noaa.gov/products/md/mcd${String(num).padStart(4, '0')}.png?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; margin: 0; height: auto;">
+                    ${watchProb || peakHail || peakWind || peakTornado ? 
+                        `<div class="product-highlight-strip">
+                            ${watchProb ? `<div style="background: ${watchProbColor}55" class="product-highlight"><strong>Watch Probability:</strong> ${watchProb}%</div>` : ''}
+                            ${peakTornado ? `<div style="background: ${tornadoColor}55" class="product-highlight"><strong>Peak Tornado Intensity:</strong> ${peakTornado.display} MPH</div>` : ''}
+                            ${peakWind ? `<div style="background: ${windColor}55" class="product-highlight"><strong>Peak Wind Gust:</strong> ${peakWind.display} MPH</div>` : ''}
+                            ${peakHail ? `<div style="background: ${hailColor}55" class="product-highlight"><strong>Peak Hail Size:</strong> ${peakHail.display} IN</div>` : ''}
+                        </div>`
+                        : ''
+                    }
 
-                        ${watchProb || peakHail || peakWind || peakTornado ? 
-                            `<div class="product-highlight-strip">
-                                ${watchProb ? `<div style="background: ${watchProbColor}55" class="product-highlight"><strong>Watch Probability:</strong> ${watchProb}%</div>` : ''}
-                                ${peakTornado ? `<div style="background: ${tornadoColor}55" class="product-highlight"><strong>Peak Tornado Intensity:</strong> ${peakTornado.display} MPH</div>` : ''}
-                                ${peakWind ? `<div style="background: ${windColor}55" class="product-highlight"><strong>Peak Wind Gust:</strong> ${peakWind.display} MPH</div>` : ''}
-                                ${peakHail ? `<div style="background: ${hailColor}55" class="product-highlight"><strong>Peak Hail Size:</strong> ${peakHail.display} IN</div>` : ''}
-                            </div>`
-                            : ''
-                        }
-
-                        ${preText ? `<div style="margin-bottom: 15px;">
-                            <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${preText}</p>
-                            </div>` : ''}
-                    </div>
+                    ${preText ? `<div style="margin-bottom: 15px;">
+                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${preText}</p>
+                        </div>` : ''}
                 `;
-                new Dialog(title, 'alert-triangle', html, {}, true);
+                if (this._getAlertDetailsSurface() === 'windows') {
+                    new Window({
+                        title,
+                        icon: 'alert-triangle',
+                        content: `<div style="color: white; padding: 20px; width: calc(100% - 40px);">${html}</div>`,
+                width: 600,
+                height: 700
+                    });
+                    return;
+                }
+
+                new Dialog(title, 'alert-triangle', `<div style="max-width: 600px;">${html}</div>`, {}, true);
             })
             .catch(() => {
                 // fallback to basic dialog
@@ -255,6 +273,17 @@ class MesoscaleDiscussionLayer {
                         </div>
                     </div>
                 `;
+                if (this._getAlertDetailsSurface() === 'windows') {
+                    new Window({
+                        title,
+                        icon: 'alert-triangle',
+                        html,
+                        width: 760,
+                        height: 620
+                    });
+                    return;
+                }
+
                 new Dialog(title, 'alert-triangle', html, {}, true);
             });
     }

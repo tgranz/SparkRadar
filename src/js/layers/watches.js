@@ -7,6 +7,7 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
+import Window from "../ui/window.js";
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
@@ -36,6 +37,15 @@ class WatchLayer {
             }
         };
         document.addEventListener('settingsChanged', this.settingsChangeListener);
+    }
+
+    _getAlertDetailsSurface() {
+        const setting = window.settingsInstance?.getSetting('alertDetailsAppearIn');
+        return setting === 'windows' ? 'windows' : 'dialogs';
+    }
+
+    _getAlertDetailsSurfaceLabel() {
+        return this._getAlertDetailsSurface() === 'windows' ? 'Window' : 'Dialog';
     }
 
     setWatches(watches) {
@@ -254,6 +264,7 @@ class WatchLayer {
         const number = Number.isFinite(props.number) ? ` #${props.number}` : '';
         const pds = props.is_pds ? ' (PDS)' : '';
         const title = `${label}${number}${pds}`;
+        const watchNumber = Number.isFinite(props.number) ? String(props.number).padStart(4, '0') : null;
         
         const formatDate = (dateStr) => {
             if (!dateStr) return 'N/A';
@@ -267,21 +278,57 @@ class WatchLayer {
             });
         };
 
-        const html = `
-            <div style="max-width: 600px;">
-                <div style="margin-bottom: 20px; padding: 15px; background: ${colors.outline}30; border-left: 4px solid ${colors.outline}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.outline};">${props.is_pds ? 'PDS ' : ''}${title}</h3>
-                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
-                        <strong>Issued:</strong> <span>${formatDate(props.issue)}</span>
-                        <strong>Expires:</strong> <span>${formatDate(props.expire)}</span>
-                    </div>
+        const buildWatchHtml = (preText = '') => `
+            <div style="margin-bottom: 20px; padding: 15px; background: ${colors.outline}30; border-left: 4px solid ${colors.outline}; border-radius: 10px;">
+                <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.outline};">${props.is_pds ? 'PDS ' : ''}${title}</h3>
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
+                    <strong>Issued:</strong> <span>${formatDate(props.issue)}</span>
+                    <strong>Expires:</strong> <span>${formatDate(props.expire)}</span>
                 </div>
-
-                <img src="https://www.spc.noaa.gov/products/watch/ww${String(props.number).padStart(4, '0')}_radar.gif?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; height: auto;">
             </div>
+
+            ${watchNumber ? `<img src="https://www.spc.noaa.gov/products/watch/ww${watchNumber}_radar.gif?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; margin: 0; height: auto;">` : ''}
+
+            ${preText ? `<div style="margin-top: 15px; margin-bottom: 15px;">
+                <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${preText}</p>
+            </div>` : ''}
         `;
 
-        new Dialog(title, 'eye', html, {}, true);
+        const showWatchDetails = (preText = '') => {
+            const html = buildWatchHtml(preText);
+            if (this._getAlertDetailsSurface() === 'windows') {
+                new Window({
+                    title,
+                    icon: 'eye',
+                    content: `<div style="color: white; padding: 20px; width: calc(100% - 40px);">${html}</div>`,
+                    width: 600,
+                    height: 700
+                });
+                return;
+            }
+
+            new Dialog(title, 'eye', `<div style="max-width: 600px;">${html}</div>`, {}, true);
+        };
+
+        if (!watchNumber) {
+            showWatchDetails();
+            return;
+        }
+
+        const spcUrl = `https://www.spc.noaa.gov/products/watch/ww${watchNumber}.html`;
+        fetch(spcUrl)
+            .then((resp) => resp.text())
+            .then((htmlText) => {
+                const preMatch = htmlText.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+                const preTextRaw = preMatch?.[1] || '';
+                const preText = preTextRaw
+                    .replace(/\r?\n/g, '<br>')
+                    .replace(/\s{2,}/g, ' ');
+                showWatchDetails(preText);
+            })
+            .catch(() => {
+                showWatchDetails();
+            });
     }
 
     _scheduleWatchSync(target) {

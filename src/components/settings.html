@@ -49,6 +49,16 @@
         </div>
         <p class="settings-control-help">Enable to use location-based features such as Spotter Network location reporting and to view your location on the map.</p>
       </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="alert-details-appear-in">Alert Details Appear In</label>
+          <select id="alert-details-appear-in" name="alert-details-appear-in" data-setting="alertDetailsAppearIn">
+            <option value="dialogs">Dialogs</option>
+            <option value="windows">Windows</option>
+          </select>
+        </div>
+        <p class="settings-control-help">When an item is clicked from a popup, choose whether it appears in a movable, resizable window or a fixed dialog. Requires page refresh.</p>
+      </div>
       <h3 class="settings-subheader">Settings management</h3>
       <div class="settings-control">
         <div class="settings-control-header">
@@ -199,7 +209,7 @@
       </div>
     </section>
     <section class="settings-section" data-section="spotternetwork">
-      <h2>Spotter Network (BETA)</h2>
+      <h2>Spotter Network</h2>
       <h4 class="settings-hint">Manage your Spotter Network login and location sharing.</h4>
       <div id="sn-settings-container">
         <!-- populated by JS -->

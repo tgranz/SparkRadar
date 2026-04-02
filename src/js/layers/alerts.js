@@ -7,6 +7,7 @@ See LICENSE for more.
 */
 
 import Dialog from "../ui/dialog.js";
+import Window from "../ui/window.js";
 import { buildAlertDefaults } from "../ui/settings.js";
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 import { renderAlert } from "../alert_utils.js";
@@ -48,6 +49,15 @@ class AlertLayer {
         if (this.map?.map) {
             this.map.map.on('click', this.alertPopupClickHandlers.main);
         }
+    }
+
+    _getAlertDetailsSurface() {
+        const setting = window.settingsInstance?.getSetting('alertDetailsAppearIn');
+        return setting === 'windows' ? 'windows' : 'dialogs';
+    }
+
+    _getAlertDetailsSurfaceLabel() {
+        return this._getAlertDetailsSurface() === 'windows' ? 'Window' : 'Dialog';
     }
 
     setAlerts(alerts) {
@@ -442,29 +452,38 @@ class AlertLayer {
         };
 
         const html = `
-            <div style="max-width: 600px;">
-                <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
-                    <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.name}</h3>
-                    <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
-                        <strong>Issued:</strong> <span>${formatDate(alert.issued || alert.receivedAt)}</span>
-                        <strong>Expires:</strong> <span>${formatDate(alert.expiry || alert.expiresAt)}</span>
-                        ${alert.sender || alert.nwsOffice ? `<strong>Sender:</strong> <span>${alert.sender || alert.nwsOffice}</span>` : ''}
-                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : (rendered.props.is_tor_observed ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Observed</span>` : (rendered.props.is_tor_radar_indicated ? `<strong>Tornado:</strong> <span style="color: #ffcc00;">Radar Indicated</span>` : ''))}
-                        ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
-                        ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()} (${expandHailSize(rendered.props.max_hail_size)})</span>` : ''}
-                        ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
-                    </div>
+            <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
+                <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.name}</h3>
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
+                    <strong>Issued:</strong> <span>${formatDate(alert.issued || alert.receivedAt)}</span>
+                    <strong>Expires:</strong> <span>${formatDate(alert.expiry || alert.expiresAt)}</span>
+                    ${alert.sender || alert.nwsOffice ? `<strong>Sender:</strong> <span>${alert.sender || alert.nwsOffice}</span>` : ''}
+                    ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : (rendered.props.is_tor_observed ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Observed</span>` : (rendered.props.is_tor_radar_indicated ? `<strong>Tornado:</strong> <span style="color: #ffcc00;">Radar Indicated</span>` : ''))}
+                    ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
+                    ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()} (${expandHailSize(rendered.props.max_hail_size)})</span>` : ''}
+                    ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
                 </div>
-                ${alert.message ? alert.message.split('#####\n\n').map((section, i, arr) => `
-                    ${arr.length === 1 ? `` : `${i === 0 ? '<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Latest Bulletin</p>' : `<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Update ${arr.length - i} of ${arr.length}</p>`}`}
-                    <div style="margin-bottom: 15px;">
-                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${section.replace('  ', '\n').replace(/<[^>]+>/g, '')}</p>
-                    </div>
-                `).join('') : ''}
             </div>
+            ${alert.message ? alert.message.split('#####\n\n').map((section, i, arr) => `
+                ${arr.length === 1 ? `` : `${i === 0 ? '<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Latest Bulletin</p>' : `<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Update ${arr.length - i} of ${arr.length}</p>`}`}
+                <div style="margin-bottom: 15px;">
+                    <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${section.replace('  ', '\n').replace(/<[^>]+>/g, '')}</p>
+                </div>
+            `).join('') : ''}
         `;
 
-        new Dialog(rendered.name, 'alert-triangle', html, {}, true);
+        if (this._getAlertDetailsSurface() === 'windows') {
+            new Window({
+                title: rendered.name,
+                icon: 'alert-triangle',
+                content: `<div style="color: white; padding: 20px; width: calc(100% - 40px);">${html}</div>`,
+                width: 600,
+                height: 700
+            });
+            return;
+        }
+
+        new Dialog(rendered.name, 'alert-triangle', `<div style="max-width: 600px;">${html}</div>`, {}, true);
     }
 
     zoomToAlert(alert) {

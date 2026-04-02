@@ -72,8 +72,8 @@ export default class Measure {
 		this.canvas.id = 'measure-overlay';
 		this.canvas.style.position = 'fixed';
 		this.canvas.style.inset = '0';
-		this.canvas.style.width = '100vw';
-		this.canvas.style.height = '100vh';
+		this.canvas.style.width = '100%';
+		this.canvas.style.height = '100%';
 		this.canvas.style.zIndex = '998';
 		this.canvas.style.pointerEvents = 'auto';
 		this.canvas.style.cursor = 'crosshair';
@@ -109,12 +109,18 @@ export default class Measure {
 			this.resize();
 			this.redraw();
 		};
+		this.visualViewportResizeHandler = () => {
+			this.resize();
+			this.redraw();
+		};
 
 		this.canvas.addEventListener('pointerdown', this.pointerDownHandler);
 		window.addEventListener('pointermove', this.pointerMoveHandler);
 		window.addEventListener('pointerup', this.pointerUpHandler);
 		window.addEventListener('pointercancel', this.pointerUpHandler);
 		window.addEventListener('resize', this.resizeHandler);
+		window.visualViewport?.addEventListener('resize', this.visualViewportResizeHandler);
+		window.visualViewport?.addEventListener('scroll', this.visualViewportResizeHandler);
 		document.addEventListener('keydown', this.keydownHandler);
 
 		this.lockMaps();
@@ -203,9 +209,12 @@ export default class Measure {
 	}
 
 	resize() {
+		const rect = this.canvas.getBoundingClientRect();
+		const displayWidth = Math.max(1, Math.floor(rect.width));
+		const displayHeight = Math.max(1, Math.floor(rect.height));
 		const dpr = window.devicePixelRatio || 1;
-		this.canvas.width = Math.floor(window.innerWidth * dpr);
-		this.canvas.height = Math.floor(window.innerHeight * dpr);
+		this.canvas.width = Math.floor(displayWidth * dpr);
+		this.canvas.height = Math.floor(displayHeight * dpr);
 		this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 	}
 
@@ -259,7 +268,8 @@ export default class Measure {
 	}
 
 	redraw() {
-		this.ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+		const rect = this.canvas.getBoundingClientRect();
+		this.ctx.clearRect(0, 0, rect.width, rect.height);
 
 		if (!this.measurement) {
 			this.label.style.display = 'none';
@@ -338,6 +348,8 @@ export default class Measure {
 		window.removeEventListener('pointerup', this.pointerUpHandler);
 		window.removeEventListener('pointercancel', this.pointerUpHandler);
 		window.removeEventListener('resize', this.resizeHandler);
+		window.visualViewport?.removeEventListener('resize', this.visualViewportResizeHandler);
+		window.visualViewport?.removeEventListener('scroll', this.visualViewportResizeHandler);
 		document.removeEventListener('keydown', this.keydownHandler);
 
 		this.canvas.remove();
