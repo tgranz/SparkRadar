@@ -53,19 +53,21 @@ export function renderAlert(alert) {
     else icon = 'alert-triangle';
 
     // Check props
+    const messages = alert?.message.split('#####') || [];
+
     const alertMessage = alert?.message || "";
-    const latestAlertMessage = alert?.message.split('#####')[0] || alertMessage;
+    const latestAlertMessage = messages[0] || alertMessage;
     const _is_destructive = latestAlertMessage.toLowerCase().includes('destructive') || latestAlertMessage.toLowerCase().includes('catastrophic') || false;
     const _is_consid = !_is_destructive && latestAlertMessage.toLowerCase().includes('considerable') || false;
     const is_emergency = latestAlertMessage.includes('TORNADO EMERGENCY') || latestAlertMessage.includes('FLASH FLOOD EMERGENCY') || false;
     const is_pds = latestAlertMessage.toLowerCase().includes('particularly dangerous situation') || false;
     const damagelevel = _is_destructive ? 'destructive' : _is_consid ? 'considerable' : 'normal';
-    const hailMatch = alertMessage.match(/max hail size...(.*?)\n/i);
+    const hailMatch = latestAlertMessage.match(/max hail size...(.*?)\n/i);
     const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
-    const windMatch = alertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
+    const windMatch = latestAlertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
     const maxWindGust = windMatch ? windMatch[1].trim() : null;
-    const is_confirmed_tor = alertMessage.includes('TORNADO...OBSERVED') || false;
-    const is_test = alertMessage.includes('TEST') || false;
+    const is_confirmed_tor = latestAlertMessage.includes('TORNADO...OBSERVED') || false;
+    const is_test = latestAlertMessage.includes('TEST') || false;
 
     // Store original product name for settings lookup
     const originalProductName = alert?.productName.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
@@ -150,10 +152,10 @@ export function renderAlert(alert) {
             is_pds: is_pds,
             is_emergency: is_emergency,
             damagelevel: damagelevel,
-            is_tor_possible: alert?.message.toLowerCase().includes('tornado...possible') || false,
+            is_tor_possible: latestAlertMessage.toLowerCase().includes('tornado...possible') || false,
             is_tor_observed: is_confirmed_tor,
-            is_tor_radar_indicated: alertMessage.toLowerCase().includes('tornado...radar indicated') || false,
-            is_waterspout_possible: alert?.message.toLowerCase().includes('waterspout...possible') || false,
+            is_tor_radar_indicated: latestAlertMessage.toLowerCase().includes('tornado...radar indicated') || false,
+            is_waterspout_possible: latestAlertMessage.toLowerCase().includes('waterspout...possible') || false,
             max_hail_size: maxHailSize,
             max_wind_gust: maxWindGust,
             is_test: is_test
