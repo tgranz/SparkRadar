@@ -1,4 +1,4 @@
-import Window from '../js/ui/window.js';
+import Window from '../../ui/window.js';
 
 export default class NEXRADStatus {
     constructor() {

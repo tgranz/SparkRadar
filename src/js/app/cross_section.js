@@ -6,7 +6,7 @@ Handles cross-section visualization.
 See LICENSE for more.
 */
 
-import { createSplitToolbar } from '../../components/split_toolbar.js';
+import { createSplitToolbar } from './toolbars/split_toolbar.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 

@@ -7,7 +7,7 @@ This module handles alert data fetching, SSE subscriptions, and notifications.
 See LICENSE for more.
 */
 
-import Notification from "./ui/notification.js";
+import Notification from "../ui/notification.js";
 import { renderAlert } from "./alert_utils.js";
 
 /**

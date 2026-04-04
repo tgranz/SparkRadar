@@ -7,19 +7,19 @@ This module manages alerts, watches, and outlooks display on the map.
 See LICENSE for more.
 */
 
-import Popup from "./ui/popup.js";
+import Popup from "../ui/popup.js";
 import AlertService from "./alerts.js";
-import AlertLayer from "./layers/alerts.js";
-import WatchLayer from "./layers/watches.js";
-import MesoscaleDiscussionLayer from "./layers/mesoscale_discussions.js";
-import OutlookLayer from "./layers/outlooks.js";
-import StormCentersLayer from "./layers/storm_centers.js";
-import SurfaceAnalysisLayer from "./layers/surface_analysis.js";
-import LightningLayer from "./layers/lightning.js";
-import SpotterNetworkPositionsLayer from "./layers/spotter_network_positions.js";
-import MetarStationsLayer from "./layers/metar_stations.js";
-import NWSStormReportsLayer from "./layers/nws_storm_reports.js";
-import { applyLayerOrder, DEFAULT_LAYER_ORDER } from "./layers/layer_utils.js";
+import AlertLayer from "../maplayers/alerts.js";
+import WatchLayer from "../maplayers/watches.js";
+import MesoscaleDiscussionLayer from "../maplayers/mesoscale_discussions.js";
+import OutlookLayer from "../maplayers/outlooks.js";
+import StormCentersLayer from "../maplayers/storm_centers.js";
+import SurfaceAnalysisLayer from "../maplayers/surface_analysis.js";
+import LightningLayer from "../maplayers/lightning.js";
+import SpotterNetworkPositionsLayer from "../maplayers/spotter_network_positions.js";
+import MetarStationsLayer from "../maplayers/metar_stations.js";
+import NWSStormReportsLayer from "../maplayers/nws_storm_reports.js";
+import { applyLayerOrder, DEFAULT_LAYER_ORDER } from "../maplayers/layer_utils.js";
 
 class Layers {
     constructor(mapInstance) {

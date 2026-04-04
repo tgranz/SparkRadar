@@ -1,0 +1,212 @@
+/* Attribution element */
+#attribution {
+  position: fixed;
+  bottom: 80px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  padding: 0px;
+  border-radius: 100px;
+  color: white;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: width 0.2s ease, gap 0.2s ease;
+  width: 30px;
+  overflow: hidden;
+}
+
+#attribution:hover {
+  width: auto;
+  gap: 10px;
+}
+
+.attribution-icon {
+  font-weight: bold;
+  font-size: 1.1em;
+  color: white;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+}
+
+.attribution-text {
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  margin-right: 10px;
+}
+
+#attribution:hover .attribution-text {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 1em;
+  z-index: 10000;
+  opacity: 0;
+  animation: fadeInOut 5s forwards;
+  pointer-events: none;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.popup {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  z-index: 2000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(20px);
+  gap: 10px;
+  width: 400px;
+  color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px;
+  max-width: 260px;
+  max-height: 250px;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  pointer-events: auto;
+  transform-origin: 50% 100%;
+  animation: popupIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.popup.popup-closing {
+  animation: popupOut 0.2s cubic-bezier(0.36, 0, 0.66, -0.56) forwards;
+}
+
+@keyframes popupIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 10px)) scale(0.3) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 10px)) scale(1) translateY(0);
+  }
+}
+
+@keyframes popupOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 10px)) scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 10px)) scale(0.3) translateY(-10px);
+  }
+}
+
+.popup-inner {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.popup::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-right: 10px solid transparent;
+  border-top: 10px solid var(--border-color);
+}
+
+.popup-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.popup-list {
+  display: grid;
+  gap: 6px;
+}
+
+.popup-item:hover {
+  border: 1px solid var(--primary-color);
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.popup-item {
+  display: grid;
+  grid-template-columns: 12px 1fr;
+  column-gap: 5px;
+  align-items: start;
+  border: 1px solid var(--border-color);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+  background-color: rgba(0, 0, 0, 0);
+  padding: 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.popup-item-title {
+  font-weight: 600;
+}
+
+.popup-dot {
+  width: 5px;
+  height: 100%;
+  border-radius: 10px;
+  margin-top: 0;
+}
+
+.popup-meta {
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+.welcomeul {
+  padding: 0 !important;
+  margin: 20px 0 20px 20px !important;
+  list-style-type: circle !important;
+}
+
+.welcomeul li {
+  margin-bottom: 0px;
+  transition: none;
+  cursor: text;
+  padding: 5px;
+}
+
+.welcomeul li:hover {
+  margin-left: unset;
+  color: unset;
+}
+

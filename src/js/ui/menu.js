@@ -7,13 +7,13 @@ This module handles the menu component.
 See LICENSE for more.
 */
 
-import about from '../../components/about.js';
-import Settings from './settings.js';
-import debugConsole from './debug_console.js';
+import about from '../app/about.js';
+import Settings from '../app/settings/settings.js';
+import debugConsole from '../app/debug_console.js';
 import version from '../../VERSION.js';
-import EmbedPlayer from '../../components/embed_player.js';
-import Glossary from '../../components/glossary.js';
-import NEXRADStatus from '../../components/nexradstatus.js';
+import EmbedPlayer from '../app/activities/embed_player.js';
+import Glossary from '../app/activities/glossary.js';
+import NEXRADStatus from '../app/activities/nexradstatus.js';
 
 class Menu {
     // Constructor function

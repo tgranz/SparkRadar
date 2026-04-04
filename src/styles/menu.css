@@ -1,0 +1,101 @@
+.menu {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  max-width: 600px;
+  width: calc(100% - 60px);
+  max-height: calc(100% - 60px);
+  height: auto;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  z-index: 10000;
+  overflow-y: auto;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out, visibility 0.2s ease-out;
+}
+
+.menu img {
+  width: 36px;
+  height: 36px;
+  margin-right: 10px;
+}
+
+/* Hidden state: faded out and slides up */
+.menu.menu-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) translateY(-40px);
+  visibility: hidden;
+}
+
+/* Visible state: faded in and slides down */
+.menu:not(.menu-hidden) {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -50%) translateY(0);
+  visibility: visible;
+}
+
+.menu ul {
+  list-style: none;
+  padding: 0;
+  margin: 20px 0 0 0;
+}
+
+.menu li {
+  padding: 0;
+  cursor: pointer;
+  transition: margin-left 0.2s ease, color 0.2s ease;
+}
+
+.menu li div {
+  padding: 12px 0;
+}
+
+.menu li:hover {
+  margin-left: 10px;
+  color: var(--primary-color);
+}
+
+.menu li i {
+  font-size: 2em;
+  margin-right: 10px;
+}
+
+.menu-close-btn {
+  width: 42px;
+  height: 42px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #ff2121;
+  border: none;
+  font-size: 1.5em;
+  cursor: pointer;
+  color: black;
+  line-height: 1;
+  padding: 0;
+  float: right;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.menu-close-btn:hover {
+  transform: scale(1.2);
+}
+
+#menu-title {
+  font-size: 22px;
+  font-weight: bolder;
+  margin: 10px;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  background-image: linear-gradient(100deg, rgba(39, 190, 255, 1) 20%, rgba(42, 127, 255, 1) 73%, rgba(255, 204, 0, 1) 74%);
+}

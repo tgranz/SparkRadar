@@ -7,11 +7,11 @@ This module handles the radar on a map.
 See LICENSE for more.
 */
 
-import { checkLatestL2RadarFile, checkLatestL3RadarFile, loadLatestL2RadarFile, loadLatestL3RadarFile, loadRadarFileFromUrl } from '../parse/fetch.js';
-import { Level2Radar } from '../parse/level2/src/index.js';
-import nexradLevel3Data from '../parse/level3/src/browser.js';
+import { checkLatestL2RadarFile, checkLatestL3RadarFile, loadLatestL2RadarFile, loadLatestL3RadarFile, loadRadarFileFromUrl } from '../../parse/fetch.js';
+import { Level2Radar } from '../../parse/level2/src/index.js';
+import nexradLevel3Data from '../../parse/level3/src/browser.js';
 import RadarCache from './radar_cache.js';
-import ChunkLoader from '../parse/chunkloader.js';
+import ChunkLoader from '../../parse/chunkloader.js';
 
 // Helper function to yield to the browser between processing iterations
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -261,7 +261,7 @@ class Radar {
                 return;
             }
 
-            const worker = new Worker(new URL('../js/workers/radar_worker.js', import.meta.url), { type: 'module' });
+            const worker = new Worker(new URL('../workers/radar_worker.js', import.meta.url), { type: 'module' });
             const timeout = setTimeout(() => {
                 worker.terminate();
                 reject(new Error('Chunk worker timeout'));
@@ -740,7 +740,7 @@ class Radar {
 
     _processRadarDataInWorker(arrayBuffer, layer, options = {}) {
         return new Promise((resolve, reject) => {
-            const worker = new Worker(new URL('./workers/radar_worker.js', import.meta.url), { type: 'module' });
+            const worker = new Worker(new URL('../workers/radar_worker.js', import.meta.url), { type: 'module' });
 
             const cleanup = () => {
                 worker.terminate();
@@ -772,7 +772,7 @@ class Radar {
 
     _processChunksInWorker(buffers, layer, options = {}) {
         return new Promise((resolve, reject) => {
-            const worker = new Worker(new URL('./workers/radar_worker.js', import.meta.url), { type: 'module' });
+            const worker = new Worker(new URL('../workers/radar_worker.js', import.meta.url), { type: 'module' });
 
             const cleanup = () => worker.terminate();
 

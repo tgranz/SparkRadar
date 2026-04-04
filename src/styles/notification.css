@@ -1,0 +1,99 @@
+.notification {
+  position: fixed;
+  bottom: 80px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  color: white;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 1em;
+  z-index: 10000;
+  max-width: 400px;
+  width: calc(100% - 42px);
+  animation: slideInFromRight 0.3s ease-out forwards;
+  transform: translateX(120%);
+}
+
+.notification.notification-closing {
+  animation: slideOutToRight 0.3s ease-in forwards;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+}
+
+.notification-content {
+  border-left: 3px solid red;
+  padding-left: 10px;
+}
+
+.notification-header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.notification-title {
+  font-weight: bold;
+  text-align: left;
+}
+
+.notification-icon {
+  font-size: 2em;
+  color: red;
+}
+
+.notification-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  transition: background-color 0.2s ease;
+}
+
+.notification-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.notification-header-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notification-body {
+  line-height: 1.4;
+}
+
+.notification-actions {
+  margin-top: 12px;
+}

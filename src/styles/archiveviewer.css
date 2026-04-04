@@ -1,0 +1,135 @@
+#archive-date-search,
+#archive-station-search {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 10px;
+  font-size: 1em;
+  font-family: 'Onest', sans-serif;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+#archive-date-search::placeholder,
+#archive-station-search::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+#archive-date-search:hover,
+#archive-station-search:hover {
+  background: rgba(0, 0, 0, 0.4);
+  border-color: var(--primary-color);
+}
+
+#archive-date-search:focus,
+#archive-station-search:focus {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 10px rgba(39, 190, 255, 0.3);
+}
+
+#archive-search-button {
+  width: auto;
+  background: none;
+  border: 1px solid var(--border-color);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#archive-search-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+#archive-file-list {
+  margin-top: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.archive-searchresult {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.archive-searchresult:hover {
+  background: rgba(0, 0, 0, 0.5);
+  border-color: var(--primary-color);
+}
+
+.archive-searchresult p {
+  color: white;
+  font-size: 0.95em;
+  flex: 1;
+  text-align: left;
+}
+
+.archive-searchresult button {
+  background: var(--primary-color);
+  border: 1px solid var(--border-color);
+  color: black;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: auto;
+  height: auto;
+  white-space: nowrap;
+}
+
+.archive-searchresult button:hover {
+  background: var(--secondary-color);
+  color: white;
+  transform: scale(1.05);
+}
+
+.archive-searchresult {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  color: white;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.archive-searchresult p {
+  padding: 0;
+  margin-left: 10px;
+}
+
+.archive-searchresult button {
+  align-self: flex-start;
+  background: none;
+  background-color: none;
+  border: 1px solid var(--border-color);
+  color: white;
+  font-size: 0.9em;
+  padding: 8px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: auto;
+}
+
+.archive-searchresult button:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+  border-color: var(--primary-color);
+}

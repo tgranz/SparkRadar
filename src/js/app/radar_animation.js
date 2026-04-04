@@ -1,6 +1,6 @@
 import { getPastScans } from '../../parse/fetch.js';
-import Toast from './toast.js';
-import { showLoadingAnimation, hideLoadingAnimation } from './loader.js';
+import Toast from '../ui/toast.js';
+import { showLoadingAnimation, hideLoadingAnimation } from '../ui/loader.js';
 
 export default class AnimationController {
     constructor() {

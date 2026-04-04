@@ -1,4 +1,4 @@
-import Dialog from './dialog.js';
+import Dialog from '../ui/dialog.js';
 
 export default class RadarStatus extends Dialog {
     constructor(station) {

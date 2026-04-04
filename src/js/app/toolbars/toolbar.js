@@ -1,4 +1,4 @@
-import Toast from "../js/ui/toast";
+import Toast from "../../ui/toast";
 
 export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick, onMeasureClick) {    
     // Create main toolbar

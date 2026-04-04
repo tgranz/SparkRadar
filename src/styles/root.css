@@ -1,0 +1,157 @@
+:root {
+  --primary-color: #27beff;
+  --secondary-color: #2a7fff;
+  --border-color: gray;
+  --secondary-border-color: rgba(39, 190, 255, 0.2);
+}
+
+html,
+body {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  font-family: 'Onest', sans-serif;
+  overflow: hidden;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  text-align: center;
+}
+
+p {
+  margin: 0;
+}
+
+* {
+  scrollbar-width: none;
+}
+
+/* Remove tap highlight on mobile */
+input, textarea, button, select, a, * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+
+a {
+  color: var(--primary-color);
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: white;
+}
+
+#app {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  border: none;
+  font-size: 1.2em;
+  margin: 0;
+  padding: 5px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  cursor: pointer;
+  border-radius: 10px;
+  color: white;
+  background-color: transparent;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+button:hover {
+  background-color: var(--secondary-border-color);
+  border: 1px solid var(--primary-color) !important;
+  color: white;
+}
+
+.selected {
+  background-color: var(--secondary-color) !important;
+  border: 1px solid transparent;
+  color: white !important;
+}
+
+.hidden {
+  display: none !important;
+}
+
+input[type="color"] {
+  width: 100px;
+  padding: 0;
+  border-radius: 100px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+
+
+/* Switch toggle styling */
+.switch {
+  width: 50px;
+  height: 26px;
+  position: relative;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+  border-radius: 13px;
+  border: 1px solid var(--border-color);
+  transition: background-color 0.2s, border-color 0.2s;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.switch:hover {
+  border-color: rgba(39, 190, 255, 0.5);
+}
+
+.switch:checked {
+  background: var(--primary-color);
+  border-color: var(--border-color);
+}
+
+.switch:checked::before {
+  transform: translateX(24px);
+}
+
+.switch.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.danger-button {
+  background-color: #ff2121;
+  color: black;
+  border: none;
+  padding: 10px 16px;
+  font-size: 1em;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.danger-button:hover {
+  background-color: #ff4c4c;
+}

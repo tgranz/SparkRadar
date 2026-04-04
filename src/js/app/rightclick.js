@@ -1,4 +1,4 @@
-import Modal from './modal.js';
+import Modal from '../ui/modal.js';
 
 class RightClickHandler {
 	constructor(mapInstance) {

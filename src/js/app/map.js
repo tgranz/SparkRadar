@@ -8,14 +8,14 @@ See LICENSE for more.
 */
 
 import earcut from 'earcut';
-import { createSplitToolbar } from "../../components/split_toolbar.js";
-import Palettes from "../palettes.js";
-import { showLoadingAnimation, hideLoadingAnimation } from "./loader.js";
+import { createSplitToolbar } from "./toolbars/split_toolbar.js";
+import Palettes from "../main/palettes.js";
+import { showLoadingAnimation, hideLoadingAnimation } from "../ui/loader.js";
 import RadarPicker from "./radar_picker.js";
-import Layers from "../layers.js";
-import RadarStationsLayer from "../layers/radar_stations.js";
-import Radar3D from "../3dradar.js";
-import Notification from './notification.js';
+import Layers from "../main/layers.js";
+import RadarStationsLayer from "../maplayers/radar_stations.js";
+import Radar3D from "../main/3dradar.js";
+import Notification from '../ui/notification.js';
 import RightClickHandler from './rightclick.js';
 import CrossSection from './cross_section.js';
 

@@ -1,4 +1,4 @@
-import Dialog from "./dialog"
+import Dialog from "../ui/dialog.js"
 import { queryL2Archive } from "../../parse/fetch.js"
 
 export default class ArchiveBrowser {

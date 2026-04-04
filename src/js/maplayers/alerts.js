@@ -8,9 +8,8 @@ See LICENSE for more.
 
 import Dialog from "../ui/dialog.js";
 import Window from "../ui/window.js";
-import { buildAlertDefaults } from "../ui/settings.js";
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
-import { renderAlert } from "../alert_utils.js";
+import { renderAlert } from "../main/alert_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',

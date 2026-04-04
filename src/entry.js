@@ -23,32 +23,31 @@ if (!globalThis.Buffer) {
 }
 
 // Import modules
-import "./style.css";
-import Map from "./js/ui/map.js";
+import Map from "./js/app/map.js";
 import Menu from "./js/ui/menu.js";
-import Radar from "./js/radar.js";
-import RadarStatus from "./js/ui/radar_status.js";
+import Radar from "./js/main/radar.js";
+import RadarStatus from "./js/app/radar_status.js";
 import Dialog from './js/ui/dialog.js';
-import AlertList from "./js/ui/alert_list.js";
-import Draw from "./js/ui/draw.js";
-import ArchiveBrowser from "./js/ui/archive_browser.js";
+import AlertList from "./js/app/alert_list.js";
+import Draw from "./js/app/draw.js";
+import ArchiveBrowser from "./js/app/archive_browser.js";
 import Inspector from "./js/ui/inspector.js";
-import Measure from "./js/ui/measure.js";
-import Palettes from './js/palettes.js';
-import Finder from './js/ui/finder.js';
-import AnimationController from './js/ui/radar_animation.js';
-import SpotterNetwork from './js/spotter_network.js';
+import Measure from "./js/app/measure.js";
+import Palettes from './js/main/palettes.js';
+import Finder from './js/app/finder.js';
+import AnimationController from './js/app/radar_animation.js';
+import SpotterNetwork from './js/main/spotter_network.js';
 
 // Import location services
-import LocationServices from "./js/location_services.js";
+import LocationServices from "./js/main/location_services.js";
 
 // Import components
-import { createToolbar } from "./components/toolbar.js";
+import { createToolbar } from "./js/app/toolbars/toolbar.js";
 import { hideLoadingAnimation, showLoadingAnimation } from "./js/ui/loader.js";
-import { layerMenu } from "./components/layer_menu.js";
+import { layerMenu } from "./js/app/layer_menu.js";
 
 // Set custom colors
-import Settings from './js/ui/settings.js';
+import Settings from './js/app/settings/settings.js';
 window.settingsInstance = new Settings(); // Expose globally for color customization
 
 const locationServices = new LocationServices({

@@ -1,7 +1,7 @@
-import settingsHTML from '../../components/settings.html?raw';
-import Palettes from '../palettes.js';
-import Toast from './toast.js';
-import Modal from './modal.js';
+import settingsHTML from './settings.html?raw';
+import Palettes from '../../main/palettes.js';
+import Toast from '../../ui/toast.js';
+import Modal from '../../ui/modal.js';
 
 // TODO: Alert color defaults dont work
 

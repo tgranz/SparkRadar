@@ -922,7 +922,7 @@ function initializeLayerToggles(mapInstance) {
 }
 
 
-import { DEFAULT_LAYER_ORDER, LAYER_ORDER_LABELS, LAYER_ORDER_ANCHORS } from '../js/layers/layer_utils.js';
+import { DEFAULT_LAYER_ORDER, LAYER_ORDER_LABELS, LAYER_ORDER_ANCHORS } from '../maplayers/layer_utils.js';
 
 function renderOrderPanel(panel, mapInstance) {
     const order = mapInstance.layers.getLayerOrder();

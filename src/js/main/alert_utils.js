@@ -1,4 +1,4 @@
-import { buildAlertDefaults } from "./ui/settings";
+import { buildAlertDefaults } from "../app/settings/settings.js";
 
 
 export function getAlertSettings(alertName) {
