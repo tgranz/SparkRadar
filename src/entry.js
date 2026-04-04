@@ -106,6 +106,161 @@ function startMeasure() {
   new Measure(map);
 }
 
+function inferStationFromUploadedFileName(fileName, fallbackStation = 'KTLX') {
+  if (!fileName || typeof fileName !== 'string') return fallbackStation;
+
+  const upper = fileName.toUpperCase();
+  const direct = upper.match(/\bK[A-Z0-9]{3}\b/);
+  if (direct) return direct[0];
+
+  // Common Level 2 format: KXXXYYYYMMDD_HHMMSS_V06
+  const level2Prefix = upper.match(/^([A-Z0-9]{4})\d{8}_\d{6}/);
+  if (level2Prefix) return level2Prefix[1];
+
+  // Common Level 3/archive style tokenization.
+  const token = upper.split(/[^A-Z0-9]+/).find((part) => /^[A-Z0-9]{3,4}$/.test(part));
+  if (token) return token.length === 3 ? `K${token}` : token;
+
+  return fallbackStation;
+}
+
+function openRadarFileUploadDialog() {
+  const html = `
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <select id="radar-file-level" style="padding:8px;border-radius:8px;">
+        <option value="L2" selected>Level II archive or chunk file</option>
+        <option value="L3">Level III file</option>
+      </select>
+      <input id="radar-file-input" type="file" style="padding:6px 0;" />
+      <div id="radar-file-dropzone" style="border:2px dashed rgba(255,255,255,0.45);border-radius:10px;padding:18px;text-align:center;background:rgba(255,255,255,0.04);">
+        Drag and drop a radar file here
+      </div>
+      <div id="radar-file-selected" style="font-size:0.9em;opacity:0.85;min-height:1.2em;">No file selected</div>
+      <button id="radar-file-render" style="padding:10px;border-radius:10px;border:none;font-weight:700;cursor:pointer;">Render File</button>
+    </div>
+  `;
+
+  const dialog = new Dialog('Radar File Upload', 'upload', html);
+  const levelSelect = document.getElementById('radar-file-level');
+  const fileInput = document.getElementById('radar-file-input');
+  const dropzone = document.getElementById('radar-file-dropzone');
+  const selectedText = document.getElementById('radar-file-selected');
+  const renderButton = document.getElementById('radar-file-render');
+
+  let selectedFile = null;
+
+  const setSelectedFile = (file) => {
+    selectedFile = file || null;
+    selectedText.textContent = selectedFile ? `Selected: ${selectedFile.name}` : 'No file selected';
+  };
+
+  fileInput?.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+    setSelectedFile(file);
+  });
+
+  dropzone?.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    dropzone.style.borderColor = 'rgba(255,255,255,0.85)';
+    dropzone.style.background = 'rgba(255,255,255,0.1)';
+  });
+
+  dropzone?.addEventListener('dragleave', () => {
+    dropzone.style.borderColor = 'rgba(255,255,255,0.45)';
+    dropzone.style.background = 'rgba(255,255,255,0.04)';
+  });
+
+  dropzone?.addEventListener('drop', (event) => {
+    event.preventDefault();
+    dropzone.style.borderColor = 'rgba(255,255,255,0.45)';
+    dropzone.style.background = 'rgba(255,255,255,0.04)';
+    const file = event.dataTransfer?.files && event.dataTransfer.files[0] ? event.dataTransfer.files[0] : null;
+    setSelectedFile(file);
+  });
+
+  renderButton?.addEventListener('click', async () => {
+    if (!selectedFile) {
+      alert('Please select or drop a radar file first.');
+      return;
+    }
+
+    try {
+      showLoadingAnimation();
+      renderButton.disabled = true;
+      renderButton.textContent = 'Rendering...';
+
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const rawData = Buffer.from(arrayBuffer);
+      const selectedLevel = levelSelect?.value === 'L3' ? 'L3' : 'L2';
+      const product = selectedLevel === 'L3' ? 'N0B' : 'REF';
+      const station = inferStationFromUploadedFileName(selectedFile.name, mainRadar.station);
+
+      // Close split/cross-section FIRST.
+      // stopSplit() creates a fresh RadarPicker internally.
+      // disableCrossSection() calls rebuildRadarPicker() and window.enableAutoUpdates().
+      // Both must happen before we set archive state so they don't stomp over it.
+      if (map.crossSection?.enabled) {
+        map.disableCrossSection();
+      }
+      if (map.isSplit()) {
+        map.stopSplit();
+      }
+
+      // Set archive state (overrides enableAutoUpdates() that disableCrossSection may have called).
+      autoUpdateEnabled = false;
+      archiveMode.main = null;
+      localFileMode.main = {
+        rawData,
+        fileName: selectedFile.name,
+        level: selectedLevel
+      };
+
+      // Build the final picker and fully configure it BEFORE calling setRadar,
+      // so the onMetadata callback inside setRadar operates on the correct picker instance.
+      map.rebuildRadarPicker('main', selectedLevel === 'L2');
+      map.radarPicker.setArchiveMode(true, () => window.enableAutoUpdates(), 'Viewing local file');
+
+      if (selectedLevel === 'L3') {
+        // L3 files contain only one product at one tilt — lock the picker
+        // and disable split / cross-section controls.
+        map.radarPicker.setPickerLocked(true);
+
+        const splitBtn = document.getElementById('dual-map-button');
+        if (splitBtn) {
+          splitBtn.disabled = true;
+          splitBtn.setAttribute('aria-disabled', 'true');
+          splitBtn.style.color = 'gray';
+          splitBtn.style.pointerEvents = 'none';
+          splitBtn.title = 'Dual-radar view unavailable for local L3 files';
+        }
+        const xsBtn = document.getElementById('cross-section-button');
+        if (xsBtn) {
+          xsBtn.disabled = true;
+          xsBtn.setAttribute('aria-disabled', 'true');
+          xsBtn.style.color = 'gray';
+          xsBtn.style.pointerEvents = 'none';
+          xsBtn.title = 'Cross-section unavailable for local L3 files';
+        }
+      }
+
+      await setRadar(station, product, 'main', {
+        rawData,
+        fileName: selectedFile.name,
+        gate_limit: -30
+      });
+
+      dialog.close();
+    } catch (error) {
+      console.error('Failed to render uploaded radar file:', error);
+      alert(`Unable to render file: ${error?.message || 'Unknown error'}`);
+    } finally {
+      hideLoadingAnimation();
+      renderButton.disabled = false;
+      renderButton.textContent = 'Render File';
+    }
+  });
+}
+
 // Function to store and set the current radars
 var mainRadar = {
     station: initialStation,
@@ -498,11 +653,23 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
         options = { ...options, fromUrl: archiveMode[mainOrSplit] };
     }
 
+    // If in local-file mode and switching products, continue using uploaded data.
+    if (localFileMode[mainOrSplit] && !options.fromUrl && !options.rawData) {
+      options = {
+        ...options,
+        rawData: localFileMode[mainOrSplit].rawData,
+        fileName: localFileMode[mainOrSplit].fileName
+      };
+    }
+
     // Immediately sync colorbar for picker-driven product changes on the corresponding map.
     updateColorbarForMap(mainOrSplit, product);
     
     try {
-      showLoadingAnimation();
+      const suppressLoading = options?.skipLoading === true;
+      if (!suppressLoading) {
+        showLoadingAnimation();
+      }
       const renderTiming = {
         renderCalledAtMs: getNowEpochMs(),
         fileFetchedAtMs: null,
@@ -516,13 +683,17 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
         includeGeojson: false,
         onMetadata: ({ timeString, timeIso, tilt, vcp }) => {
           if (picker && typeof picker.setTimeAndTilt === 'function') {
-            picker.setTimeAndTilt(timeString, `${tilt.toFixed(1)}°`, timeIso);
+            const isArchive = !!(options.fromUrl || options.rawData);
+            picker.setTimeAndTilt(timeString, `${tilt.toFixed(1)}°`, timeIso, { ignoreAgeColoring: isArchive });
           }
           if (mainOrSplit === 'main') {
-            currentVcp = vcp; // Store current VCP for settings refresh
+            // Keep the previous display when transient updates omit VCP.
+            if (Number.isFinite(vcp)) {
+              currentVcp = vcp; // Store current VCP for settings refresh
+            }
             const vcpElement = document.getElementById('toolbar-vcp');
             if (vcpElement) {
-              vcpElement.textContent = formatVcpDisplay(vcp);
+              vcpElement.textContent = formatVcpDisplay(currentVcp);
             }
 
             const stationElement = document.getElementById('toolbar-station');
@@ -567,10 +738,14 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
           map.inspectBounds = map._computeBounds(map.currentGeojson);
         }
       }
-      hideLoadingAnimation();
+      if (!suppressLoading) {
+        hideLoadingAnimation();
+      }
     } catch (error) {
         console.error(`Error updating radar layer for product ${product}:`, error);
-        hideLoadingAnimation();
+        if (!options?.skipLoading) {
+          hideLoadingAnimation();
+        }
     }
 }
 
@@ -795,7 +970,7 @@ const toolbar = createToolbar(
     }
 
     if (!map.isSplit()) {
-      const newProduct = inferLevelFromProduct(mainRadar.product) === 'L3' ? 'N0G' : 'VEL';
+      const newProduct = inferLevelFromProduct(mainRadar.product) === 'L3' ? 'N0G' : 'REF';
       splitRadar = {
         station: mainRadar.station,
         product: newProduct,
@@ -865,28 +1040,18 @@ updateCrossSectionButtonState(mainRadar.product);
 window.loadRadarFromArchive = async function(url, station) {
   autoUpdateEnabled = false;
   archiveMode.main = url;
+  localFileMode.main = null;
   console.log('Auto-updates disabled. Loading archive file...');
   await setRadar(station, 'REF', 'main', { fromUrl: url, gate_limit: -30 });
   // Rebuild product picker to show only Level 2 products
   map.rebuildRadarPicker('main', true);
-};
-
-// Function to re-enable auto-updates
-window.enableAutoUpdates = function() {
-  autoUpdateEnabled = true;
-  archiveMode.main = null;
-  archiveMode.split = null;
-  console.log('Auto-updates re-enabled.');
-  // Rebuild product picker to show all products
-  map.rebuildRadarPicker('main', false);
-  if (map.hasSplitMap()) {
-    map.rebuildRadarPicker('split', false);
-  }
+  map.radarPicker.setArchiveMode(true, () => window.enableAutoUpdates());
 };
 
 // Add the menu to the page
 const menu = new Menu({
     onArchiveBrowser: () => { new ArchiveBrowser({ onClose: () => menu.close() }); },
+  onRadarFileUpload: () => { openRadarFileUploadDialog(); },
 });
 
 // Refresh handler to update radar data with debouncing and station change detection
@@ -902,6 +1067,12 @@ var autoUpdateEnabled = true;
 
 // Track archive mode
 var archiveMode = { main: null, split: null }; // Stores archive URL when in archive mode
+
+// Track uploaded local files for each target (main/split)
+var localFileMode = { main: null, split: null };
+
+// Track manually-selected product per target to avoid chunk refreshes reading stale map state
+var selectedProduct = { main: 'N0B', split: 'N0G' }; // Initialize to defaults matching mainRadar/splitRadar
 
 // Track when stations or products change
 // tbh i dont know why this is here
@@ -922,12 +1093,96 @@ setRadar = async function(station, product, mainOrSplit, options) {
     lastCheckedRadar[mainOrSplit] = null; // Reset on station/product change
     baselineCheckCount[mainOrSplit] = 0; // Reset baseline count
   }
+
+  // Track user-selected product so chunk refreshes always use the right one
+  if (product) {
+    selectedProduct[mainOrSplit] = product;
+  }
+
   return originalSetRadar(station, product, mainOrSplit, options);
 };
 
 const sn = new SpotterNetwork();
 window.spotterNetworkInstance = sn; // Expose globally
 sn.login();
+
+// Trigger near-immediate redraws when new realtime Level-II chunks arrive.
+const realtimeChunkRefreshState = {
+  main: { timerId: null, inFlight: false, pendingChunkUrl: null, lastProcessedChunkUrl: null },
+  split: { timerId: null, inFlight: false, pendingChunkUrl: null, lastProcessedChunkUrl: null },
+};
+
+// Debounce gate: skip chunk-driven refreshes if a manual product/station change just occurred.
+// This prevents automatic chunk refreshes from overriding recent user selections with stale state.
+const MANUAL_CHANGE_DEBOUNCE_MS = 2000;
+
+const scheduleRealtimeChunkRefresh = (target, chunkUrl = null) => {
+  const state = realtimeChunkRefreshState[target];
+  if (!state || state.inFlight) return;
+
+  // Skip refresh if user just manually changed product or station
+  const timeSinceManualChange = Date.now() - lastStationChangeTime[target];
+  if (timeSinceManualChange < MANUAL_CHANGE_DEBOUNCE_MS) {
+    console.log(`[L2ChunkRender] Skipping chunk refresh (${target}) - recent manual change (${timeSinceManualChange}ms ago)`);
+    return;
+  }
+
+  if (chunkUrl && state.lastProcessedChunkUrl === chunkUrl) {
+    return;
+  }
+
+  state.pendingChunkUrl = chunkUrl || state.pendingChunkUrl;
+  if (state.timerId) clearTimeout(state.timerId);
+
+  state.timerId = setTimeout(async () => {
+    state.timerId = null;
+    if (state.inFlight) return;
+    state.inFlight = true;
+
+    try {
+      const station = target === 'main' ? mainRadar.station : splitRadar.station;
+      // Use our tracked product selection instead of reading map state,
+      // since map.currentRadarProduct may be stale or not synced during product changes
+      const product = selectedProduct[target] || 
+        (target === 'main' ? mainRadar.product : splitRadar.product) ||
+        (target === 'main' ? map.currentRadarProduct : map.currentRadarProductSplit);
+
+      const isL2 = inferLevelFromProduct(product) === 'L2';
+      const isArchive = !!archiveMode[target];
+      const isLocal = !!localFileMode[target];
+      if (!isL2 || isArchive || isLocal) {
+        state.pendingChunkUrl = null;
+        return;
+      }
+
+      await originalSetRadar(station, product, target, {
+        gate_limit: -30,
+        skipLoading: true,
+      });
+
+      state.lastProcessedChunkUrl = state.pendingChunkUrl;
+      state.pendingChunkUrl = null;
+    } catch (error) {
+      console.error(`[L2ChunkRender] Realtime chunk refresh failed (${target}):`, error);
+    } finally {
+      state.inFlight = false;
+    }
+  }, 200);
+};
+
+window.addEventListener('sparkradar:l2-chunk-update', (event) => {
+  const station = event?.detail?.station || null;
+  const chunkUrl = event?.detail?.chunkUrl || null;
+  if (!station) return;
+
+  if (station === mainRadar.station) {
+    scheduleRealtimeChunkRefresh('main', chunkUrl);
+  }
+
+  if (map.hasSplitMap && map.hasSplitMap() && station === splitRadar.station) {
+    scheduleRealtimeChunkRefresh('split', chunkUrl);
+  }
+});
 
 updateIntervalId = setInterval(async () => {
   if (!autoUpdateEnabled || updateInProgress) return;
@@ -936,63 +1191,73 @@ updateIntervalId = setInterval(async () => {
   try {
     console.log("Running routine update.");
 
-    // Only check main map if station hasn't changed recently
+    // Only check main map if station hasn't changed recently.
+    // Realtime chunk-streamed L2 refreshes via chunk events instead of this 10s loop.
     if (Date.now() - lastStationChangeTime.main > STATION_CHANGE_DEBOUNCE) {
-      const mainProduct = map.currentRadarProduct || mainRadar.product;
-      const currentMainRadarKey = `${mainRadar.station}_${mainProduct}_${inferLevelFromProduct(mainProduct)}`;
-      const lastMainRadarKey = lastCheckedRadar.main;
-      
-      if (lastMainRadarKey === currentMainRadarKey) {
-        // Station is stable, increment baseline count
-        baselineCheckCount.main++;
-        
-        // Only check for updates after we've baselined multiple times
-        if (baselineCheckCount.main >= BASELINE_CHECKS_REQUIRED) {
-          try {
-            const updateAvailable = await radar.isUpdateAvailable(mainRadar.station, mainProduct);
-            if (updateAvailable) {
-              console.log(`[Main Map] Update available for ${currentMainRadarKey}`);
-              await originalSetRadar(null, mainProduct, 'main', { gate_limit: -30 });
-              baselineCheckCount.main = 0; // Reset after update
+      const mainProduct = selectedProduct.main || map.currentRadarProduct || mainRadar.product;
+      const isRealtimeChunkL2Main = inferLevelFromProduct(mainProduct) === 'L2' && !archiveMode.main && !localFileMode.main;
+
+      if (!isRealtimeChunkL2Main) {
+        const currentMainRadarKey = `${mainRadar.station}_${mainProduct}_${inferLevelFromProduct(mainProduct)}`;
+        const lastMainRadarKey = lastCheckedRadar.main;
+
+        if (lastMainRadarKey === currentMainRadarKey) {
+          // Station is stable, increment baseline count
+          baselineCheckCount.main++;
+
+          // Only check for updates after we've baselined multiple times
+          if (baselineCheckCount.main >= BASELINE_CHECKS_REQUIRED) {
+            try {
+              const updateAvailable = await radar.isUpdateAvailable(mainRadar.station, mainProduct);
+              if (updateAvailable) {
+                console.log(`[Main Map] Update available for ${currentMainRadarKey}`);
+                await originalSetRadar(null, mainProduct, 'main', { gate_limit: -30 });
+                baselineCheckCount.main = 0; // Reset after update
+              }
+            } catch (error) {
+              console.error('Error checking main map update:', error);
             }
-          } catch (error) {
-            console.error('Error checking main map update:', error);
           }
+        } else {
+          // First check or station changed, just record it
+          lastCheckedRadar.main = currentMainRadarKey;
+          baselineCheckCount.main = 1;
         }
-      } else {
-        // First check or station changed, just record it
-        lastCheckedRadar.main = currentMainRadarKey;
-        baselineCheckCount.main = 1;
       }
     }
 
-    // Only check split map if it exists and station hasn't changed recently
+    // Only check split map if it exists and station hasn't changed recently.
+    // Realtime chunk-streamed L2 refreshes via chunk events instead of this 10s loop.
     if (map.hasSplitMap() && Date.now() - lastStationChangeTime.split > STATION_CHANGE_DEBOUNCE) {
-      const splitProduct = map.currentRadarProductSplit || splitRadar.product;
-      const currentSplitRadarKey = `${splitRadar.station}_${splitProduct}_${inferLevelFromProduct(splitProduct)}`;
-      const lastSplitRadarKey = lastCheckedRadar.split;
-      
-      if (lastSplitRadarKey === currentSplitRadarKey) {
-        // Station is stable, increment baseline count
-        baselineCheckCount.split++;
-        
-        // Only check for updates after we've baselined multiple times
-        if (baselineCheckCount.split >= BASELINE_CHECKS_REQUIRED) {
-          try {
-            const updateAvailable = await radar.isUpdateAvailable(splitRadar.station, splitProduct);
-            if (updateAvailable) {
-              console.log(`[Split Map] Update available for ${currentSplitRadarKey}`);
-              await originalSetRadar(null, splitProduct, 'split', { gate_limit: -30 });
-              baselineCheckCount.split = 0; // Reset after update
+      const splitProduct = selectedProduct.split || map.currentRadarProductSplit || splitRadar.product;
+      const isRealtimeChunkL2Split = inferLevelFromProduct(splitProduct) === 'L2' && !archiveMode.split && !localFileMode.split;
+
+      if (!isRealtimeChunkL2Split) {
+        const currentSplitRadarKey = `${splitRadar.station}_${splitProduct}_${inferLevelFromProduct(splitProduct)}`;
+        const lastSplitRadarKey = lastCheckedRadar.split;
+
+        if (lastSplitRadarKey === currentSplitRadarKey) {
+          // Station is stable, increment baseline count
+          baselineCheckCount.split++;
+
+          // Only check for updates after we've baselined multiple times
+          if (baselineCheckCount.split >= BASELINE_CHECKS_REQUIRED) {
+            try {
+              const updateAvailable = await radar.isUpdateAvailable(splitRadar.station, splitProduct);
+              if (updateAvailable) {
+                console.log(`[Split Map] Update available for ${currentSplitRadarKey}`);
+                await originalSetRadar(null, splitProduct, 'split', { gate_limit: -30 });
+                baselineCheckCount.split = 0; // Reset after update
+              }
+            } catch (error) {
+              console.error('Error checking split map update:', error);
             }
-          } catch (error) {
-            console.error('Error checking split map update:', error);
           }
+        } else {
+          // First check or station changed, just record it
+          lastCheckedRadar.split = currentSplitRadarKey;
+          baselineCheckCount.split = 1;
         }
-      } else {
-        // First check or station changed, just record it
-        lastCheckedRadar.split = currentSplitRadarKey;
-        baselineCheckCount.split = 1;
       }
     }
 
@@ -1041,12 +1306,31 @@ window.enableAutoUpdates = function() {
   autoUpdateEnabled = true;
   archiveMode.main = null;
   archiveMode.split = null;
+  localFileMode.main = null;
+  localFileMode.split = null;
   console.log('Auto-updates re-enabled.');
   // Rebuild product picker to show all products
   map.rebuildRadarPicker('main', false);
   if (map.hasSplitMap()) {
     map.rebuildRadarPicker('split', false);
   }
+  // Restore toolbar buttons that may have been visually disabled for an L3 local file.
+  const splitBtn = document.getElementById('dual-map-button');
+  if (splitBtn) {
+    splitBtn.disabled = false;
+    splitBtn.setAttribute('aria-disabled', 'false');
+    splitBtn.style.color = '';
+    splitBtn.style.pointerEvents = '';
+    splitBtn.title = 'Dual-radar view';
+  }
+  const xsBtn = document.getElementById('cross-section-button');
+  if (xsBtn) {
+    xsBtn.disabled = false;
+    xsBtn.setAttribute('aria-disabled', 'false');
+    xsBtn.style.color = '';
+    xsBtn.style.pointerEvents = '';
+  }
+  updateCrossSectionButtonState(mainRadar.product);
 };
 
 window.disableAutoUpdates = function() {

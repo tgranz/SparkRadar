@@ -36,13 +36,13 @@ const productEntries = [
     { type: 'item', code: 'N_S', hasTiltOptions: false },
     { type: 'item', code: 'DAA', hasTiltOptions: false },
     { type: 'item', code: 'DTA', hasTiltOptions: false },
-    { type: 'header', label: 'Super-Res Products (Level II)' },
+    { type: 'header', label: 'Super-Res Products (Level II, BETA)' },
     { type: 'item', code: 'REF', hasTiltOptions: false },
     { type: 'item', code: 'VEL', hasTiltOptions: false },
     { type: 'item', code: 'CC', hasTiltOptions: false },
-    // { type: 'item', code: 'ZDR' }, <-- Error adding radar layer: Incorrect file type header: AR2V00
-    //{ type: 'item', code: 'KDP' }, <-- looks wrong
-    //{ type: 'item', code: 'SW' } <-- blank?
+    { type: 'item', code: 'ZDR', hasTiltOptions: false },
+    //{ type: 'item', code: 'KDP', hasTiltOptions: false }, gate values are VERY wrong, use L3 instead
+    { type: 'item', code: 'SW', hasTiltOptions: false },
 ];
 
 class RadarPicker {
@@ -82,6 +82,22 @@ class RadarPicker {
             this.timeAndTilt.classList.add('radar-picker-time-tilt');
             this.header.appendChild(this.timeAndTilt);
 
+        // Build an element that shows when in archive / local-file mode (hidden by default)
+        this.archiveDiv = document.createElement('div');
+        this.archiveDiv.classList.add('radar-picker-archive-mode');
+        this.archiveDiv.style.display = 'none';
+        this.picker.appendChild(this.archiveDiv);
+            this.archiveModeIndicator = document.createElement('p');
+            this.archiveModeIndicator.classList.add('radar-picker-archive-text');
+            this.archiveModeIndicator.textContent = 'Viewing archived data';
+            this.archiveDiv.appendChild(this.archiveModeIndicator);
+
+            this.archiveModeStopButton = document.createElement('button');
+            this.archiveModeStopButton.classList.add('radar-picker-archive-stop-button');
+            this.archiveModeStopButton.textContent = 'Stop';
+            this.archiveDiv.appendChild(this.archiveModeStopButton);
+
+
         // Build a product list
         this.productsList = document.createElement('div');
         this.productsList.classList.add('radar-products-list');
@@ -98,7 +114,7 @@ class RadarPicker {
                     return entry.label.includes('Level II');
                 }
                 return entry.type === 'item' && ['REF', 'VEL', 'CC', 'ZDR', 'KDP', 'SW'].includes(entry.code);
-              })
+            })
             : productEntries;
 
         // Create selectors for each product
@@ -262,6 +278,50 @@ class RadarPicker {
 
     toggle() {
         this.productsList.classList.toggle('radar-products-collapsed');
+    }
+
+    /**
+     * Lock or unlock the product picker.
+     * When locked, clicking the header does nothing and the product name is
+     * shown in white to signal it is not interactive.
+     * @param {boolean} locked
+     */
+    setPickerLocked(locked) {
+        this._pickerLocked = locked;
+        if (locked) {
+            this.header.onclick = null;
+            this.currentProduct.style.color = 'white';
+        } else {
+            this.header.onclick = () => this.toggle();
+            this.currentProduct.style.color = '';
+        }
+    }
+
+    /**
+     * Show or hide the archive-mode banner.
+     * @param {boolean} active - true to show, false to hide.
+     * @param {Function} [onStop] - Called when the Stop button is clicked.
+     * @param {string} [label] - Banner text (defaults to 'Viewing archived data').
+     */
+    setArchiveMode(active, onStop, label = 'Viewing archived data') {
+        if (active) {
+            this.archiveModeIndicator.textContent = label;
+            this.archiveDiv.style.display = 'flex';
+            // Replace the button node to cleanly remove any prior click listeners.
+            const newBtn = this.archiveModeStopButton.cloneNode(true);
+            this.archiveModeStopButton.replaceWith(newBtn);
+            this.archiveModeStopButton = newBtn;
+            if (typeof onStop === 'function') {
+                this.archiveModeStopButton.addEventListener('click', onStop);
+            }
+            // Fix any red/yellow age coloring left by restoreTimeAndTilt() in the constructor.
+            // Age coloring is meaningless for archive/local-file data.
+            if (this.radarTime != null) {
+                this.setTimeAndTilt(this.radarTime, this.radarTilt, null, { ignoreAgeColoring: true });
+            }
+        } else {
+            this.archiveDiv.style.display = 'none';
+        }
     }
 
     destroy() {

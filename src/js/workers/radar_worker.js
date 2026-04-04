@@ -18,6 +18,7 @@ const getLevel2MomentForLayer = (layer) => {
     case 'CC':
         return 'rho';
     case 'KDP':
+        // Level-II parser exposes differential phase (phi); KDP is derived during rendering.
         return 'phi';
     case 'SW':
         return 'spectrum';
@@ -26,6 +27,20 @@ const getLevel2MomentForLayer = (layer) => {
     default:
         return null;
     }
+};
+
+const getLevel2Vcp = (radar, header = null) => {
+    const patternNumber = Number(radar?.vcp?.record?.pattern_number);
+    if (Number.isFinite(patternNumber)) {
+        return patternNumber;
+    }
+
+    const headerVcp = Number(header?.vcp);
+    if (Number.isFinite(headerVcp)) {
+        return headerVcp;
+    }
+
+    return null;
 };
 
 const createRadarProjector = (radarLat, radarLon) => {
@@ -121,6 +136,8 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
         radarData = radar.getHighresReflectivity();
     } else if (layer === 'VEL') {
         radarData = radar.getHighresVelocity();
+
+        // Tilt up until we find velocity
         if (Array.isArray(radarData) && radarData.every(item => item === undefined)) {
             const elevationLevels = radar.listElevations().sort((a, b) => a - b);
             let currentIndex = elevationLevels.indexOf(radar.elevation);
@@ -140,7 +157,7 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
     } else if (layer === 'SW') {
         radarData = radar.getHighresSpectrum();
     } else if (layer == 'ZDR') {
-        radarData = radar.getHighResDiffReflectivity();
+        radarData = radar.getHighresDiffReflectivity();
     } else {
         throw new Error(`Unknown radar layer: ${layer}`);
     }
@@ -154,6 +171,108 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
     const project = createRadarProjector(radarLocation[0], radarLocation[1]);
     const includeGeojson = options.includeGeojson === true;
     const builder = createMeshBuilder(includeGeojson);
+    const scanIsPartial = Boolean(radar?.hasGaps || radar?.isTruncated);
+    const headers = radar.getHeader();
+
+    const forwardDelta = (fromAz, toAz) => {
+        if (!Number.isFinite(fromAz) || !Number.isFinite(toAz)) return 1;
+        let delta = toAz - fromAz;
+        while (delta <= 0) delta += 360;
+        return delta;
+    };
+
+    const getAzimuthPair = (index) => {
+        const current = headers?.[index];
+        if (!current || !Number.isFinite(current.azimuth)) {
+            return null;
+        }
+
+        const az1 = current.azimuth;
+        const prev = index > 0 ? headers[index - 1] : null;
+        const next = index + 1 < numberOfRadarIterations ? headers[index + 1] : null;
+        const prevDelta = prev && Number.isFinite(prev.azimuth)
+            ? forwardDelta(prev.azimuth, az1)
+            : null;
+
+        let delta;
+        if (next && Number.isFinite(next.azimuth)) {
+            const nextDelta = forwardDelta(az1, next.azimuth);
+            // For interior radials, use the true next-edge delta so adjacent wedges touch.
+            delta = nextDelta;
+        } else {
+            if (!scanIsPartial && headers?.[0] && Number.isFinite(headers[0].azimuth)) {
+                delta = forwardDelta(az1, headers[0].azimuth);
+            } else {
+                delta = Number.isFinite(prevDelta) ? prevDelta : 1;
+            }
+        }
+
+        const az2 = az1 + (Number.isFinite(delta) && delta > 0 ? delta : 1);
+        return { az1, az2 };
+    };
+
+    const normalizePhiDelta = (delta) => {
+        if (!Number.isFinite(delta)) return null;
+        if (delta > 180) return delta - 360;
+        if (delta < -180) return delta + 360;
+        return delta;
+    };
+
+    const computeKdpFromPhi = (momentData, gateIndex, gateSizeKm) => {
+        if (!Array.isArray(momentData) || !Number.isFinite(gateSizeKm) || gateSizeKm <= 0) {
+            return null;
+        }
+
+        // Use a wider adaptive baseline for dPhi/dr to reduce gate-to-gate noise.
+        let leftIndex = null;
+        let rightIndex = null;
+        for (let step = 1; step <= 3; step++) {
+            const li = gateIndex - step;
+            const ri = gateIndex + step;
+            if (leftIndex == null && li >= 0 && Number.isFinite(momentData[li])) {
+                leftIndex = li;
+            }
+            if (rightIndex == null && ri < momentData.length && Number.isFinite(momentData[ri])) {
+                rightIndex = ri;
+            }
+            if (leftIndex != null && rightIndex != null) break;
+        }
+
+        let kdp = null;
+        if (leftIndex != null && rightIndex != null && rightIndex > leftIndex) {
+            const dPhi = normalizePhiDelta(momentData[rightIndex] - momentData[leftIndex]);
+            if (Number.isFinite(dPhi)) {
+                const dR = (rightIndex - leftIndex) * gateSizeKm;
+                // KDP = 0.5 * dPhi/dr
+                kdp = 0.5 * (dPhi / dR);
+            }
+        }
+
+        // One-sided fallback.
+        if (!Number.isFinite(kdp)) {
+            const curr = momentData[gateIndex];
+            if (Number.isFinite(curr) && rightIndex != null && rightIndex > gateIndex) {
+                const dPhi = normalizePhiDelta(momentData[rightIndex] - curr);
+                if (Number.isFinite(dPhi)) {
+                    const dR = (rightIndex - gateIndex) * gateSizeKm;
+                    kdp = 0.5 * (dPhi / dR);
+                }
+            } else if (Number.isFinite(curr) && leftIndex != null && gateIndex > leftIndex) {
+                const dPhi = normalizePhiDelta(curr - momentData[leftIndex]);
+                if (Number.isFinite(dPhi)) {
+                    const dR = (gateIndex - leftIndex) * gateSizeKm;
+                    kdp = 0.5 * (dPhi / dR);
+                }
+            }
+        }
+
+        if (!Number.isFinite(kdp)) return null;
+
+        // Match display expectations for this product family: suppress negative artifacts.
+        if (kdp < 0) kdp = 0;
+        if (kdp > 20) kdp = 20;
+        return kdp;
+    };
 
     for (let index = 0; index < numberOfRadarIterations; index++) {
         const radial = radarData[index];
@@ -161,11 +280,11 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
             continue;
         }
 
-        const radialHeader = radar.getHeader(index);
-        const nextHeader = radar.getHeader((index + 1) % numberOfRadarIterations);
-
-        const az1 = radialHeader.azimuth;
-        const az2 = nextHeader.azimuth;
+        const azPair = getAzimuthPair(index);
+        if (!azPair) {
+            continue;
+        }
+        const { az1, az2 } = azPair;
         const az1Rad = az1 * DEG_TO_RAD;
         const az2Rad = az2 * DEG_TO_RAD;
         const sinAz1 = Math.sin(az1Rad);
@@ -177,18 +296,31 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
         const gateSize = radial.gate_size;
 
         for (let gateIndex = 0; gateIndex < radial.gate_count - 1; gateIndex++) {
-            const dbz = radial.moment_data[gateIndex];
-            if (dbz === null) {
-                continue;
-            }
-            if (layer === 'REF' && gateLimit !== null && dbz !== 'rf' && dbz < gateLimit) {
+            const rawValue = radial.moment_data[gateIndex];
+            if (rawValue === null) {
                 continue;
             }
 
             const r1 = (firstGate + gateIndex * gateSize) * 1000;
             const r2 = (firstGate + (gateIndex + 1) * gateSize) * 1000;
 
-            let value = dbz;
+            let value = rawValue;
+            if (layer === 'KDP') {
+                if (value === 'rf') {
+                    // Keep range-folded sentinel for existing renderer behavior.
+                } else {
+                    value = computeKdpFromPhi(radial.moment_data, gateIndex, gateSize);
+                }
+            }
+
+            if (value == null) {
+                continue;
+            }
+
+            if (layer === 'REF' && gateLimit !== null && value !== 'rf' && value < gateLimit) {
+                continue;
+            }
+
             if (layer === 'VEL' && value !== 'rf' && Number.isFinite(value)) {
                 // Convert m/s to knots to match palette units
                 value *= 1.94384;
@@ -297,7 +429,7 @@ const getLevel3Metadata = (radar) => {
     const timeValue = Number(productDescription.volumeScanTime ?? productDescription.productTime);
     let timeIso = null;
     if (Number.isFinite(dateValue) && Number.isFinite(timeValue)) {
-        const epochMs = (dateValue * 86400 + timeValue) * 1000 - 3600000;
+        const epochMs = (dateValue * 86400 + timeValue) * 1000;
         timeIso = new Date(epochMs).toISOString();
     }
 
@@ -312,14 +444,66 @@ const getLevel3Metadata = (radar) => {
     return { timeIso, elevationAngle, vcp };
 };
 
+const toEpochMs = (monotonicMs) => performance.timeOrigin + monotonicMs;
+
 self.onmessage = (event) => {
-    const { type, arrayBuffer, layer, options } = event.data || {};
+    const { type } = event.data || {};
+
+    // --- Chunk-combine path (Level-II streaming) ---
+    if (type === 'process-chunks') {
+        const { buffers: rawBuffers, layer: chunkLayer, options: chunkOptions = {} } = event.data;
+        if (!Array.isArray(rawBuffers) || rawBuffers.length === 0) {
+            self.postMessage({ type: 'error', message: 'process-chunks: no buffers provided' });
+            return;
+        }
+        try {
+            const parserStartMs = toEpochMs(performance.now());
+            const requestedMoment = getLevel2MomentForLayer(chunkLayer);
+            const parsedChunks = rawBuffers.map(buf =>
+                new Level2Radar(Buffer.from(buf), requestedMoment ? { includeMoments: [requestedMoment] } : undefined)
+            );
+            const radar = Level2Radar.combineData(...parsedChunks);
+            const parserEndMs = toEpochMs(performance.now());
+
+            const elevations = radar.listElevations();
+            radar.setElevation(elevations[0] || 1);
+
+            const recordHeader = radar.getHeader(0);
+            const radarLocation = [recordHeader.volume.latitude, recordHeader.volume.longitude];
+            const extent = recordHeader.radial_length;
+
+            const { meshData, bounds, geojson } = processRadarData(radar, radarLocation, extent, chunkLayer, chunkOptions);
+            const meshEndMs = toEpochMs(performance.now());
+
+            const metadata = {
+                station: chunkOptions.station || null,
+                product: chunkLayer,
+                timeIso: null,
+                elevationAngle: recordHeader.elevation_angle,
+                vcp: getLevel2Vcp(radar, recordHeader),
+            };
+
+            self.postMessage({
+                type: 'result',
+                geojson,
+                meshData,
+                bounds,
+                metadata,
+                timing: { parserStartMs, parserEndMs, meshEndMs },
+            }, [meshData.buffer]);
+        } catch (err) {
+            self.postMessage({ type: 'error', message: err.message || String(err) });
+        }
+        return;
+    }
+
+    // --- Single-file path (archive / local upload / Level-III) ---
+    const { arrayBuffer, layer, options } = event.data || {};
     if (type !== 'process' || !arrayBuffer) {
         return;
     }
 
     try {
-        const toEpochMs = (monotonicMs) => performance.timeOrigin + monotonicMs;
         const parserStartMs = toEpochMs(performance.now());
         let parserEndMs = null;
         let meshEndMs = null;
@@ -405,7 +589,7 @@ self.onmessage = (event) => {
                 timeIso: new Date((header.julian_date * 86400 * 1000) + header.mseconds - 3600000).toISOString(),
                 elevationAngle: header.elevation_angle,
                 station: options?.station || null,
-                vcp: Number.isFinite(header.vcp) ? header.vcp : null
+                vcp: getLevel2Vcp(radar, header)
             };
 
             self.postMessage({

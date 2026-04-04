@@ -2975,3 +2975,34 @@ p.code {
   max-height: calc(100% - 200px);
   overflow: auto;
 }
+
+#radar-file-render {
+  width: auto;
+  font-family: 'Onest', sans-serif;
+}
+
+.radar-picker-archive-mode {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid var(--secondary-border-color);
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.radar-picker-archive-text {
+  margin: 5px;
+  margin-left: 10px;
+  font-size: 0.9em;
+  color: gray;
+  font-weight: bold;
+}
+
+.radar-picker-archive-stop-button {
+  font-size: 1em;
+  font-family: 'Onest', sans-serif;
+  padding: 5px 10px;
+  width: auto;
+  color: var(--primary-color);
+}

@@ -159,10 +159,9 @@ class Level2Radar {
 			// return data
 			return this.data[this.elevation][scan].record.reflect;
 		}
-		// Filter out radials without reflectivity data
-		return this.data[this.elevation]
-			.map((i) => i.record.reflect)
-			.filter((v) => v !== undefined && v !== null);
+		// Preserve 1:1 scan ordering so moment arrays stay index-aligned with getHeader().
+		// Missing moments remain undefined and are handled by downstream callers.
+		return this.data[this.elevation].map((i) => i.record.reflect);
 	}
 
 	/**
@@ -185,10 +184,9 @@ class Level2Radar {
 			// return data
 			return this.data[this.elevation][scan].record.velocity;
 		}
-		// Filter out radials without velocity data
-		return this.data[this.elevation]
-			.map((i) => i.record.velocity)
-			.filter((v) => v !== undefined && v !== null);
+		// Preserve 1:1 scan ordering so moment arrays stay index-aligned with getHeader().
+		// Missing moments remain undefined and are handled by downstream callers.
+		return this.data[this.elevation].map((i) => i.record.velocity);
 	}
 
 	/**

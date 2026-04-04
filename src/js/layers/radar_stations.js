@@ -105,7 +105,6 @@ class RadarStationsLayer {
 
         const now = Date.now();
         const latencyMinutes = (now - timestamp) / 60000;
-        console.log(`[RadarStationsLayer] Station latency: ${latencyMinutes.toFixed(1)} minutes`);
         return latencyMinutes < 15; // Consider good if data is less than 15 minutes old
     }
 

@@ -13,6 +13,7 @@ import debugConsole from './debug_console.js';
 import version from '../../VERSION.js';
 import EmbedPlayer from '../../components/embed_player.js';
 import Glossary from '../../components/glossary.js';
+import NEXRADStatus from '../../components/nexradstatus.js';
 
 class Menu {
     // Constructor function
@@ -49,6 +50,7 @@ class Menu {
         const menuList = document.createElement('ul');
         const menuItems = [
             { label: 'Archive Browser (BETA)', icon: 'archive', onClick: () => { this.close(); setTimeout(() => { callbacks.onArchiveBrowser?.(); }, 250); } },
+            { label: 'Upload Radar File', icon: 'upload', onClick: () => { this.close(); setTimeout(() => { callbacks.onRadarFileUpload?.(); }, 250); } },
             { label: 'Settings', icon: 'settings', onClick: () => { this.close(); setTimeout(() => { new Settings().showSettingsMenu(); }, 250); } },
             { label: 'About', icon: 'info-circle', onClick: () => { this.close(); setTimeout(() => { about(); }, 250); } },
             { label: 'Help', icon: 'help-circle', onClick: () => { window.location = 'https://wiki.sparkradar.app/'; } },
@@ -57,6 +59,7 @@ class Menu {
         const activityItems = [
             { icon: 'video', label: 'PiP Embed Player', onClick: () => { new EmbedPlayer(`<p style="color: white; padding: 10px;">Open a YouTube video or livestream, click share > embed > copy; then paste above and click "Go".</p>`); } },
             { icon: 'book', label: 'Glossary', onClick: () => { new Glossary(); } },
+            { icon: 'radar-2', label: 'Level-II Status', onClick: () => { new NEXRADStatus(); } },
         ]
 
         menuItems.forEach((item, index) => {
