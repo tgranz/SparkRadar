@@ -44,7 +44,9 @@ class DebugConsole {
             const errormsg = args.map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ');
             const truncatedmsg = errormsg.length > 300 ? errormsg.slice(0, 300) + "... (see console for full error)" : errormsg;
 
-            if (errormsg.toLowerCase().includes('error getting location') || errormsg.toLowerCase().includes('error loading chunk listing')) {
+            if (errormsg.toLowerCase().includes('error getting location') ||
+                errormsg.toLowerCase().includes('error loading chunk listing') ||
+                errormsg.toLowerCase().includes('fetch timeout')) {
                 return;
             }
 
