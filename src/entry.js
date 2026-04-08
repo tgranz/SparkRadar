@@ -1,28 +1,8 @@
-/*
-
-> entry.js
-This is the entry point of the application.
-This module loads and manages all other modules of the app.
-
-(c) 2026 Tyler G (@tgranz)
-See LICENSE for more.
-*/
-
-// L3 Product code mapping cheat sheet:
-// N0H, N1H, N2H... > Hydrometer Classification
-// N0K, N1K, N2K... > Specific Differential Phase
-// N0B, N1B, N2B... > Base Reflectivity (Same as L2 REF but much faster)
-// N0G, N1G, N2G... > Base Velocity (Same as L2 VEL but much faster)
-// N0C, N1C, N2C... > Correlation Coefficient (Same as L2 CC but lower resolution and much faster)
-// DTA > Storm Total Accumulation
-
 // Polyfill Buffer for browser environment
 import { Buffer } from 'buffer';
-if (!globalThis.Buffer) {
-  globalThis.Buffer = Buffer;
-}
+if (!globalThis.Buffer) globalThis.Buffer = Buffer;
 
-// Import modules
+
 import Map from "./js/app/map.js";
 import Menu from "./js/ui/menu.js";
 import Radar from "./js/main/radar.js";
@@ -36,55 +16,46 @@ import Measure from "./js/app/measure.js";
 import Palettes from './js/main/palettes.js';
 import Finder from './js/app/finder.js';
 import AnimationController from './js/app/radar_animation.js';
+import { openRadarFileUploadDialog } from './js/app/radar_file_upload.js';
 import SpotterNetwork from './js/main/spotter_network.js';
-
-// Import location services
 import LocationServices from "./js/main/location_services.js";
-
-// Import components
 import { createToolbar } from "./js/app/toolbars/toolbar.js";
 import { hideLoadingAnimation, showLoadingAnimation } from "./js/ui/loader.js";
 import { layerMenu } from "./js/app/layer_menu.js";
-
-// Set custom colors
 import Settings from './js/app/settings/settings.js';
-window.settingsInstance = new Settings(); // Expose globally for color customization
+import setupKeybinds from './js/main/shortcuts.js';
+import {
+  formatVcpDisplay,
+  inferLevelFromProduct,
+  isCrossSectionProductSupported,
+  productToPaletteKey,
+  getDhcTypeLabel,
+  interpolateStopColor,
+  getContrastTextColor,
+  getPaletteMetadata,
+  ensureColorbarTooltip,
+  hideColorbarTooltip,
+  updateColorbarForMap,
+  getNowEpochMs,
+  logRadarTimingIfComplete,
+} from './js/utils/entryutils.js';
 
+// Start instances
 const locationServices = new LocationServices({
   enabled: window.settingsInstance?.getSetting('enableLocation') !== false,
 });
-window.locationServices = locationServices;
-
-// Create a global Palettes instance to preserve custom palettes across calls
 const globalPalettes = new Palettes();
+
+// Expose instances to global scope
+window.settingsInstance = new Settings();
+window.locationServices = locationServices;
 window.globalPalettes = globalPalettes;
+window.appmode = window.appmode === 'satellite' ? 'satellite' : 'radar';
 
 // See if there are URL parameters for station
 const urlParams = new URLSearchParams(window.location.search);
-const initialStation = urlParams.get('station') ? urlParams.get('station').toUpperCase() : 'KTLX';
 
-// Helper function to format VCP display
-function formatVcpDisplay(vcp) {
-  if (!Number.isFinite(vcp)) return '';
-  
-  const format = window.settingsInstance?.getSetting('vcpDisplayFormat') || 'descriptive';
-  
-  if (format === 'concise') {
-    return `VCP ${vcp}`;
-  }
-  
-  // Descriptive format
-  let description = 'Convective precip mode'; // Default
-  if (vcp === 31 || vcp === 34 || vcp === 35) {
-    description = 'Clean air mode';
-  } else if (vcp === 215) {
-    description = 'General precip mode';
-  }
-  
-  return `VCP ${vcp}: ${description}`;
-}
-
-// Function to draw on the map
+// Helper functions for drawing and measuring
 function startDraw() {
   if (Measure.instance) {
     Measure.instance.close();
@@ -105,162 +76,9 @@ function startMeasure() {
   new Measure(map);
 }
 
-function inferStationFromUploadedFileName(fileName, fallbackStation = 'KTLX') {
-  if (!fileName || typeof fileName !== 'string') return fallbackStation;
 
-  const upper = fileName.toUpperCase();
-  const direct = upper.match(/\bK[A-Z0-9]{3}\b/);
-  if (direct) return direct[0];
+const initialStation = urlParams.get('station') ? urlParams.get('station').toUpperCase() : 'KTLX';
 
-  // Common Level 2 format: KXXXYYYYMMDD_HHMMSS_V06
-  const level2Prefix = upper.match(/^([A-Z0-9]{4})\d{8}_\d{6}/);
-  if (level2Prefix) return level2Prefix[1];
-
-  // Common Level 3/archive style tokenization.
-  const token = upper.split(/[^A-Z0-9]+/).find((part) => /^[A-Z0-9]{3,4}$/.test(part));
-  if (token) return token.length === 3 ? `K${token}` : token;
-
-  return fallbackStation;
-}
-
-function openRadarFileUploadDialog() {
-  const html = `
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <select id="radar-file-level" style="padding:8px;border-radius:8px;">
-        <option value="L2" selected>Level II archive or chunk file</option>
-        <option value="L3">Level III file</option>
-      </select>
-      <input id="radar-file-input" type="file" style="padding:6px 0;" />
-      <div id="radar-file-dropzone" style="border:2px dashed rgba(255,255,255,0.45);border-radius:10px;padding:18px;text-align:center;background:rgba(255,255,255,0.04);">
-        Drag and drop a radar file here
-      </div>
-      <div id="radar-file-selected" style="font-size:0.9em;opacity:0.85;min-height:1.2em;">No file selected</div>
-      <button id="radar-file-render" style="padding:10px;border-radius:10px;border:none;font-weight:700;cursor:pointer;">Render File</button>
-    </div>
-  `;
-
-  const dialog = new Dialog('Radar File Upload', 'upload', html);
-  const levelSelect = document.getElementById('radar-file-level');
-  const fileInput = document.getElementById('radar-file-input');
-  const dropzone = document.getElementById('radar-file-dropzone');
-  const selectedText = document.getElementById('radar-file-selected');
-  const renderButton = document.getElementById('radar-file-render');
-
-  let selectedFile = null;
-
-  const setSelectedFile = (file) => {
-    selectedFile = file || null;
-    selectedText.textContent = selectedFile ? `Selected: ${selectedFile.name}` : 'No file selected';
-  };
-
-  fileInput?.addEventListener('change', () => {
-    const file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-    setSelectedFile(file);
-  });
-
-  dropzone?.addEventListener('dragover', (event) => {
-    event.preventDefault();
-    dropzone.style.borderColor = 'rgba(255,255,255,0.85)';
-    dropzone.style.background = 'rgba(255,255,255,0.1)';
-  });
-
-  dropzone?.addEventListener('dragleave', () => {
-    dropzone.style.borderColor = 'rgba(255,255,255,0.45)';
-    dropzone.style.background = 'rgba(255,255,255,0.04)';
-  });
-
-  dropzone?.addEventListener('drop', (event) => {
-    event.preventDefault();
-    dropzone.style.borderColor = 'rgba(255,255,255,0.45)';
-    dropzone.style.background = 'rgba(255,255,255,0.04)';
-    const file = event.dataTransfer?.files && event.dataTransfer.files[0] ? event.dataTransfer.files[0] : null;
-    setSelectedFile(file);
-  });
-
-  renderButton?.addEventListener('click', async () => {
-    if (!selectedFile) {
-      alert('Please select or drop a radar file first.');
-      return;
-    }
-
-    try {
-      showLoadingAnimation();
-      renderButton.disabled = true;
-      renderButton.textContent = 'Rendering...';
-
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const rawData = Buffer.from(arrayBuffer);
-      const selectedLevel = levelSelect?.value === 'L3' ? 'L3' : 'L2';
-      const product = selectedLevel === 'L3' ? 'N0B' : 'REF';
-      const station = inferStationFromUploadedFileName(selectedFile.name, mainRadar.station);
-
-      // Close split/cross-section FIRST.
-      // stopSplit() creates a fresh RadarPicker internally.
-      // disableCrossSection() calls rebuildRadarPicker() and window.enableAutoUpdates().
-      // Both must happen before we set archive state so they don't stomp over it.
-      if (map.crossSection?.enabled) {
-        map.disableCrossSection();
-      }
-      if (map.isSplit()) {
-        map.stopSplit();
-      }
-
-      // Set archive state (overrides enableAutoUpdates() that disableCrossSection may have called).
-      autoUpdateEnabled = false;
-      archiveMode.main = null;
-      localFileMode.main = {
-        rawData,
-        fileName: selectedFile.name,
-        level: selectedLevel
-      };
-
-      // Build the final picker and fully configure it BEFORE calling setRadar,
-      // so the onMetadata callback inside setRadar operates on the correct picker instance.
-      map.rebuildRadarPicker('main', selectedLevel === 'L2');
-      map.radarPicker.setArchiveMode(true, () => window.enableAutoUpdates(), 'Viewing local file');
-
-      if (selectedLevel === 'L3') {
-        // L3 files contain only one product at one tilt — lock the picker
-        // and disable split / cross-section controls.
-        map.radarPicker.setPickerLocked(true);
-
-        const splitBtn = document.getElementById('dual-map-button');
-        if (splitBtn) {
-          splitBtn.disabled = true;
-          splitBtn.setAttribute('aria-disabled', 'true');
-          splitBtn.style.color = 'gray';
-          splitBtn.style.pointerEvents = 'none';
-          splitBtn.title = 'Dual-radar view unavailable for local L3 files';
-        }
-        const xsBtn = document.getElementById('cross-section-button');
-        if (xsBtn) {
-          xsBtn.disabled = true;
-          xsBtn.setAttribute('aria-disabled', 'true');
-          xsBtn.style.color = 'gray';
-          xsBtn.style.pointerEvents = 'none';
-          xsBtn.title = 'Cross-section unavailable for local L3 files';
-        }
-      }
-
-      await setRadar(station, product, 'main', {
-        rawData,
-        fileName: selectedFile.name,
-        gate_limit: -30
-      });
-
-      dialog.close();
-    } catch (error) {
-      console.error('Failed to render uploaded radar file:', error);
-      alert(`Unable to render file: ${error?.message || 'Unknown error'}`);
-    } finally {
-      hideLoadingAnimation();
-      renderButton.disabled = false;
-      renderButton.textContent = 'Render File';
-    }
-  });
-}
-
-// Function to store and set the current radars
 var mainRadar = {
     station: initialStation,
     product: 'N0B', // Reflectivity
@@ -278,28 +96,6 @@ var splitRadar = {
 // Track current VCP for refresh when settings change
 var currentVcp = null;
 
-// Function to infer radar level from product code, also sets the VCP
-const inferLevelFromProduct = (product) => {
-  if (!product) return 'L3';
-  const upper = product.toUpperCase();
-  if (upper === 'REF' || upper === 'VEL' || upper === 'CC' || upper === 'KDP' || upper === 'SW' || upper === 'ZDR') {
-    return 'L2';
-  }
-  return 'L3';
-};
-
-const isCrossSectionProductSupported = (product) => {
-  if (!product) return false;
-
-  const upper = String(product).toUpperCase();
-  if (inferLevelFromProduct(upper) === 'L2') return false;
-
-  if (upper === 'DAA' || upper === 'DTA') return false;
-  if (/^N[0-3]S$/.test(upper)) return false;
-
-  return /^N[0-3][A-Z]$/.test(upper);
-};
-
 const updateCrossSectionButtonState = (product) => {
   const button = document.getElementById('cross-section-button');
   if (!button) return;
@@ -312,200 +108,39 @@ const updateCrossSectionButtonState = (product) => {
     : 'Cross-section unavailable for this product';
 };
 
-// Function to map L3 product codes to palette keys
-const productToPaletteKey = (product) => {
-  if (!product) return 'REF';
-  const upper = product.toUpperCase();
-  
-  // If it's already a palette key, return it
-  if (upper === 'REF' || upper === 'VEL' || upper === 'SRV' || upper === 'CC' || upper === 'KDP' || upper === 'SW' || upper === 'ZDR' || upper === 'DHC' || upper === 'DAA' || upper === 'DTA') {
-    return upper;
-  }
-  
-  // Map L3 product codes to palette keys
-  const productMap = {
-    'N0B': 'REF', 'N1B': 'REF', 'N2B': 'REF', 'N3B': 'REF', // Base Reflectivity
-    'N0G': 'VEL', 'N1G': 'VEL', 'N2G': 'VEL', 'N3G': 'VEL', // Base Velocity
-    'N0U': 'SRV', 'N1U': 'SRV', 'N2U': 'SRV', 'N3U': 'SRV', // Storm Relative Velocity
-    'N0S': 'SRV', 'N1S': 'SRV', 'N2S': 'SRV', 'N3S': 'SRV', // Storm Relative Velocity
-    'N0C': 'CC', 'N1C': 'CC', 'N2C': 'CC', 'N3C': 'CC',     // Correlation Coefficient
-    'N0K': 'KDP', 'N1K': 'KDP', 'N2K': 'KDP', 'N3K': 'KDP', // Specific Differential Phase
-    'N0H': 'DHC', 'N1H': 'DHC', 'N2H': 'DHC', 'N3H': 'DHC', // Hydrometer Classification
-    'N0W': 'SW', 'N1W': 'SW', 'N2W': 'SW', 'N3W': 'SW',     // Spectrum Width
-    'N0Z': 'ZDR', 'N1Z': 'ZDR', 'N2Z': 'ZDR', 'N3Z': 'ZDR', // Differential Reflectivity
-    'DAA': 'DAA', 'DTA': 'DTA',                             // Precipitation Accumulation
-  };
-  
-  return productMap[upper] || 'REF'; // Default to REF if not found
+const setToolbarButtonState = (buttonId, disabled, title) => {
+  const button = document.getElementById(buttonId);
+  if (!button) return;
+
+  button.disabled = disabled;
+  button.setAttribute('aria-disabled', String(disabled));
+  button.style.color = disabled ? 'gray' : '';
+  button.style.pointerEvents = disabled ? 'none' : '';
+  button.title = title;
 };
 
-// Expose to global scope for use in map.js
+// Local Level III files only expose one product and one tilt, so split and
+// cross-section controls should stay disabled until live updates are restored.
+const setLocalFileToolbarState = (lockSingleProductView) => {
+  setToolbarButtonState(
+    'dual-map-button',
+    lockSingleProductView,
+    lockSingleProductView ? 'Dual-radar view unavailable for local L3 files' : 'Dual-radar view'
+  );
+
+  if (lockSingleProductView) {
+    setToolbarButtonState('cross-section-button', true, 'Cross-section unavailable for local L3 files');
+    return;
+  }
+
+  setToolbarButtonState('cross-section-button', false, 'Cross-section view');
+  updateCrossSectionButtonState(mainRadar.product);
+};
+
+// Expose productToPaletteKey to global scope for use in map.js
 window.productToPaletteKey = productToPaletteKey;
 
 const colorbarPaletteMetadata = {};
-
-const DHC_TYPE_LABELS = {
-  10: 'Biological',
-  20: 'Clutter',
-  30: 'Ice crystals',
-  40: 'Dry snow',
-  50: 'Wet snow',
-  60: 'Rain',
-  70: 'Heavy rain',
-  80: 'Big drops',
-  90: 'Graupel',
-  100: 'Hail + rain',
-  110: 'Large hail',
-  120: 'Giant hail',
-  130: 'RF',
-  140: 'Unknown',
-};
-
-const getDhcTypeLabel = (value) => {
-  const classes = Object.keys(DHC_TYPE_LABELS).map(Number).sort((a, b) => a - b);
-  let selectedClass = classes[0];
-
-  for (let i = 0; i < classes.length; i++) {
-    if (value >= classes[i]) {
-      selectedClass = classes[i];
-    } else {
-      break;
-    }
-  }
-
-  return DHC_TYPE_LABELS[selectedClass] || 'Unknown';
-};
-
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-
-const parsePaletteColor = (colorText) => {
-  if (typeof colorText !== 'string') return null;
-
-  let match = colorText.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/i);
-  if (match) {
-    const alphaRaw = Number(match[4]);
-    const alpha = alphaRaw > 1 ? alphaRaw / 255 : alphaRaw;
-    return {
-      r: clamp(Number(match[1]), 0, 255),
-      g: clamp(Number(match[2]), 0, 255),
-      b: clamp(Number(match[3]), 0, 255),
-      a: clamp(alpha, 0, 1),
-    };
-  }
-
-  match = colorText.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/i);
-  if (match) {
-    return {
-      r: clamp(Number(match[1]), 0, 255),
-      g: clamp(Number(match[2]), 0, 255),
-      b: clamp(Number(match[3]), 0, 255),
-      a: 1,
-    };
-  }
-
-  return null;
-};
-
-const interpolateStopColor = (stops, value) => {
-  if (!Array.isArray(stops) || stops.length === 0) {
-    return { r: 0, g: 0, b: 0, a: 0.85 };
-  }
-
-  if (value <= stops[0].value) {
-    return stops[0].color;
-  }
-
-  const lastStop = stops[stops.length - 1];
-  if (value >= lastStop.value) {
-    return lastStop.color;
-  }
-
-  for (let i = 0; i < stops.length - 1; i++) {
-    const left = stops[i];
-    const right = stops[i + 1];
-    if (value >= left.value && value <= right.value) {
-      const span = right.value - left.value;
-      const t = span === 0 ? 0 : (value - left.value) / span;
-      return {
-        r: Math.round(left.color.r + (right.color.r - left.color.r) * t),
-        g: Math.round(left.color.g + (right.color.g - left.color.g) * t),
-        b: Math.round(left.color.b + (right.color.b - left.color.b) * t),
-        a: left.color.a + (right.color.a - left.color.a) * t,
-      };
-    }
-  }
-
-  return lastStop.color;
-};
-
-const getContrastTextColor = ({ r, g, b }) => {
-  const luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-  return luminance > 0.6 ? '#111' : '#fff';
-};
-
-const getPaletteMetadata = (paletteKey) => {
-  const cacheKey = String(paletteKey || 'REF').toUpperCase();
-  if (colorbarPaletteMetadata[cacheKey]) {
-    return colorbarPaletteMetadata[cacheKey];
-  }
-
-  const colorTable = window.globalPalettes?.getPalette?.(cacheKey) || [];
-  const stops = [];
-
-  for (let i = 0; i < colorTable.length; i += 2) {
-    const value = Number(colorTable[i]);
-    const color = parsePaletteColor(colorTable[i + 1]);
-    if (Number.isFinite(value) && value < 900 && color) {
-      stops.push({ value, color });
-    }
-  }
-
-  if (stops.length === 0) {
-    return null;
-  }
-
-  stops.sort((a, b) => a.value - b.value);
-
-  const minValue = stops[0].value;
-  const maxValue = stops[stops.length - 1].value;
-
-  let minStep = Infinity;
-  for (let i = 1; i < stops.length; i++) {
-    const delta = stops[i].value - stops[i - 1].value;
-    if (delta > 0 && delta < minStep) {
-      minStep = delta;
-    }
-  }
-
-  let decimals = 0;
-  if (Number.isFinite(minStep) && minStep > 0) {
-    decimals = Math.min(3, Math.max(0, Math.ceil(-Math.log10(minStep))));
-  } else if (Math.abs(maxValue - minValue) < 10) {
-    decimals = 1;
-  }
-
-  const metadata = { minValue, maxValue, decimals, stops };
-  colorbarPaletteMetadata[cacheKey] = metadata;
-  return metadata;
-};
-
-const ensureColorbarTooltip = () => {
-  let tooltip = document.getElementById('colorbar-tooltip');
-  if (!tooltip) {
-    tooltip = document.createElement('div');
-    tooltip.id = 'colorbar-tooltip';
-    tooltip.className = 'colorbar-tooltip hidden';
-    document.body.appendChild(tooltip);
-  }
-  return tooltip;
-};
-
-const hideColorbarTooltip = () => {
-  const tooltip = document.getElementById('colorbar-tooltip');
-  if (tooltip) {
-    tooltip.classList.add('hidden');
-  }
-};
 
 const initColorbarHoverTooltips = () => {
   const tooltip = ensureColorbarTooltip();
@@ -521,7 +156,7 @@ const initColorbarHoverTooltips = () => {
 
       const product = getProduct();
       const paletteKey = productToPaletteKey(product);
-      const metadata = getPaletteMetadata(paletteKey);
+      const metadata = getPaletteMetadata(paletteKey, colorbarPaletteMetadata);
 
       if (!metadata) {
         hideColorbarTooltip();
@@ -557,59 +192,6 @@ const initColorbarHoverTooltips = () => {
 
   document.addEventListener('scroll', hideColorbarTooltip, true);
   window.addEventListener('resize', hideColorbarTooltip);
-};
-
-const updateColorbarForMap = (mainOrSplit, product) => {
-  const colorbarId = mainOrSplit === 'split' ? 'colorbar-split' : 'colorbar-main';
-  const colorbar = document.getElementById(colorbarId);
-  if (!colorbar || !window.globalPalettes) return;
-
-  const paletteKey = productToPaletteKey(product);
-  const gradientCSS = window.globalPalettes.generateGradientCSS(paletteKey) || window.globalPalettes.generateGradientCSS('REF');
-  if (!gradientCSS) return;
-
-  colorbar.classList.remove('hidden');
-  colorbar.style.backgroundImage = 'none';
-  colorbar.style.background = gradientCSS;
-};
-
-const getNowEpochMs = () => performance.timeOrigin + performance.now();
-
-const isFiniteMs = (value) => Number.isFinite(value);
-
-const formatMs = (value) => `${value.toFixed(2)} ms`;
-
-const logRadarTimingIfComplete = (timing, context = {}) => {
-  const { renderCalledAtMs, fileFetchedAtMs, parserFinishedAtMs, meshFinishedAtMs, visibleAtMs } = timing || {};
-  if (!isFiniteMs(renderCalledAtMs) || !isFiniteMs(fileFetchedAtMs) || !isFiniteMs(parserFinishedAtMs) || !isFiniteMs(meshFinishedAtMs) || !isFiniteMs(visibleAtMs)) {
-    return;
-  }
-
-  const renderToFetch = fileFetchedAtMs - renderCalledAtMs;
-  const fetchToParse = parserFinishedAtMs - fileFetchedAtMs;
-  const parseToMesh = meshFinishedAtMs - parserFinishedAtMs;
-  const meshToVisible = visibleAtMs - meshFinishedAtMs;
-  const totalRenderToVisible = visibleAtMs - renderCalledAtMs;
-  const sourceLabel = context.source === 'cache' ? 'cache' : 'network';
-  const targetLabel = context.target || 'main';
-  const stationLabel = context.station || 'unknown';
-  const productLabel = context.product || 'unknown';
-
-  const titleStyle = 'background:#111827;color:#86efac;padding:2px 8px;border-radius:3px;font-weight:700;';
-  const rowLabelStyle = 'color:#93c5fd;font-weight:700;';
-  const rowValueStyle = 'color:#f8fafc;font-weight:600;';
-  const totalStyle = 'color:#facc15;font-weight:800;';
-
-  console.groupCollapsed(
-    `%c[Radar Timing] ${stationLabel} ${productLabel} (${targetLabel}, ${sourceLabel})`,
-    titleStyle
-  );
-  console.log('%cRender call → File fetched:%c %s', rowLabelStyle, rowValueStyle, formatMs(renderToFetch));
-  console.log('%cFile fetched → Parser finished:%c %s', rowLabelStyle, rowValueStyle, formatMs(fetchToParse));
-  console.log('%cParser finished → Mesh computed:%c %s', rowLabelStyle, rowValueStyle, formatMs(parseToMesh));
-  console.log('%cMesh computed → Visible on map:%c %s', rowLabelStyle, rowValueStyle, formatMs(meshToVisible));
-  console.log('%cTotal (Render call → Visible):%c %s', totalStyle, totalStyle, formatMs(totalRenderToVisible));
-  console.groupEnd();
 };
 
 // Function to set the current radar on the map
@@ -799,6 +381,10 @@ const map = new Map({
   },
 });
 
+if (typeof window !== 'undefined') {
+  window.mapInstance = map;
+}
+
 initColorbarHoverTooltips();
 
 // Construct the alert list
@@ -808,7 +394,44 @@ const alertList = new AlertList(map.layers);
 const inspector = new Inspector(map);
 var inspectorEnabled = false;
 
+const toggleInspector = () => {
+  if (window.appmode === 'satellite') {
+    return;
+  }
+  inspectorEnabled = !inspectorEnabled;
+  if (inspectorEnabled) {
+    inspector.enable();
+  } else {
+    inspector.disable();
+  }
+};
+
+const toggleCrossSectionView = () => {
+  if (window.appmode === 'satellite') {
+    return;
+  }
+
+  if (map.crossSection?.enabled) {
+    map.disableCrossSection();
+    return;
+  }
+
+  if (map.isSplit()) {
+    map.stopSplit();
+    requestAnimationFrame(() => {
+      map.enableCrossSection(mainRadar.station, mainRadar.product);
+    });
+    return;
+  }
+
+  map.enableCrossSection(mainRadar.station, mainRadar.product);
+};
+
 const toggleSplitMap = () => {
+  if (window.appmode === 'satellite') {
+    return;
+  }
+
   if (map.crossSection?.enabled) {
     return;
   }
@@ -820,67 +443,6 @@ const toggleSplitMap = () => {
 
   map.splitMap('horizontal', { station: mainRadar.station, product: mainRadar.product });
 };
-
-// Keybinds
-window.addEventListener('keydown', (e) => {
-  const target = e.target;
-  const tagName = target?.tagName;
-  if (tagName === 'INPUT' || tagName === 'TEXTAREA' || target?.isContentEditable) return;
-
-  const pressedKey = String(e.key || '').toLowerCase();
-  const getShortcut = (key, fallback) => {
-    const value = window.settingsInstance?.getSetting(key);
-    if (typeof value !== 'string') return fallback;
-    return value.trim().slice(0, 1).toLowerCase();
-  };
-
-  if (pressedKey && pressedKey === getShortcut('shortcutToggleSplitView', 'm')) {
-    toggleSplitMap();
-  } else if (pressedKey && pressedKey === getShortcut('shortcutToggleCrossSection', 'x')) {
-    if (map.crossSection?.enabled) {
-      map.disableCrossSection();
-    } else {
-      if (map.isSplit()) {
-        map.stopSplit();
-        requestAnimationFrame(() => {
-          map.enableCrossSection(mainRadar.station, mainRadar.product);
-        });
-      } else {
-        map.enableCrossSection(mainRadar.station, mainRadar.product);
-      }
-    }
-  } else if (pressedKey && pressedKey === getShortcut('shortcutShowRadarStatus', 's')) {
-    const statusDialog = new RadarStatus(mainRadar.station);
-  } else if (pressedKey && pressedKey === getShortcut('shortcutShowMenu', 'h')) {
-    menu.open();
-  } else if (pressedKey && pressedKey === getShortcut('shortcutShowLayerMenu', 'l')) {
-    layerMenu.open();
-  } else if (pressedKey && pressedKey === getShortcut('shortcutDraw', 'd')) {
-    startDraw();
-  } else if (pressedKey && pressedKey === getShortcut('shortcutFinder', 'f')) {
-    new Finder(map).open();
-  } else if (pressedKey && pressedKey === getShortcut('shortcutInspector', 'i')) {
-    // Toggle inspector
-    inspectorEnabled = !inspectorEnabled;
-    if (inspectorEnabled) {
-      inspector.enable();
-    } else {
-      inspector.disable();
-    }
-  } else if (pressedKey && pressedKey === getShortcut('shortcutMeasure', 'n')) {
-    startMeasure();
-  } else if (pressedKey && pressedKey === getShortcut('shortcutProductReflectivity', '1')) {
-    setRadar(null, 'N0B', 'main') // Reflectivity
-  } else if (pressedKey && pressedKey === getShortcut('shortcutProductVelocity', '2')) {
-    setRadar(null, 'N0G', 'main') // Velocity
-  } else if (pressedKey && pressedKey === getShortcut('shortcutProductCorrelationCoefficient', '3')) {
-    setRadar(null, 'N0C', 'main') // Correlation Coefficient
-  } else if (pressedKey && pressedKey === getShortcut('shortcutProductHydrometeorClassification', '4')) {
-    setRadar(null, 'N0H', 'main') // Hydrometer Classification
-  } else if (pressedKey && pressedKey === getShortcut('shortcutProductSpecificDifferentialPhase', '5')) {
-    setRadar(null, 'N0K', 'main') // Specific Differential Phase
-  }
-});
 
 // Add the radar to the map
 const radar = new Radar();
@@ -964,6 +526,9 @@ animationController.initialize(radar, map);
 // Build the main toolbar
 const toolbar = createToolbar(
   () => {
+    if (window.appmode === 'satellite') {
+      return;
+    }
     if (map.crossSection?.enabled) {
       return;
     }
@@ -985,7 +550,12 @@ const toolbar = createToolbar(
     toggleSplitMap();
   },
   () => { menu.open();},
-  () => { new RadarStatus(mainRadar.station); },
+  () => {
+    if (window.appmode === 'satellite') {
+      return;
+    }
+    new RadarStatus(mainRadar.station);
+  },
   () => { 
     if (!document.getElementById('open-layer-picker-button').classList.contains('selected')) {
       layerMenu.open();
@@ -995,31 +565,13 @@ const toolbar = createToolbar(
       if (openLayerPickerButton) { openLayerPickerButton.classList.remove('selected'); }
     }},
   () => { startDraw(); },
-  () => { 
-    if (map.crossSection?.enabled) {
-      map.disableCrossSection();
-    } else {
-      if (map.isSplit()) {
-        map.stopSplit();
-        requestAnimationFrame(() => {
-          map.enableCrossSection(mainRadar.station, mainRadar.product);
-        });
-      } else {
-        map.enableCrossSection(mainRadar.station, mainRadar.product);
-      }
-    }
-  },
-  () => {
-    // Toggle inspector
-    inspectorEnabled = !inspectorEnabled;
-    if (inspectorEnabled) {
-      inspector.enable();
-    } else {
-      inspector.disable();
-    }
-  },
+  () => { toggleCrossSectionView(); },
+  () => { toggleInspector(); },
   () => { new Finder(map).open(); },
   () => {
+    if (window.appmode === 'satellite') {
+      return;
+    }
     // Start radar animation
     animationController.start(
       mainRadar.station,
@@ -1050,7 +602,24 @@ window.loadRadarFromArchive = async function(url, station) {
 // Add the menu to the page
 const menu = new Menu({
     onArchiveBrowser: () => { new ArchiveBrowser({ onClose: () => menu.close() }); },
-  onRadarFileUpload: () => { openRadarFileUploadDialog(); },
+  onRadarFileUpload: () => {
+    openRadarFileUploadDialog({
+      map,
+      setRadar,
+      getMainStation: () => mainRadar.station,
+      setAutoUpdateEnabled: (enabled) => {
+        autoUpdateEnabled = enabled;
+      },
+      setArchiveMode: (target, value) => {
+        archiveMode[target] = value;
+      },
+      setLocalFileMode: (target, value) => {
+        localFileMode[target] = value;
+      },
+      setLocalFileToolbarState,
+      enableAutoUpdates: () => window.enableAutoUpdates(),
+    });
+  },
 });
 
 // Refresh handler to update radar data with debouncing and station change detection
@@ -1301,6 +870,33 @@ updateIntervalId = setInterval(async () => {
   }
 }, 10 * 1000); // Run updates every 10 seconds
 
+// Set up keyboard shortcuts
+setupKeybinds({
+  toggleSplitMap,
+  toggleCrossSectionView,
+  toggleInspector,
+  showRadarStatus: () => {
+    if (window.appmode === 'satellite') {
+      return;
+    }
+    new RadarStatus(mainRadar.station);
+  },
+  showMenu: () => menu.open(),
+  showLayerMenu: () => {
+    if (!document.getElementById('open-layer-picker-button').classList.contains('selected')) {
+      layerMenu.open();
+    } else {
+      document.getElementById('layer-menu').classList.add('layer-menu-hidden');
+      const openLayerPickerButton = document.getElementById('open-layer-picker-button');
+      if (openLayerPickerButton) { openLayerPickerButton.classList.remove('selected'); }
+    }
+  },
+  startDraw,
+  startMeasure,
+  showFinder: () => new Finder(map).open(),
+  setRadar,
+});
+
 window.enableAutoUpdates = function() {
   autoUpdateEnabled = true;
   archiveMode.main = null;
@@ -1313,23 +909,7 @@ window.enableAutoUpdates = function() {
   if (map.hasSplitMap()) {
     map.rebuildRadarPicker('split', false);
   }
-  // Restore toolbar buttons that may have been visually disabled for an L3 local file.
-  const splitBtn = document.getElementById('dual-map-button');
-  if (splitBtn) {
-    splitBtn.disabled = false;
-    splitBtn.setAttribute('aria-disabled', 'false');
-    splitBtn.style.color = '';
-    splitBtn.style.pointerEvents = '';
-    splitBtn.title = 'Dual-radar view';
-  }
-  const xsBtn = document.getElementById('cross-section-button');
-  if (xsBtn) {
-    xsBtn.disabled = false;
-    xsBtn.setAttribute('aria-disabled', 'false');
-    xsBtn.style.color = '';
-    xsBtn.style.pointerEvents = '';
-  }
-  updateCrossSectionButtonState(mainRadar.product);
+  setLocalFileToolbarState(false);
 };
 
 window.disableAutoUpdates = function() {
@@ -1340,17 +920,6 @@ window.disableAutoUpdates = function() {
 window.isAutoUpdateEnabled = function() {
   return autoUpdateEnabled;
 };
-
-// Post a notice to users opening the console
-setTimeout(() => {
-  console.log("%cDO NOT PASTE ANYTHING HERE!", "font-size: 32px; font-weight: bold; color: red;");
-  console.log("%cIf you don't know what you are doing you can easily wipe all of your settings or cause the page to fail to load.", "font-size: 16px;");
-
-  setInterval(() => {
-    console.log("%cDO NOT PASTE ANYTHING HERE!", "font-size: 32px; font-weight: bold; color: red;");
-    console.log("%cIf you don't know what you are doing you can easily wipe all of your settings or cause the page to fail to load.", "font-size: 16px;");
-  }, 15 * 1000);
-}, 5000);
 
 // Show welcome dialog if first time
 if (localStorage.getItem('firstUse') !== 'true') {

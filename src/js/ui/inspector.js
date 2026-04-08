@@ -134,6 +134,7 @@ export default class Inspector {
             case 'N1H':
             case 'N2H':
             case 'N3H':
+            case 'HHC':
             return 'TYPE';
             case 'SW':
             return 'mph';

@@ -34,6 +34,9 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     startSplitLayoutButton.innerHTML = '<i class="ti ti-layout-rows"></i>';
     startSplitLayoutButton.title = 'Dual-radar view';
     startSplitLayoutButton.addEventListener('click', () => {
+        if (window.appmode === 'satellite') {
+            return;
+        }
         if (typeof onSplitMap === 'function') {
             onSplitMap();
         }
@@ -144,6 +147,9 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     inspectorButton.innerHTML = '<i class="ti ti-viewfinder"></i>';
     inspectorButton.title = 'Inspect radar gates';
     inspectorButton.addEventListener('click', () => {
+        if (window.appmode === 'satellite') {
+            return;
+        }
         if (typeof onInspectorClick === 'function') {
             onInspectorClick();
         }
@@ -160,6 +166,9 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     animationButton.innerHTML = '<i class="ti ti-player-play"></i>';
     animationButton.title = 'Animate past scans';
     animationButton.addEventListener('click', () => {
+        if (window.appmode === 'satellite') {
+            return;
+        }
         if (typeof onAnimationClick === 'function') {
             onAnimationClick();
             const isHidden = toolbox.classList.contains('toolbox-hidden');
@@ -187,6 +196,9 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     crossSectionButton.innerHTML = '<i class="ti ti-line"></i>';
     crossSectionButton.title = 'Cross-section view';
     crossSectionButton.addEventListener('click', () => {
+        if (window.appmode === 'satellite') {
+            return;
+        }
         if (typeof onSplit3d === 'function') {
             onSplit3d();
         }
@@ -229,10 +241,50 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
 
     // Add station info click handler
     stationInfoDiv.addEventListener('click', () => {
+        if (window.appmode === 'satellite') {
+            return;
+        }
         if (typeof onRadarStatusClick === 'function') {
             onRadarStatusClick();
         }
     });
+
+    const setElementVisibleAndEnabled = (element, button, visible) => {
+        if (!element || !button) return;
+        element.classList.toggle('hidden', !visible);
+        button.disabled = !visible;
+        button.setAttribute('aria-disabled', String(!visible));
+        button.style.pointerEvents = visible ? '' : 'none';
+    };
+
+    const applyModeState = (mode) => {
+        const normalized = mode === 'satellite' ? 'satellite' : 'radar';
+        const isSatellite = normalized === 'satellite';
+
+        startSplitLayoutButton.disabled = isSatellite;
+        startSplitLayoutButton.setAttribute('aria-disabled', String(isSatellite));
+        startSplitLayoutButton.style.pointerEvents = isSatellite ? 'none' : '';
+        startSplitLayoutButton.style.opacity = isSatellite ? '0.45' : '';
+        startSplitLayoutButton.title = isSatellite ? 'Dual-radar view unavailable in satellite mode' : 'Dual-radar view';
+
+        stationInfoDiv.classList.toggle('hidden', isSatellite);
+        stationInfoDiv.style.pointerEvents = isSatellite ? 'none' : '';
+        stationInfoDiv.setAttribute('aria-hidden', String(isSatellite));
+
+        setElementVisibleAndEnabled(inspectorDiv, inspectorButton, !isSatellite);
+        setElementVisibleAndEnabled(animationDiv, animationButton, !isSatellite);
+        setElementVisibleAndEnabled(crossSectionDiv, crossSectionButton, !isSatellite);
+
+        if (isSatellite && !toolbox.classList.contains('toolbox-hidden')) {
+            toolbox.classList.remove('toolbox-opening');
+            toolbox.classList.add('toolbox-closing');
+        }
+    };
+
+    document.addEventListener('dataModeChanged', (event) => {
+        applyModeState(event?.detail?.mode);
+    });
+    applyModeState(window.appmode || 'radar');
 
     // Assemble toolbar hierarchy
     toolbar.appendChild(openMenuButton);

@@ -1,0 +1,38 @@
+import { RandomAccessFile } from '../../randomaccessfile/index.js';
+
+const code = 57;
+const abbreviation = ['NVL'];
+const description = 'Vertically Integrated Liquid';
+
+// eslint-disable-next-line camelcase
+const halfwords30_53 = (data) => {
+	// turn data into a random access file for bytewise parsing purposes
+	const raf = new RandomAccessFile(data);
+	return {
+		elevationAngle: raf.readShort() / 10,
+		dependent31_46: raf.read(32),
+		maxNegativeVelocity: raf.readShort(),	// knots
+		maxPositiveVelocity: raf.readShort(),	// knots
+		motionSourceFlag: raf.readShort(),	// = -1
+		dependent50: raf.readShort(),
+		averageStormSpeed: raf.readShort() / 10,	// knots
+		averageStormDirection: raf.readShort() / 10, // degrees
+	};
+};
+
+const product = {
+	code,
+	abbreviation,
+	description,
+
+	productDescription: {
+		halfwords30_53,
+	},
+};
+
+if (typeof module !== 'undefined') {
+	module.exports = product;
+}
+
+export default product;
+export { code, abbreviation, description, halfwords30_53 };

@@ -20,7 +20,7 @@
   flex-direction: column;
   gap: 0px;
   height: 100%;
-  max-height: 200px;
+  max-height: 250px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
@@ -39,7 +39,7 @@
 
 .radar-products-list div {
   font-size: 0.9em;
-  background: rgba(0, 0, 0);
+  background: transparent;
   padding: 10px 15px;
   border-radius: 0px;
   border-bottom: 1px solid var(--border-color);
@@ -62,7 +62,7 @@
   border: none;
   border-radius: 10px;
   padding: 2px 10px;
-  background: none;
+  background: transparent;
   color: white;
   font-size: 1em;
   font-weight: bold;
@@ -70,9 +70,13 @@
 }
 
 .radar-product-category {
-  font-size: 0.95em;
+  display: flex !important;
+  width: calc(100% - 30px) !important;
+  justify-content: center !important;
   font-weight: bold;
-  background: rgba(0, 0, 0);
+  margin-top: 10px;
+  font-weight: bold;
+  background: transparent;
   padding: 15px 20px;
   border-bottom: 0px solid black !important;
   color: var(--primary-color);

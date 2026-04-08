@@ -2,8 +2,8 @@ import settingsHTML from './settings.html?raw';
 import Palettes from '../../main/palettes.js';
 import Toast from '../../ui/toast.js';
 import Modal from '../../ui/modal.js';
-
-// TODO: Alert color defaults dont work
+import Window from '../../ui/window.js';
+import { buildMapLayerVisibilityObjects } from '../../maplayers/layer_utils.js';
 
 // Mapping of setting keys to palette names
 const paletteKeyMap = {
@@ -314,6 +314,13 @@ function bindSectionControls(settingsInstance, content) {
         return;
     }
 
+    // Handle map section specially
+    const mapSettingsContainer = content.querySelector('#map-settings-container');
+    if (mapSettingsContainer) {
+        generateMapLayerVisibilitySettings(settingsInstance, mapSettingsContainer);
+        return;
+    }
+
     // Handle alerts section specially
     const alertSettingsList = content.querySelector('#alerts-settings-list');
     if (alertSettingsList) {
@@ -448,6 +455,261 @@ function bindSectionControls(settingsInstance, content) {
     if (content.querySelector('#cache-usage-size')) {
         settingsInstance.cacheStatsInterval = setInterval(refreshCacheStatsUi, 1500);
     }
+}
+
+function generateMapLayerVisibilitySettings(settingsInstance, container, options = {}) {
+    const { showOpenInWindowButton = true } = options;
+
+    container.innerHTML = '';
+
+    const mapInstance = window.mapInstance;
+    const mapObject = mapInstance?.map;
+    const visibilityObjects = buildMapLayerVisibilityObjects(mapObject, 'main');
+
+    if (showOpenInWindowButton) {
+        const openControl = document.createElement('div');
+        openControl.style.cssText = 'display: flex; flex-direction: row; justify-content: flex-end; margin: 10px;';
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.style.cssText = 'width: auto; font-size: 1em; padding: 10px;';
+        openButton.innerHTML = '<i class="ti ti-external-link" style="margin-right: 5px; font-size: 1.5em;"></i> Pop out editor';
+        openButton.addEventListener('click', () => openMapSettingsInWindow(settingsInstance));
+        openControl.appendChild(openButton);
+
+        container.appendChild(openControl);
+    }
+
+    // Create background style selector
+    const backgroundControl = document.createElement('div');
+    backgroundControl.className = 'settings-control';
+    backgroundControl.style.marginBottom = '20px';
+    
+    const backgroundHeader = document.createElement('div');
+    backgroundHeader.className = 'settings-control-header';
+    
+    const backgroundLabel = document.createElement('label');
+    backgroundLabel.textContent = 'Map Background';
+    backgroundHeader.appendChild(backgroundLabel);
+    
+    const backgroundSelect = document.createElement('select');
+    backgroundSelect.style.width = 'auto';
+    
+    const defaultOption = document.createElement('option');
+    defaultOption.value = 'default';
+    defaultOption.textContent = 'Default';
+    backgroundSelect.appendChild(defaultOption);
+    
+    const satelliteOption = document.createElement('option');
+    satelliteOption.value = 'satellite';
+    satelliteOption.textContent = 'Satellite';
+    backgroundSelect.appendChild(satelliteOption);
+    
+    const currentBackground = settingsInstance.getSetting('mapBackgroundStyle') || 'default';
+    backgroundSelect.value = currentBackground;
+    
+    backgroundSelect.addEventListener('change', () => {
+        settingsInstance.setSetting('mapBackgroundStyle', backgroundSelect.value);
+        document.dispatchEvent(new CustomEvent('mapBackgroundStyleChanged', {
+            detail: { style: backgroundSelect.value }
+        }));
+    });
+    
+    backgroundHeader.appendChild(backgroundSelect);
+    backgroundControl.appendChild(backgroundHeader);
+    
+    const backgroundHelp = document.createElement('p');
+    backgroundHelp.className = 'settings-control-help';
+    backgroundHelp.textContent = 'Choose between a solid color or satellite imagery. Sometimes requires a page refersh.';
+    backgroundControl.appendChild(backgroundHelp);
+    
+    container.appendChild(backgroundControl);
+
+    if (visibilityObjects.length === 0) {
+        const unavailable = document.createElement('p');
+        unavailable.className = 'settings-control-help';
+        unavailable.textContent = 'Map style layers are not available yet. Open this section again after the map loads.';
+        container.appendChild(unavailable);
+        return;
+    }
+
+    const currentVisibility = settingsInstance.getSetting('mapLayerVisibility') || {};
+    const currentStyles = settingsInstance.getSetting('mapLayerStyles') || {};
+
+    const grouped = visibilityObjects.filter((item) => item.grouped);
+    grouped.forEach((item) => {
+        container.appendChild(createMapLayerVisibilityControl(item, currentVisibility, currentStyles, settingsInstance));
+    });
+
+    const singles = visibilityObjects.filter((item) => !item.grouped);
+    // Ignore extranneous layers
+}
+
+function openMapSettingsInWindow(settingsInstance) {
+    const mapWindow = new Window({
+        title: 'Map Layer Settings',
+        icon: 'settings',
+        width: 860,
+        height: 620,
+        html: '<div class="map-settings-window-content" style="display: flex; flex-direction: column; height: 100%; overflow: auto; padding: 10px; color: white;"></div>'
+    });
+
+    const content = mapWindow.content.querySelector('.map-settings-window-content');
+    if (!content) {
+        return;
+    }
+
+    // Close setting menu
+    const settingsCloser = document.querySelector('.settings-header-close');
+    if (settingsCloser) {
+        settingsCloser.click();
+    }
+
+    generateMapLayerVisibilitySettings(settingsInstance, content, { showOpenInWindowButton: false });
+}
+
+function createMapLayerVisibilityControl(item, currentVisibility, currentStyles, settingsInstance) {
+    const control = document.createElement('div');
+    control.className = 'settings-control alert-setting-control';
+
+    const topRow = document.createElement('div');
+    topRow.className = 'alert-setting-top';
+
+    const title = document.createElement('div');
+    title.className = 'alert-setting-title';
+    title.textContent = item.label;
+    topRow.appendChild(title);
+
+    const topControls = document.createElement('div');
+    topControls.className = 'alert-setting-top-controls';
+
+    const visibilityGroup = document.createElement('div');
+    visibilityGroup.className = 'alert-setting-group';
+
+    const visibilityLabel = document.createElement('span');
+    visibilityLabel.className = 'alert-setting-group-label';
+    visibilityLabel.textContent = 'Visible';
+    visibilityGroup.appendChild(visibilityLabel);
+
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    toggle.className = 'switch';
+    toggle.checked = currentVisibility[item.key] !== false;
+    visibilityGroup.appendChild(toggle);
+
+    topControls.appendChild(visibilityGroup);
+
+    toggle.addEventListener('change', () => {
+        const existing = settingsInstance.getSetting('mapLayerVisibility') || {};
+        settingsInstance.setSetting('mapLayerVisibility', {
+            ...existing,
+            [item.key]: toggle.checked
+        });
+    });
+
+    const styleValues = currentStyles[item.key] || {};
+    let bottomRow = null;
+
+    if (item.grouped && Array.isArray(item.customizable)) {
+        const styleControls = [];
+
+        item.customizable.forEach((property) => {
+            if (property === 'visibility') {
+                return;
+            }
+
+            const controlInput = createMapLayerPropertyInput(property, styleValues[property], (value) => {
+                const existing = settingsInstance.getSetting('mapLayerStyles') || {};
+                const existingGroup = existing[item.key] || {};
+
+                settingsInstance.setSetting('mapLayerStyles', {
+                    ...existing,
+                    [item.key]: {
+                        ...existingGroup,
+                        [property]: value
+                    }
+                });
+            });
+
+            if (controlInput) {
+                styleControls.push(controlInput);
+            }
+        });
+
+        if (styleControls.length > 0) {
+            const topStyleControls = styleControls
+            topStyleControls.forEach((styleControl) => {
+                topControls.appendChild(styleControl);
+            });
+        }
+    }
+
+    topRow.appendChild(topControls);
+    control.appendChild(topRow);
+
+    if (!item.grouped) {
+        const help = document.createElement('p');
+        help.className = 'settings-control-help';
+        help.textContent = item.layerIds[0];
+        control.appendChild(help);
+    }
+
+    return control;
+}
+
+function createMapLayerPropertyInput(property, currentValue, onChange) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'alert-setting-group';
+
+    const text = document.createElement('span');
+    text.className = 'alert-setting-group-label';
+    text.textContent = property.replace('fill', 'color').replace('stroke', 'border').replace(/-/g, ' ');
+    wrapper.appendChild(text);
+
+    let input = null;
+
+    if (property === 'fill' || property === 'stroke') {
+        input = document.createElement('input');
+        input.type = 'color';
+        input.className = 'alert-setting-color';
+        input.value = typeof currentValue === 'string' && /^#([0-9a-fA-F]{6})$/.test(currentValue)
+            ? currentValue
+            : '#ffffff';
+        input.addEventListener('input', () => onChange(input.value));
+    } else if (property === 'opacity') {
+        input = document.createElement('input');
+        input.type = 'range';
+        input.min = '0';
+        input.max = '1';
+        input.step = '0.01';
+        input.value = Number.isFinite(Number(currentValue)) ? String(Number(currentValue)) : '1';
+        input.style.width = '110px';
+        input.addEventListener('input', () => onChange(Number(input.value)));
+    } else if (property === 'stroke-width') {
+        input = document.createElement('input');
+        input.type = 'range';
+        input.min = '0';
+        input.max = '12';
+        input.step = '0.1';
+        input.value = Number.isFinite(Number(currentValue)) ? String(Number(currentValue)) : '1';
+        input.style.width = '110px';
+        input.addEventListener('input', () => onChange(Number(input.value)));
+    } else if (property === 'font-size') {
+        input = document.createElement('input');
+        input.type = 'range';
+        input.min = '8';
+        input.max = '40';
+        input.step = '1';
+        input.value = Number.isFinite(Number(currentValue)) ? String(Number(currentValue)) : '14';
+        input.style.width = '110px';
+        input.addEventListener('input', () => onChange(Number(input.value)));
+    }
+
+    if (!input) {
+        return null;
+    }
+
+    wrapper.appendChild(input);
+    return wrapper;
 }
 
 function handlePaletteUpload(settingKey, settingsInstance) {
@@ -792,6 +1054,7 @@ function generateAlertSettings(settingsInstance, container) {
             if (!isVisualCategory) {
                 const bottomRow = document.createElement('div');
                 bottomRow.className = 'alert-setting-bottom';
+                bottomRow.style.maxWidth = '100%';
 
                 // Notification toggle
                 const notifyCheckbox = document.createElement('input');
@@ -892,6 +1155,9 @@ export default class Settings {
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
             secondaryBorderColor: '#27beff',
+            mapLayerVisibility: {},
+            mapLayerStyles: {},
+            mapBackgroundStyle: 'default',
             shortcutToggleSplitView: 'm',
             shortcutToggleCrossSection: 'x',
             shortcutShowRadarStatus: 's',
@@ -940,6 +1206,19 @@ export default class Settings {
                 parsed.reflectivityGateFilter = parsed.radarOpacity;
                 delete parsed.radarOpacity;
             }
+
+            if (!parsed.mapLayerStyles || typeof parsed.mapLayerStyles !== 'object') {
+                parsed.mapLayerStyles = {};
+            }
+
+            if (typeof parsed.mapLandFillColor === 'string' && parsed.mapLandFillColor) {
+                const existingLandStyles = parsed.mapLayerStyles['group:land'] || {};
+                parsed.mapLayerStyles['group:land'] = {
+                    ...existingLandStyles,
+                    fill: parsed.mapLandFillColor
+                };
+                delete parsed.mapLandFillColor;
+            }
             return parsed;
         } catch (error) {
             return {};
@@ -964,6 +1243,22 @@ export default class Settings {
 
     getSetting(key) {
         return this.settings[key];
+    }
+
+    getMapTileSource() {
+        const style = this.getSetting('mapBackgroundStyle');
+        const key = import.meta.env.VITE_ESRI_KEY;
+
+        if (style === 'satellite' && key) {
+            return {
+                imagery: {
+                    type: 'raster',
+                    tiles: [`https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=${key}`]
+                }
+            };
+        }
+
+        return null;
     }
 
     resetSettings() {

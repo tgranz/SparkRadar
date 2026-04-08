@@ -53,11 +53,10 @@ export function waitForRadarLayer(map, target) {
 }
 
 export function hasUsableMapStyle(map) {
-    if (!map || typeof map.getStyle !== 'function') return false;
+    if (!map || typeof map.isStyleLoaded !== 'function') return false;
 
     try {
-        const style = map.getStyle();
-        return !!style && Array.isArray(style.layers);
+        return map.isStyleLoaded();
     } catch {
         return false;
     }
@@ -138,6 +137,149 @@ export function getRadarLayerId(target) {
     return target === 'main' ? 'radar-webgl' : 'radar-webgl-dual';
 }
 
+const MAP_LAYER_VISIBILITY_GROUPS = [
+    {
+        key: 'labels',
+        label: 'Labels',
+        customizable: ['visibility', 'fill', 'stroke', 'stroke-width', 'opacity', 'font-size'],
+        match: (id) => /^label_/.test(id) || /_label$/.test(id) || /airport/.test(id)
+    },
+    {
+        key: 'roads',
+        label: 'Roads',
+        customizable: ['visibility', 'fill', 'opacity'],
+        match: (id) => (id.startsWith('tunnel') || /road|highway|bridge/.test(id)) && !id.includes('casing')
+    },
+    {
+        key: 'casings',
+        label: 'Road Casings',
+        customizable: ['visibility', 'fill', 'opacity'],
+        match: (id) => (id.startsWith('tunnel') || /road|highway|bridge/.test(id)) && id.includes('casing')
+    },
+    {
+        key: 'railway',
+        label: 'Railways',
+        customizable: ['visibility', 'fill', 'opacity'],
+        match: (id) => /railway/.test(id)
+    },
+    {
+        key: 'water',
+        label: 'Water',
+        customizable: ['visibility', 'fill', 'opacity'],
+        match: (id) => /water|ocean|sea|lake|river/.test(id)
+    },
+    {
+        key: 'land',
+        label: 'Background (Land)',
+        customizable: ['visibility', 'fill'],
+        match: (id) => /background/.test(id)
+    },
+    {
+        key: 'buildings',
+        label: 'Buildings',
+        customizable: ['visibility', 'fill', 'stroke', 'opacity'],
+        match: (id) => /building/.test(id)
+    },
+    {
+        key: 'boundaries',
+        label: 'Borders',
+        customizable: ['visibility', 'fill', 'opacity'],
+        match: (id) => /boundary|admin|state-line|county-line|country/.test(id)
+    }
+];
+
+export function isRadarRelatedLayerId(layerId = '') {
+    if (!layerId) return false;
+
+    return layerId === 'radar-webgl'
+        || layerId === 'radar-webgl-dual'
+        || layerId.startsWith('alerts-combined')
+        || layerId.startsWith('watch-')
+        || layerId.startsWith('md-')
+        || layerId.startsWith('surface-analysis-')
+        || layerId.startsWith('lightning-')
+        || layerId.startsWith('spotter-network-position-')
+        || layerId.startsWith('nws-storm-report-')
+        || layerId.startsWith('metar-station-')
+        || layerId.startsWith('outlook-layer')
+        || layerId.startsWith('center-');
+}
+
+function toLayerVisibilityKey(layerId) {
+    return `layer:${layerId}`;
+}
+
+export function getMapLayerGroupLayerIds(map, target = 'main', groupKey) {
+    const styleLayers = map?.getStyle?.()?.layers;
+    if (!Array.isArray(styleLayers) || styleLayers.length === 0) {
+        return [];
+    }
+
+    const group = MAP_LAYER_VISIBILITY_GROUPS.find((entry) => entry.key === groupKey);
+    if (!group) {
+        return [];
+    }
+
+    const includeDualLayers = target === 'dual';
+
+    return styleLayers
+        .map((layer) => layer.id)
+        .filter((id) => {
+            if (!id) return false;
+            if (isRadarRelatedLayerId(id)) return false;
+            if (!includeDualLayers && id.includes('-dual')) return false;
+            return group.match(id);
+        });
+}
+
+export function buildMapLayerVisibilityObjects(map, target = 'main') {
+    const styleLayers = map?.getStyle?.()?.layers;
+    if (!Array.isArray(styleLayers) || styleLayers.length === 0) {
+        return [];
+    }
+
+    const includeDualLayers = target === 'dual';
+
+    const candidateIds = styleLayers
+        .map((layer) => layer.id)
+        .filter((id) => {
+            if (!id) return false;
+            if (isRadarRelatedLayerId(id)) return false;
+            if (!includeDualLayers && id.includes('-dual')) return false;
+            return true;
+        });
+
+    const seen = new Set();
+    const output = [];
+
+    for (const group of MAP_LAYER_VISIBILITY_GROUPS) {
+        const layerIds = candidateIds.filter((id) => !seen.has(id) && group.match(id));
+        if (layerIds.length === 0) continue;
+
+        layerIds.forEach((id) => seen.add(id));
+        output.push({
+            key: `group:${group.key}`,
+            label: group.label,
+            layerIds,
+            grouped: true,
+            customizable: Array.isArray(group.customizable) ? [...group.customizable] : ['visibility']
+        });
+    }
+
+    const ungroupedIds = candidateIds.filter((id) => !seen.has(id));
+    ungroupedIds.forEach((id) => {
+        output.push({
+            key: toLayerVisibilityKey(id),
+            label: id,
+            layerIds: [id],
+            grouped: false,
+            customizable: ['visibility']
+        });
+    });
+
+    return output;
+}
+
 /**
  * Fill layers should render below radar when possible.
  */
@@ -180,7 +322,6 @@ export function normalizePolygonRing(ring) {
             if (Math.abs(ring[i][0] - lastPoint[0]) < epsilon && 
                 Math.abs(ring[i][1] - lastPoint[1]) < epsilon) {
                 properStartIndex = i;
-                console.log(`[LayerUtils] Found proper start point at index ${i}: [${ring[i][0]}, ${ring[i][1]}]`);
                 break;
             }
         }
@@ -202,7 +343,6 @@ export function normalizePolygonRing(ring) {
         
         // Skip if we've already added this point
         if (seen.has(key)) {
-            console.log(`[LayerUtils] Skipping duplicate point: [${point[0]}, ${point[1]}]`);
             continue;
         }
         
@@ -221,7 +361,6 @@ export function normalizePolygonRing(ring) {
         return ring;
     }
     
-    console.log(`[LayerUtils] Normalized polygon: ${ring.length} points → ${normalized.length} points`);
     return normalized;
 }
 
@@ -245,18 +384,13 @@ export function pointInRing(point, ring) {
  */
 export function pointInPolygon(point, rings) {
     if (!rings || rings.length === 0) {
-        console.log(`[LayerUtils] Invalid rings for point-in-polygon check`);
         return false;
     }
-    console.log(`[LayerUtils] Checking point [${point[0]}, ${point[1]}] against polygon with ${rings.length} rings`);
     if (!pointInRing(point, rings[0])) {
-        console.log(`[LayerUtils] Point is outside outer ring`);
         return false;
     }
-    console.log(`[LayerUtils] Point is inside outer ring`);
     for (let i = 1; i < rings.length; i += 1) {
         if (pointInRing(point, rings[i])) {
-            console.log(`[LayerUtils] Point is inside hole ring ${i}, excluding`);
             return false;
         }
     }

@@ -1,8 +1,8 @@
 import Dialog from "../ui/dialog.js";
 
-export default function openAbout() {
+export default function openAbout(target = 'general') {
     const aboutContent = `
-    <div style="height: 60vh;">
+    <div style="height: calc(100vh - 180px);">
         <style>
             .about-tabs {
                 display: flex;
@@ -72,17 +72,19 @@ export default function openAbout() {
                 </div>
             </div>
 
-            <p style="margin-top: 20px; font-size: 0.85em; text-align: center; color: lightgray;">&copy; 2026 @tgranz | &copy; 2026 Bromwell-Poe Enterprises, LLC</p>
+            <p style="margin-top: 20px; font-size: 0.85em; text-align: center; color: lightgray;">&copy; 2026 @tgranz</p>
         </div>
 
         <div class="about-panel" id="about-panel-map" role="tabpanel" aria-labelledby="about-tab-map">
-            <p>Map styling provided by &copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a></p>
-            <p>Tiling from <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> with map data from <a href="https://openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>.</p>
+            <p>Custom map styling SDK provided by &copy; <a href="https://openfreemap.org/" target="_blank">OpenFreeMap</a></p><br>
+            <p>Tiling from <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> with map data from <a href="https://openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>.</p><br>
+            <p>Satellite imagery from Esri, Vantor, Maxar, Earthstar Geographics, and the GIS User Community | Powered by <a href="https://esri.com" target="_blank">Esri</a> | Sources: Esri, TomTom, Garmin, FAO, NOAA, USGS, © OpenStreetMap and the GIS User Community</p>
         </div>
 
         <div class="about-panel" id="about-panel-data" role="tabpanel" style="height: calc(100% - 70px); overflow-y: auto; overflow-x: hidden;" aria-labelledby="about-tab-data">
             <h2 style="margin-left: 10px; margin-bottom: 5px; text-align: left; width: 100%;">Sources</h2>
             <p style="margin-bottom: 10px;"><strong>Radar</strong> comes from the <a href="https://registry.opendata.aws/noaa-nexrad/">NEXRAD on AWS</a> which provides real-time raw radar binary files.</p>
+            <p style="margin-bottom: 10px;"><strong>Satellite imagery</strong> comes from the <a href="https://mesonet.agron.iastate.edu/GIS/goes.phtml" target="_blank">WMS service provided by Iowa Environmental Mesonet</a></p>
             <p style="margin-bottom: 10px;"><strong>Alerts</strong> come from the <a href="https://www.weather.gov/nwws/" target="_blank">NOAA Weather Wire Service (NWWS)</a> over networking, run by <a href="https://github.com/tgranz/sparkalerts" target="_blank">SparkAlerts</a>.</p>
             <p style="margin-bottom: 10px;"><strong>SPC Outlooks</strong> come from the <a href="https://www.spc.noaa.gov/products/outlook" target="_blank">Storm Prediction Center (SPC)</a> in GeoJSON format.</p>
             <p style="margin-bottom: 10px;"><strong>TVS and Hail centers</strong> come from the <a href="https://mesonet.agron.iastate.edu/cgi-bin/request/gis/nexrad_storm_attrs.py?help" target="_blank">Iowa Environmental Mesonet</a>.</p>
@@ -130,6 +132,10 @@ export default function openAbout() {
         });
     });
 
+    if (['general', 'map', 'data'].includes(target)) {
+        setActivePanel(target);
+    }
+
     const updateActiveUsers = async () => {
         try {
             const response = await fetch('https://api.sparkradar.app/connections');
@@ -150,3 +156,5 @@ export default function openAbout() {
         originalClose();
     };
 }
+
+document.getElementById('attribution').addEventListener('click', () => openAbout('map'));

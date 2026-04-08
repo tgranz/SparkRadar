@@ -1,11 +1,10 @@
 .menu {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  max-width: 600px;
-  width: calc(100% - 60px);
-  max-height: calc(100% - 60px);
-  height: auto;
+  width: calc(100% - 62px);
+  max-width: 400px;
+  height: calc(100% - 132px);
+  bottom: 80px;
+  left: 10px;
   background: rgba(0, 0, 0, 0.5);
   color: white;
   border: 1px solid var(--border-color);
@@ -14,7 +13,8 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   padding: 20px;
   z-index: 10000;
-  overflow-y: auto;
+  overflow-y: hidden;
+  overflow-x: hidden;
   transition: opacity 0.2s ease-out, transform 0.2s ease-out, visibility 0.2s ease-out;
 }
 
@@ -24,26 +24,40 @@
   margin-right: 10px;
 }
 
-/* Hidden state: faded out and slides up */
 .menu.menu-hidden {
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, -50%) translateY(-40px);
+  transform: translateY(20px);
   visibility: hidden;
 }
 
-/* Visible state: faded in and slides down */
 .menu:not(.menu-hidden) {
   opacity: 1;
   pointer-events: auto;
-  transform: translate(-50%, -50%) translateY(0);
+  transform: translateY(0);
   visibility: visible;
+}
+
+.menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-direction: row;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.menu-content {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  height: calc(100% - 70px);
 }
 
 .menu ul {
   list-style: none;
   padding: 0;
-  margin: 20px 0 0 0;
+  margin: 10px 0 0 0;
 }
 
 .menu li {
@@ -98,4 +112,35 @@
   background-clip: text;
   color: transparent !important;
   background-image: linear-gradient(100deg, rgba(39, 190, 255, 1) 20%, rgba(42, 127, 255, 1) 73%, rgba(255, 204, 0, 1) 74%);
+}
+
+.menu-header-object {
+  margin-top: 50px !important;
+}
+
+.menu-data-selection {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin: 10px 0px;
+}
+
+.menu-data-selection-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+  font-size: 1em;
+}
+
+.menu-data-selection-item.active {
+  font-weight: bold;
+  background-color: var(--secondary-border-color);
+  border: 1px solid var(--primary-color);
+}
+
+.menu-data-selection-item i {
+  font-size: 1.5em;
 }

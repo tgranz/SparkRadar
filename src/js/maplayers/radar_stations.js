@@ -12,6 +12,22 @@ class RadarStationsLayer {
 
         this.markers = { main: [], dual: [] };
         this.fetchInProgress = false;
+        this.visible = true;
+    }
+
+    _setMarkerVisibility(markerArray, isVisible) {
+        if (!Array.isArray(markerArray)) return;
+
+        markerArray.forEach((marker) => {
+            try {
+                const el = marker.getElement();
+                if (el) {
+                    el.style.display = isVisible ? 'block' : 'none';
+                }
+            } catch (e) {
+                // Ignore invalid markers
+            }
+        });
     }
 
     _createMarkerElement(icao, isOperational) {
@@ -179,6 +195,9 @@ class RadarStationsLayer {
                     const icao = feature.properties.id;
                     const coords = feature.geometry.coordinates;
                     const el = this._createMarkerElement(icao, isOperational);
+                    if (!this.visible) {
+                        el.style.display = 'none';
+                    }
                     el.addEventListener('click', (e) => {
                         e.stopPropagation();
                         if (typeof callbacks.onSelectStation === 'function') {
@@ -200,6 +219,9 @@ class RadarStationsLayer {
                                 const icao = feature.properties.id;
                                 const coords = feature.geometry.coordinates;
                                 const el = this._createMarkerElement(icao, isOperational);
+                                if (!this.visible) {
+                                    el.style.display = 'none';
+                                }
                                 el.addEventListener('click', (e) => {
                                     e.stopPropagation();
                                     if (typeof callbacks.onSelectStationSplit === 'function') {
@@ -217,11 +239,13 @@ class RadarStationsLayer {
                     }
                 }
 
-                this._hideOverlapping(this.markers.main, mainMap);
+                if (this.visible) {
+                    this._hideOverlapping(this.markers.main, mainMap);
+                }
 
                 if (isSplit && dualMap) {
                     try {
-                        if (dualMap.getCanvas()) {
+                        if (this.visible && dualMap.getCanvas()) {
                             this._hideOverlapping(this.markers.dual, dualMap);
                         }
                     } catch (e) {
@@ -279,7 +303,35 @@ class RadarStationsLayer {
 
             mainMap.on('move', this.handlers.main);
         }
-        this._hideOverlapping(this.markers.main, mainMap);
+        if (this.visible) {
+            this._hideOverlapping(this.markers.main, mainMap);
+        }
+    }
+
+    hide() {
+        this.visible = false;
+        this._setMarkerVisibility(this.markers.main, false);
+        this._setMarkerVisibility(this.markers.dual, false);
+    }
+
+    show() {
+        this.visible = true;
+
+        if (this.markers.main.length === 0 && this.markers.dual.length === 0) {
+            this.update();
+            return;
+        }
+
+        this._setMarkerVisibility(this.markers.main, true);
+        this._setMarkerVisibility(this.markers.dual, true);
+
+        if (this.map?.map) {
+            this._hideOverlapping(this.markers.main, this.map.map);
+        }
+
+        if (this.map?.hasSplitMap?.() && this.map?.dualMap) {
+            this._hideOverlapping(this.markers.dual, this.map.dualMap);
+        }
     }
 }
 

@@ -18,6 +18,12 @@ import Radar3D from "../main/3dradar.js";
 import Notification from '../ui/notification.js';
 import RightClickHandler from './rightclick.js';
 import CrossSection from './cross_section.js';
+import { parseRgb, lerp, lerpColor, colorForValue, pointInRing, findValueAtPointInMesh } from './mesh.js';
+import { buildMapLayerVisibilityObjects } from '../maplayers/layer_utils.js';
+import WmsSatelliteLayer from '../maplayers/wms_satellite.js';
+
+const GOES_WEST_WMS_URL = 'https://mesonet.agron.iastate.edu/cgi-bin/wms/goes_west.cgi?';
+const GOES_EAST_WMS_URL = 'https://mesonet.agron.iastate.edu/cgi-bin/wms/goes_east.cgi?';
 
 class Map {
     // Constructor function
@@ -38,6 +44,11 @@ class Map {
         this.currentMainStation = null;
         this.currentSplitStation = null;
 
+        // Data mode: 'radar' | 'satellite'
+        this.dataMode = 'radar';
+        this.currentSatelliteProduct = 'west/conus_ch13';
+        this.wmsSatelliteLayer = null;
+
         // WebGL radar layer tracking
         this.currentRadarLayer = null;
         this.currentGeojson = null;
@@ -53,9 +64,7 @@ class Map {
         this.radar = null; // Store reference to radar instance
         this.palettes = new Palettes(); // Store palettes instance
         this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
-            if (typeof this.callbacks.onChangeProduct === 'function') {
-                this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
-            }
+            this._handleMainPickerSelection(product, tiltIndex);
         }, false);
         // Color table for radar values (default to REF)
         this.currentPalette = 'REF';
@@ -74,6 +83,12 @@ class Map {
 
         // Need to force apply projection because I don't freaking know.
         this.applyProjection(this.map, params.projection);
+        this.map.on('style.load', () => {
+            this.applyMapLayerVisibility();
+            this.applyMapLayerStyles();
+            this.applyMapBackgroundStyle();
+            this.setDataMode(this.dataMode);
+        });
         // Store move listeners so we can clean them up later
         this.moveListeners = { main: null, dual: null };
 
@@ -125,10 +140,451 @@ class Map {
             if (key === 'enableSplitCursorMarker') {
                 this.enableSplitCursorMarker = value;
             }
+            if (key === 'mapLayerVisibility') {
+                this.applyMapLayerVisibility(value);
+            }
+            if (key === 'mapLayerStyles') {
+                this.applyMapLayerStyles(value);
+            }
+            if (key === 'all') {
+                this.applyMapLayerVisibility();
+                this.applyMapLayerStyles();
+            }
         });
 
+        // Listen for map background style changes
+        document.addEventListener('mapBackgroundStyleChanged', (e) => {
+            const { style } = e.detail;
+            this.applyMapBackgroundStyle(style);
+        });
+
+        // Listen for data mode changes (radar vs satellite)
+        document.addEventListener('dataModeChanged', (e) => {
+            const { mode } = e.detail;
+            this.setDataMode(mode);
+        });
 
         setInterval(() => this._updateCurrentPosition(), 5000);
+
+        // Mesh worker — vertex data computation runs off the main thread
+        this._meshWorkerPendingCallbacks = new globalThis.Map();
+        this._meshWorkerNextId = 0;
+        this._meshWorker = new Worker(
+            new URL('../workers/mesh_worker.js', import.meta.url),
+            { type: 'module' }
+        );
+        this._meshWorker.onmessage = (e) => {
+            const { type, id, vertexData } = e.data;
+            if (type === 'meshResult') {
+                const resolve = this._meshWorkerPendingCallbacks.get(id);
+                if (resolve) {
+                    this._meshWorkerPendingCallbacks.delete(id);
+                    resolve(vertexData);
+                }
+            }
+        };
+    }
+
+    _resolveMapLayerVisibilitySetting(visibilitySetting) {
+        if (visibilitySetting && typeof visibilitySetting === 'object') {
+            return visibilitySetting;
+        }
+
+        try {
+            const stored = JSON.parse(localStorage.getItem('settings') || '{}');
+            return stored.mapLayerVisibility || {};
+        } catch {
+            return {};
+        }
+    }
+
+    _applyMapLayerVisibilityToMap(mapInstance, target, visibilitySetting) {
+        if (!mapInstance || typeof mapInstance.getStyle !== 'function') {
+            return;
+        }
+
+        const visibilityObjects = buildMapLayerVisibilityObjects(mapInstance, target);
+        if (visibilityObjects.length === 0) {
+            return;
+        }
+
+        for (const item of visibilityObjects) {
+            const isVisible = visibilitySetting[item.key] !== false;
+            const visibility = isVisible ? 'visible' : 'none';
+
+            for (const layerId of item.layerIds) {
+                if (!mapInstance.getLayer(layerId)) {
+                    continue;
+                }
+
+                try {
+                    mapInstance.setLayoutProperty(layerId, 'visibility', visibility);
+                } catch {
+                    // Ignore layer types that cannot update visibility dynamically.
+                }
+            }
+        }
+    }
+
+    applyMapLayerVisibility(visibilitySetting = null) {
+        const resolved = this._resolveMapLayerVisibilitySetting(visibilitySetting);
+        this._applyMapLayerVisibilityToMap(this.map, 'main', resolved);
+        this._applyMapLayerVisibilityToMap(this.dualMap, 'dual', resolved);
+    }
+
+    _resolveMapLayerStyleSetting(styleSetting) {
+        if (styleSetting && typeof styleSetting === 'object') {
+            return styleSetting;
+        }
+
+        try {
+            const stored = JSON.parse(localStorage.getItem('settings') || '{}');
+            const mapLayerStyles = stored.mapLayerStyles && typeof stored.mapLayerStyles === 'object'
+                ? stored.mapLayerStyles
+                : {};
+
+            // Backward compatibility for older saved settings.
+            if (typeof stored.mapLandFillColor === 'string' && stored.mapLandFillColor) {
+                mapLayerStyles['group:land'] = {
+                    ...(mapLayerStyles['group:land'] || {}),
+                    fill: stored.mapLandFillColor
+                };
+            }
+
+            return mapLayerStyles;
+        } catch {
+            return {};
+        }
+    }
+
+    _applyMapLayerStyleProperty(mapInstance, layer, property, value) {
+        const layerId = layer?.id;
+        if (!layerId) {
+            return;
+        }
+
+        const layerType = layer.type;
+
+        try {
+            if (property === 'fill' && typeof value === 'string') {
+                if (layerType === 'fill') mapInstance.setPaintProperty(layerId, 'fill-color', value);
+                if (layerType === 'background') mapInstance.setPaintProperty(layerId, 'background-color', value);
+                if (layerType === 'line') mapInstance.setPaintProperty(layerId, 'line-color', value);
+                if (layerType === 'circle') mapInstance.setPaintProperty(layerId, 'circle-color', value);
+                if (layerType === 'symbol') mapInstance.setPaintProperty(layerId, 'text-color', value);
+                return;
+            }
+
+            if (property === 'stroke' && typeof value === 'string') {
+                if (layerType === 'fill') mapInstance.setPaintProperty(layerId, 'fill-outline-color', value);
+                if (layerType === 'line') mapInstance.setPaintProperty(layerId, 'line-color', value);
+                if (layerType === 'circle') mapInstance.setPaintProperty(layerId, 'circle-stroke-color', value);
+                if (layerType === 'symbol') mapInstance.setPaintProperty(layerId, 'text-halo-color', value);
+                return;
+            }
+
+            if (property === 'stroke-width') {
+                const width = Number(value);
+                if (!Number.isFinite(width)) return;
+                if (layerType === 'line') mapInstance.setPaintProperty(layerId, 'line-width', width);
+                if (layerType === 'circle') mapInstance.setPaintProperty(layerId, 'circle-stroke-width', width);
+                if (layerType === 'symbol') mapInstance.setPaintProperty(layerId, 'text-halo-width', width);
+                return;
+            }
+
+            if (property === 'font-size') {
+                const size = Number(value);
+                if (!Number.isFinite(size) || layerType !== 'symbol') return;
+                mapInstance.setLayoutProperty(layerId, 'text-size', Math.max(1, size));
+                return;
+            }
+
+            if (property === 'opacity') {
+                const opacity = Number(value);
+                if (!Number.isFinite(opacity)) return;
+                if (layerType === 'fill') mapInstance.setPaintProperty(layerId, 'fill-opacity', opacity);
+                if (layerType === 'background') mapInstance.setPaintProperty(layerId, 'background-opacity', opacity);
+                if (layerType === 'line') mapInstance.setPaintProperty(layerId, 'line-opacity', opacity);
+                if (layerType === 'circle') mapInstance.setPaintProperty(layerId, 'circle-opacity', opacity);
+                if (layerType === 'symbol') {
+                    mapInstance.setPaintProperty(layerId, 'text-opacity', opacity);
+                    mapInstance.setPaintProperty(layerId, 'icon-opacity', opacity);
+                }
+            }
+        } catch {
+            // Ignore unsupported properties for this layer.
+        }
+    }
+
+    _applyMapLayerStylesToMap(mapInstance, target, styleSetting) {
+        if (!mapInstance || typeof mapInstance.getStyle !== 'function') {
+            return;
+        }
+
+        const styleObjects = buildMapLayerVisibilityObjects(mapInstance, target);
+        for (const item of styleObjects) {
+            if (!item.grouped) {
+                continue;
+            }
+
+            const groupStyle = styleSetting[item.key];
+            if (!groupStyle || typeof groupStyle !== 'object') {
+                continue;
+            }
+
+            const customizableSet = new Set(Array.isArray(item.customizable) ? item.customizable : []);
+            const styleProperties = ['fill', 'stroke', 'stroke-width', 'font-size', 'opacity'];
+
+            for (const property of styleProperties) {
+                if (!customizableSet.has(property)) {
+                    continue;
+                }
+
+                const value = groupStyle[property];
+                if (typeof value === 'undefined' || value === '') {
+                    continue;
+                }
+
+                for (const layerId of item.layerIds) {
+                    const layer = mapInstance.getLayer(layerId);
+                    if (!layer) {
+                        continue;
+                    }
+                    this._applyMapLayerStyleProperty(mapInstance, layer, property, value);
+                }
+            }
+        }
+    }
+
+    applyMapLayerStyles(styleSetting = null) {
+        const resolved = this._resolveMapLayerStyleSetting(styleSetting);
+        this._applyMapLayerStylesToMap(this.map, 'main', resolved);
+        this._applyMapLayerStylesToMap(this.dualMap, 'dual', resolved);
+    }
+
+    /**
+     * Switch between 'radar' and 'satellite' data modes.
+     * In satellite mode the WebGL radar layers are removed and the GOES WMS layer is shown instead.
+     */
+    setDataMode(mode) {
+        this.dataMode = mode;
+        if (typeof window !== 'undefined') {
+            window.appmode = mode === 'satellite' ? 'satellite' : 'radar';
+        }
+        this._syncRadarPickersToDataMode();
+
+        if (mode === 'satellite') {
+            this._removeRadarLayer(this.map, 'radar-webgl');
+            this._removeRadarLayer(this.dualMap, 'radar-webgl-dual');
+            this.radarStationsLayer?.hide();
+            this.setSatelliteProduct(this.currentSatelliteProduct);
+        } else {
+            this.wmsSatelliteLayer?.hide();
+            this.radarStationsLayer?.show();
+            this._restoreRadarLayer('main');
+            this._restoreRadarLayer('dual');
+        }
+    }
+
+    _handleMainPickerSelection(product, tiltIndex = 0) {
+        if (this.dataMode === 'satellite') {
+            this.setSatelliteProduct(product);
+            return;
+        }
+
+        if (typeof this.callbacks.onChangeProduct === 'function') {
+            this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
+        }
+    }
+
+    _handleSplitPickerSelection(product, tiltIndex = 0) {
+        if (this.dataMode === 'satellite') {
+            this.setSatelliteProduct(product);
+            return;
+        }
+
+        if (typeof this.callbacks.onChangeProductSplit === 'function') {
+            this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
+        }
+    }
+
+    _getSatelliteLayerOptions(productCode) {
+        const fallback = 'west/conus_ch13';
+        const normalized = typeof productCode === 'string' && productCode.includes('/')
+            ? productCode
+            : fallback;
+        const [domain, layerCode] = normalized.split('/');
+        const wmsUrl = domain === 'east' ? GOES_EAST_WMS_URL : GOES_WEST_WMS_URL;
+        const layers = layerCode || 'conus_ch13';
+
+        return {
+            productCode: `${domain === 'east' ? 'east' : 'west'}/${layers}`,
+            wmsUrl,
+            layers,
+        };
+    }
+
+    setSatelliteProduct(productCode) {
+        const { productCode: normalizedProductCode, wmsUrl, layers } = this._getSatelliteLayerOptions(productCode);
+        this.currentSatelliteProduct = normalizedProductCode;
+
+        try {
+            this.wmsSatelliteLayer?.remove();
+        } catch (error) {
+            console.warn('[Map] Failed to remove previous WMS satellite layer:', error);
+        }
+
+        this.wmsSatelliteLayer = new WmsSatelliteLayer(this.map, { wmsUrl, layers });
+        if (this.dataMode === 'satellite') {
+            this.wmsSatelliteLayer.show();
+        }
+    }
+
+    _syncRadarPickersToDataMode() {
+        const mainProduct = this.dataMode === 'satellite'
+            ? this.currentSatelliteProduct
+            : (this.currentRadarProduct || 'N0B');
+        const splitProduct = this.dataMode === 'satellite'
+            ? this.currentSatelliteProduct
+            : (this.currentRadarProductSplit || 'N0G');
+
+        this.radarPicker?.setMode(this.dataMode, mainProduct);
+        this.splitRadarPicker?.setMode(this.dataMode, splitProduct);
+    }
+
+    _removeRadarLayer(map, layerId) {
+        if (!map || !map.getLayer(layerId)) {
+            return;
+        }
+
+        try {
+            map.removeLayer(layerId);
+        } catch (error) {
+            console.warn(`[Map] Failed to remove radar layer ${layerId}:`, error);
+        }
+    }
+
+    _restoreRadarLayer(target) {
+        const isMain = target === 'main';
+        const targetMap = isMain ? this.map : this.dualMap;
+        const layerId = isMain ? 'radar-webgl' : 'radar-webgl-dual';
+
+        if (!targetMap || targetMap.getLayer(layerId)) {
+            return;
+        }
+
+        if (isMain) {
+            if (this.currentGeojson) {
+                this.addWebGlRadarLayer(this.currentGeojson, 'main', this.currentRadarProduct);
+                return;
+            }
+
+            if (this.currentMesh) {
+                this.addWebGlRadarMesh(this.currentMesh, this.currentMeshBounds, 'main', this.currentRadarProduct);
+            }
+            return;
+        }
+
+        if (this.currentGeojsonSplit) {
+            this.addWebGlRadarLayer(this.currentGeojsonSplit, 'dual', this.currentRadarProductSplit);
+            return;
+        }
+
+        if (this.currentMeshSplit) {
+            this.addWebGlRadarMesh(this.currentMeshSplit, this.currentMeshBoundsSplit, 'dual', this.currentRadarProductSplit);
+        }
+    }
+
+    applyMapBackgroundStyle(style = null) {
+        const backgroundStyle = style || this._getMapBackgroundStyle();
+        this._applyBackgroundStyleToMap(this.map, backgroundStyle);
+        if (this.dualMap) {
+            this._applyBackgroundStyleToMap(this.dualMap, backgroundStyle);
+        }
+    }
+
+    _getMapBackgroundStyle() {
+        const settings = window.settingsInstance;
+        return settings?.getSetting('mapBackgroundStyle') || 'default';
+    }
+
+    _applyBackgroundStyleToMap(map, style) {
+        if (!map || typeof map.getStyle !== 'function') {
+            return;
+        }
+
+        try {
+            const currentStyle = map.getStyle();
+            if (!currentStyle || !currentStyle.sources) {
+                return;
+            }
+
+            const settingsInstance = window.settingsInstance;
+            const tileSource = settingsInstance?.getMapTileSource();
+
+            if (style === 'satellite' && tileSource) {
+                // Remove existing satellite layer and source if present
+                if (map.getLayer('satellite-background')) {
+                    map.removeLayer('satellite-background');
+                }
+                if (map.getSource('satellite')) {
+                    map.removeSource('satellite');
+                }
+
+                // Add satellite source
+                map.addSource('satellite', tileSource.imagery);
+
+                // Create raster layer for satellite imagery
+                const rasterLayer = {
+                    id: 'satellite-background',
+                    type: 'raster',
+                    source: 'satellite',
+                    layout: { visibility: 'visible' },
+                    paint: {}
+                };
+
+                // Find appropriate layer to insert before (first non-background layer),
+                // excluding 'satellite-background' itself since it was just removed.
+                const layers = currentStyle.layers || [];
+                const firstNonBackgroundLayer = layers.find(l => l.type !== 'background' && l.id !== 'satellite-background')?.id;
+
+                map.addLayer(rasterLayer, firstNonBackgroundLayer);
+
+                // Hide background layers to show satellite underneath
+                layers.forEach((layer) => {
+                    if (layer.type === 'background') {
+                        try {
+                            map.setLayoutProperty(layer.id, 'visibility', 'none');
+                        } catch {
+                            // Ignore if layer doesn't support visibility
+                        }
+                    }
+                });
+            } else {
+                // Remove satellite layer and source
+                if (map.getLayer('satellite-background')) {
+                    map.removeLayer('satellite-background');
+                }
+                if (map.getSource('satellite')) {
+                    map.removeSource('satellite');
+                }
+
+                // Show background layers
+                const currentStyle = map.getStyle();
+                const layers = currentStyle?.layers || [];
+                layers.forEach((layer) => {
+                    if (layer.type === 'background') {
+                        try {
+                            map.setLayoutProperty(layer.id, 'visibility', 'visible');
+                        } catch {
+                            // Ignore if layer doesn't support visibility
+                        }
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('[Map] Error applying background style:', error);
+        }
     }
 
     // Function to add the user's current position to the map
@@ -226,6 +682,12 @@ class Map {
             ...this.params,
             container: dualContainer,
         });
+        this.dualMap.on('style.load', () => {
+            this.applyMapLayerVisibility();
+            this.applyMapLayerStyles();
+            this.applyMapBackgroundStyle();
+            this.setDataMode(this.dataMode);
+        });
         this.rightClickHandler?.attachDualMap();
 
         // Again, force apply projection to the second map
@@ -248,6 +710,11 @@ class Map {
                 'type': 'circle',
                 'source': 'empty-source'
             }, this.dualMap.getLayer('road_area_pier') ? 'road_area_pier' : (this.dualMap.getLayer('road_pier') ? 'road_pier' : undefined));
+
+            this.applyMapLayerVisibility();
+            this.applyMapLayerStyles();
+            this.applyMapBackgroundStyle();
+            this.setDataMode(this.dataMode);
         });
 
         // Show the split map toolbar
@@ -551,10 +1018,9 @@ class Map {
             try { this.splitRadarPicker?.destroy(); } catch {}
             this.splitRadarPicker = null;
             this.radarPicker = new RadarPicker(currentProduct, coords, (product, tiltIndex) => {
-                if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
-                }
+                this._handleMainPickerSelection(product, tiltIndex);
             }, false);
+            this._syncRadarPickersToDataMode();
         }
 
         parent.style.setProperty('grid-template-columns', layout === 'horizontal' ? '1fr 1fr' : '1fr');
@@ -573,29 +1039,23 @@ class Map {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
             this.splitRadarPicker = new RadarPicker('N0G', ['10px', '10px', null, null], (product, tiltIndex) => {
-                if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
-                }
+                this._handleSplitPickerSelection(product, tiltIndex);
             }, false);
             this.radarPicker = new RadarPicker('N0B', ['10px', 'calc(50% + 10px)', null, null], (product, tiltIndex) => {
-                if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
-                }
+                this._handleMainPickerSelection(product, tiltIndex);
             }, false);
         } else {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
             this.splitRadarPicker = new RadarPicker('N0G', ['calc(45% + 10px)', '10px', null, null], (product, tiltIndex) => {
-                if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProductSplit(this._buildTiltedProduct(product, tiltIndex));
-                }
+                this._handleSplitPickerSelection(product, tiltIndex);
             }, false);
             this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
-                if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
-                }
+                this._handleMainPickerSelection(product, tiltIndex);
             }, false);
         }
+
+        this._syncRadarPickersToDataMode();
     }
 
     isSplit() {
@@ -693,10 +1153,9 @@ class Map {
         try { this.radarPicker.destroy(); } catch {}
         this.splitRadarPicker = null;
         this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {
-            if (typeof this.callbacks.onChangeProduct === 'function') {
-                this.callbacks.onChangeProduct(this._buildTiltedProduct(product, tiltIndex));
-            }
+            this._handleMainPickerSelection(product, tiltIndex);
         }, false);
+        this._syncRadarPickersToDataMode();
 
         // Switch colorbar back to main view
         // Update colorbar gradient using normalized palette key
@@ -828,6 +1287,10 @@ class Map {
         if (upper === 'DAA' || upper === 'DTA') {
             return upper;
         }
+
+        if (upper === 'HHC') {
+            return 'DHC';
+        }
         
         const lastChar = upper.charAt(upper.length - 1);
         console.log(`[Map] _getPaletteForProduct(${product}) -> lastChar='${lastChar}'`);
@@ -944,81 +1407,13 @@ class Map {
 
     // WebGL Radar Layer Methods
 
-    _parseRgb(color) {
-        // Try rgba first
-        let match = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
-        if (match) {
-            return [
-                Number(match[1]) / 255, 
-                Number(match[2]) / 255, 
-                Number(match[3]) / 255,
-                Number(match[4]) / 255  // Alpha is 0-255 in palette, normalize to 0-1
-            ];
-        }
-        
-        // Fall back to rgb
-        match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
-        if (!match) {
-            return [1, 1, 1, 1];
-        }
-        return [
-            Number(match[1]) / 255, 
-            Number(match[2]) / 255, 
-            Number(match[3]) / 255,
-            1.0  // Default alpha
-        ];
-    }
+    _parseRgb(color) { return parseRgb(color); }
 
-    _lerp(a, b, t) {
-        return a + (b - a) * t;
-    }
+    _lerp(a, b, t) { return lerp(a, b, t); }
 
-    _lerpColor(a, b, t) {
-        return [
-            this._lerp(a[0], b[0], t),
-            this._lerp(a[1], b[1], t),
-            this._lerp(a[2], b[2], t),
-            this._lerp(a[3], b[3], t)
-        ];
-    }
+    _lerpColor(a, b, t) { return lerpColor(a, b, t); }
 
-    _colorForValue(value) {
-        // Special handling for range-folded gates
-        if (value === 'rf') {
-            return [0.5, 0.0, 0.5, 1.0]; // Purple for range folding
-        }
-        
-        const stops = this.colorStops;
-        if (!stops || stops.length === 0) {
-            return [1, 1, 1, 1]; // White fallback for invalid palette
-        }
-        
-        // Clamp to first stop if value is below minimum
-        if (value <= stops[0].value) {
-            return stops[0].color;
-        }
-        
-        // Clamp to last stop if value is above maximum
-        if (value >= stops[stops.length - 1].value) {
-            return stops[stops.length - 1].color;
-        }
-        
-        // Linear search is faster for small arrays (typical: 16-32 stops)
-        for (let i = 0; i < stops.length - 1; i++) {
-            const leftStop = stops[i];
-            const rightStop = stops[i + 1];
-            
-            // Check if value falls between these two stops
-            if (value >= leftStop.value && value <= rightStop.value) {
-                const span = rightStop.value - leftStop.value;
-                const t = span > 0 ? (value - leftStop.value) / span : 0;
-                return this._lerpColor(leftStop.color, rightStop.color, t);
-            }
-        }
-        
-        // Shouldn't reach here, but return last stop as fallback
-        return stops[stops.length - 1].color;
-    }
+    _colorForValue(value) { return colorForValue(value, this.colorStops); }
 
     _flattenPolygon(rings) {
         const vertices = [];
@@ -1089,43 +1484,20 @@ class Map {
         return new Float32Array(data);
     }
 
-    _buildVertexDataFromMesh(meshData) {
-        const data = [];
-
-        for (let i = 0; i < meshData.length; i += 9) {
-            const lon1 = meshData[i];
-            const lat1 = meshData[i + 1];
-            const lon2 = meshData[i + 2];
-            const lat2 = meshData[i + 3];
-            const lon3 = meshData[i + 4];
-            const lat3 = meshData[i + 5];
-            const lon4 = meshData[i + 6];
-            const lat4 = meshData[i + 7];
-            const rawValue = meshData[i + 8];
-            const value = Number.isNaN(rawValue) ? 'rf' : rawValue;
-
-            if (this.currentPalette === 'REF' && value !== 'rf' && value < this.reflectivityGateFilter) {
-                continue;
-            }
-
-            const color = this._colorForValue(value);
-            const p1 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon1, lat: lat1 });
-            const p2 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon2, lat: lat2 });
-            const p3 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon3, lat: lat3 });
-            const p4 = maplibregl.MercatorCoordinate.fromLngLat({ lng: lon4, lat: lat4 });
-
-            // Use alpha from the color (color[3])
-            data.push(
-                p1.x, p1.y, color[0], color[1], color[2], color[3],
-                p2.x, p2.y, color[0], color[1], color[2], color[3],
-                p3.x, p3.y, color[0], color[1], color[2], color[3],
-                p1.x, p1.y, color[0], color[1], color[2], color[3],
-                p3.x, p3.y, color[0], color[1], color[2], color[3],
-                p4.x, p4.y, color[0], color[1], color[2], color[3]
-            );
-        }
-
-        return new Float32Array(data);
+    /** Send mesh data to the worker and return a Promise<Float32Array>. */
+    _buildVertexDataFromMeshInWorker(meshData) {
+        return new Promise((resolve) => {
+            const id = this._meshWorkerNextId++;
+            this._meshWorkerPendingCallbacks.set(id, resolve);
+            this._meshWorker.postMessage({
+                type: 'buildMesh',
+                id,
+                meshData,
+                colorStops: this.colorStops,
+                palette: this.currentPalette,
+                reflectivityGateFilter: this.reflectivityGateFilter
+            });
+        });
     }
 
     _getMeshVertexCacheKey() {
@@ -1136,7 +1508,7 @@ class Map {
         return `${this.currentPalette}|gate:na`;
     }
 
-    _getOrBuildVertexDataFromMesh(meshData) {
+    async _getOrBuildVertexDataFromMesh(meshData) {
         let perMeshCache = this.meshVertexCache.get(meshData);
         if (!perMeshCache) {
             perMeshCache = new globalThis.Map();
@@ -1149,7 +1521,7 @@ class Map {
             return cachedVertexData;
         }
 
-        const vertexData = this._buildVertexDataFromMesh(meshData);
+        const vertexData = await this._buildVertexDataFromMeshInWorker(meshData);
         perMeshCache.set(cacheKey, vertexData);
         return vertexData;
     }
@@ -1222,22 +1594,7 @@ class Map {
         return [minLng, minLat, maxLng, maxLat];
     }
 
-    _pointInRing(point, ring) {
-        let inside = false;
-        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-            const xi = Number(ring[i][0]);
-            const yi = Number(ring[i][1]);
-            const xj = Number(ring[j][0]);
-            const yj = Number(ring[j][1]);
-            if (Number.isNaN(xi) || Number.isNaN(yi) || Number.isNaN(xj) || Number.isNaN(yj)) {
-                continue;
-            }
-            const intersect = ((yi > point[1]) !== (yj > point[1]))
-                && (point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi + 0.0) + xi);
-            if (intersect) inside = !inside;
-        }
-        return inside;
-    }
+    _pointInRing(point, ring) { return pointInRing(point, ring); }
 
     _pointInPolygon(point, rings) {
         if (!rings || rings.length === 0) return false;
@@ -1277,42 +1634,14 @@ class Map {
     }
 
     _findValueAtPointInMesh(meshData, meshBounds, point) {
-        if (!meshData || !(meshData instanceof Float32Array) || !meshBounds) {
-            return null;
-        }
-
-        const lng = point[0];
-        const lat = point[1];
-
-        // Check if point is within mesh bounds
-        if (lng < meshBounds[0] || lng > meshBounds[2] || lat < meshBounds[1] || lat > meshBounds[3]) {
-            return null;
-        }
-
-        // Search through mesh quads: 9 floats per quad (lon1, lat1, lon2, lat2, lon3, lat3, lon4, lat4, value)
-        for (let i = 0; i < meshData.length; i += 9) {
-            const lon1 = meshData[i];
-            const lat1 = meshData[i + 1];
-            const lon2 = meshData[i + 2];
-            const lat2 = meshData[i + 3];
-            const lon3 = meshData[i + 4];
-            const lat3 = meshData[i + 5];
-            const lon4 = meshData[i + 6];
-            const lat4 = meshData[i + 7];
-            const rawValue = meshData[i + 8];
-
-            // Check if point is inside this quad using ray casting
-            const ring = [[lon1, lat1], [lon2, lat2], [lon3, lat3], [lon4, lat4]];
-            if (this._pointInRing(point, ring)) {
-                const value = Number.isNaN(rawValue) ? 'rf' : rawValue;
-                return value;
-            }
-        }
-
-        return null;
+        return findValueAtPointInMesh(meshData, meshBounds, point);
     }
 
     _renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product = null, renderOptions = null) {
+        if (this.dataMode === 'satellite' || (typeof window !== 'undefined' && window.appmode === 'satellite')) {
+            return;
+        }
+
         const vertexCount = vertexData.length / 6;
         console.log(`[WebGL] Rendering layer ${layerId}, vertices: ${vertexCount}, map valid: ${!!map}`);
         let firstFrameReported = false;
@@ -1523,6 +1852,10 @@ class Map {
     }
 
     addWebGlRadarLayer(radarGeoJson, targetMap = null, product = null, renderOptions = null) {
+        if (this.dataMode === 'satellite' || (typeof window !== 'undefined' && window.appmode === 'satellite')) {
+            return;
+        }
+
         let map = this.map;
         let layerId = 'radar-webgl';
         let isMainLayer = true;
@@ -1581,7 +1914,11 @@ class Map {
         this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product, renderOptions);
     }
 
-    addWebGlRadarMesh(meshData, bounds, targetMap = null, product = null, renderOptions = null) {
+    async addWebGlRadarMesh(meshData, bounds, targetMap = null, product = null, renderOptions = null) {
+        if (this.dataMode === 'satellite' || (typeof window !== 'undefined' && window.appmode === 'satellite')) {
+            return;
+        }
+
         let map = this.map;
         let layerId = 'radar-webgl';
         let isMainLayer = true;
@@ -1631,7 +1968,7 @@ class Map {
             this.currentRadarProductSplit = product;
         }
 
-        const vertexData = this._getOrBuildVertexDataFromMesh(meshData);
+        const vertexData = await this._getOrBuildVertexDataFromMesh(meshData);
         this._renderWebGlRadarLayer(vertexData, map, layerId, isMainLayer, product, renderOptions);
     }
 
@@ -1749,10 +2086,9 @@ class Map {
             
             try { this.radarPicker?.destroy(); } catch {}
             this.radarPicker = new RadarPicker(product, coords, (prod, tiltIndex) => {
-                if (typeof this.callbacks.onChangeProduct === 'function') {
-                    this.callbacks.onChangeProduct(this._buildTiltedProduct(prod, tiltIndex));
-                }
+                this._handleMainPickerSelection(prod, tiltIndex);
             }, level2Only);
+            this._syncRadarPickersToDataMode();
         } else if (target === 'split') {
             if (!this.hasSplitMap()) {
                 return;
@@ -1763,10 +2099,9 @@ class Map {
             
             try { this.splitRadarPicker?.destroy(); } catch {}
             this.splitRadarPicker = new RadarPicker(product, coords, (prod, tiltIndex) => {
-                if (typeof this.callbacks.onChangeProductSplit === 'function') {
-                    this.callbacks.onChangeProductSplit(this._buildTiltedProduct(prod, tiltIndex));
-                }
+                this._handleSplitPickerSelection(prod, tiltIndex);
             }, level2Only);
+            this._syncRadarPickersToDataMode();
         }
     }
 }

@@ -9,6 +9,7 @@ import * as tabularHeaderModule from './headers/tabular.js';
 import graphicHeader from './headers/graphic-browser.js';
 import radialPackets from './headers/radialpackets-browser.js';
 import * as product56Module from './products/56/index.js';
+import * as product57Module from './products/57/index.js';
 import * as product58Module from './products/58/index.js';
 import * as product59Module from './products/59/index.js';
 import * as product61Module from './products/61/index.js';
@@ -17,6 +18,7 @@ import * as product78Module from './products/78/index.js';
 import * as product80Module from './products/80/index.js';
 import * as product94Module from './products/94/index.js';
 import * as product99Module from './products/99/index.js';
+import * as product135Module from './products/135/index.js';
 import * as product141Module from './products/141/index.js';
 import * as product153Module from './products/153/index.js';
 import * as product154Module from './products/154/index.js';
@@ -43,6 +45,7 @@ const tabularHeader = toModule(tabularHeaderModule);
 
 const productsRaw = [
     toProduct(product56Module),
+    toProduct(product57Module),
     toProduct(product58Module),
     toProduct(product59Module),
     toProduct(product61Module),
@@ -51,6 +54,7 @@ const productsRaw = [
     toProduct(product80Module),
     toProduct(product94Module),
     toProduct(product99Module),
+    toProduct(product135Module),
     toProduct(product141Module),
     toProduct(product153Module),
     toProduct(product154Module),

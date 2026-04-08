@@ -38,6 +38,7 @@ SparkRadar is the free online, reliable, community-supported, multiplatform, eas
 3. [How to Contribute](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#contributing)
 4. [Run SparkRadar Yourself](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#test)
 5. [Building SparkRadar](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#build)
+6. [Appendix](https://github.com/tgranz/SparkRadar?tab=readme-ov-file#appendix)
 
 
 <br>
@@ -61,8 +62,28 @@ SparkRadar is the free online, reliable, community-supported, multiplatform, eas
 
 ## Test
 1) Run `npm install`.
-2) Run `npm run dev`. Code will hot-reload without browser refreshing thanks to Vite. Use `npm run host` to make the development server accessible on your network.
+2) Add a `.env` file with one object. You can get an Esri key [here](https://location.arcgis.com/sign-up/). This is used for sattelite map layers.
+```text
+VITE_ESRI_KEY=XXXXX
+```
+3) Run `npm run dev`. Code will hot-reload without browser refreshing thanks to Vite. Use `npm run host` to make the development server accessible on your network.
 
 ## Build
 1) Run `npm run build`. Builds will appear in a /dist folder.
 2) In the dist folder, run `python3 -m http.server 8000` then navigate to `localhost:8000` in a browser to view the build.
+
+## Appendix
+### Appendix A - Level 3 code mapping
+> **N0H, N1H, N2H...** <br>>  Hydrometer Classification
+
+> **N0K, N1K, N2K...** <br>>  Specific Differential Phase
+
+> **N0B, N1B, N2B...** <br>>  Base Reflectivity
+
+> **N0G, N1G, N2G...** <br>>  Base Velocity
+
+> **N0C, N1C, N2C...** <br>>  Correlation Coefficient
+
+> **DAA** <br>>  One Hour Precip Accumulation
+
+> **DTA** <br>>  Storm Total Accumulation

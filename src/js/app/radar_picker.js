@@ -12,11 +12,14 @@ const productLabels = {
     'N_G': 'Base Velocity',
     'N_C': 'Correlation Coefficient',
     'N_K': 'Specific Differential Phase',
-    'N_H': 'Hydrometer Classification',
+    'N_H': 'Hydrometeor Classification',
+    'HHC': 'Hybrid Hydrometeor Classification',
     'N_X': 'Differential Reflectivity',
     'N_S': 'Storm Relative Velocity',
     'DAA': '1-hr Precipitation Accumulation',
     'DTA': 'Storm Total Accumulation',
+    'EET': 'Enhanced Echo Tops',
+    'NVL': 'Vertically Integrated Liquid',
     'REF': 'Super-Res Base Reflectivity',
     'VEL': 'Super-Res Base Velocity',
     'CC': 'Super-Res Correlation Coefficient',
@@ -33,9 +36,12 @@ const productEntries = [
     { type: 'item', code: 'N_X', hasTiltOptions: true },
     { type: 'item', code: 'N_K', hasTiltOptions: true },
     { type: 'item', code: 'N_H', hasTiltOptions: true },
+    { type: 'item', code: 'HHC', hasTiltOptions: false },
     { type: 'item', code: 'N_S', hasTiltOptions: false },
     { type: 'item', code: 'DAA', hasTiltOptions: false },
     { type: 'item', code: 'DTA', hasTiltOptions: false },
+    //{ type: 'item', code: 'EET', hasTiltOptions: false },
+    //{ type: 'item', code: 'NVL', hasTiltOptions: false },
     { type: 'header', label: 'Super-Res Products (Level II, BETA)' },
     { type: 'item', code: 'REF', hasTiltOptions: false },
     { type: 'item', code: 'VEL', hasTiltOptions: false },
@@ -45,9 +51,48 @@ const productEntries = [
     { type: 'item', code: 'SW', hasTiltOptions: false },
 ];
 
+const satelliteEntries = [
+    { type: 'header', label: 'GOES-16 (West)' },
+    { type: 'item', code: 'west/conus_ch01', displayName: 'B1 - Blue Visible' },
+    { type: 'item', code: 'west/conus_ch02', displayName: 'B2 - Red Visible' },
+    { type: 'item', code: 'west/conus_ch03', displayName: 'B3 - Veggie' },
+    { type: 'item', code: 'west/conus_ch04', displayName: 'B4 - Cirrus' },
+    { type: 'item', code: 'west/conus_ch05', displayName: 'B5 - Snow/Ice' },
+    { type: 'item', code: 'west/conus_ch06', displayName: 'B6 - Cloud Top' },
+    { type: 'item', code: 'west/conus_ch07', displayName: 'B7 - Shortwave IR' },
+    { type: 'item', code: 'west/conus_ch08', displayName: 'B8 - Water Vapor' },
+    { type: 'item', code: 'west/conus_ch09', displayName: 'B9 - Water Vapor' },
+    { type: 'item', code: 'west/conus_ch10', displayName: 'B10 - Water Vapor' },
+    { type: 'item', code: 'west/conus_ch11', displayName: 'B11 - Cloud Top Temperature' },
+    { type: 'item', code: 'west/conus_ch12', displayName: 'B12 - Fire Temperature' },
+    { type: 'item', code: 'west/conus_ch13', displayName: 'B13 - Clean IR Longwave' },
+    { type: 'item', code: 'west/conus_ch14', displayName: 'B14 - IR Longwave' },
+    { type: 'item', code: 'west/conus_ch15', displayName: 'B15 - Dirty IR' },
+    { type: 'item', code: 'west/conus_ch16', displayName: 'B16 - CO2' },
+    { type: 'header', label: 'GOES-16 (East)' },
+    { type: 'item', code: 'east/conus_ch01', displayName: 'B1 - Blue Visible' },
+    { type: 'item', code: 'east/conus_ch02', displayName: 'B2 - Red Visible' },
+    { type: 'item', code: 'east/conus_ch03', displayName: 'B3 - Veggie' },
+    { type: 'item', code: 'east/conus_ch04', displayName: 'B4 - Cirrus' },
+    { type: 'item', code: 'east/conus_ch05', displayName: 'B5 - Snow/Ice' },
+    { type: 'item', code: 'east/conus_ch06', displayName: 'B6 - Cloud Top' },
+    { type: 'item', code: 'east/conus_ch07', displayName: 'B7 - Shortwave IR' },
+    { type: 'item', code: 'east/conus_ch08', displayName: 'B8 - Water Vapor' },
+    { type: 'item', code: 'east/conus_ch09', displayName: 'B9 - Water Vapor' },
+    { type: 'item', code: 'east/conus_ch10', displayName: 'B10 - Water Vapor' },
+    { type: 'item', code: 'east/conus_ch11', displayName: 'B11 - Cloud Top Temperature' },
+    { type: 'item', code: 'east/conus_ch12', displayName: 'B12 - Fire Temperature' },
+    { type: 'item', code: 'east/conus_ch13', displayName: 'B13 - Clean IR Longwave' },
+    { type: 'item', code: 'east/conus_ch14', displayName: 'B14 - IR Longwave' },
+    { type: 'item', code: 'east/conus_ch15', displayName: 'B15 - Dirty IR' },
+    { type: 'item', code: 'east/conus_ch16', displayName: 'B16 - CO2' },
+]
+
 class RadarPicker {
     constructor(currentProduct, coords, onChangeProduct, level2Only = false) {
         this.level2Only = level2Only;
+        this.onChangeProduct = onChangeProduct;
+        this.currentMode = 'radar';
         this.picker = document.createElement('div');
         this.picker.classList.add('radar-picker');
         this.picker.style.top = coords[0] || '';
@@ -104,21 +149,45 @@ class RadarPicker {
         this.productsList.classList.add('radar-products-collapsed');
         this.picker.appendChild(this.productsList);
 
-        // Set the initial product
-        this.setCurrentProduct(currentProduct);
+        // Set initial mode/content and product.
+        const initialMode = String(currentProduct || '').includes('/') ? 'satellite' : 'radar';
+        this.setMode(initialMode, currentProduct);
 
-        // Filter entries based on level2Only flag
-        const filteredEntries = level2Only
-            ? productEntries.filter(entry => {
-                if (entry.type === 'header') {
-                    return entry.label.includes('Level II');
-                }
-                return entry.type === 'item' && ['REF', 'VEL', 'CC', 'ZDR', 'KDP', 'SW'].includes(entry.code);
-            })
-            : productEntries;
+        // Restore persisted time and tilt data
+        this.restoreTimeAndTilt();
 
-        // Create selectors for each product
-        filteredEntries.forEach((entry) => {
+        // Append the picker to the body
+        document.body.appendChild(this.picker);
+    }
+
+    _getRadarEntries() {
+        if (!this.level2Only) {
+            return productEntries;
+        }
+
+        return productEntries.filter((entry) => {
+            if (entry.type === 'header') {
+                return entry.label.includes('Level II');
+            }
+            return entry.type === 'item' && ['REF', 'VEL', 'CC', 'ZDR', 'KDP', 'SW'].includes(entry.code);
+        });
+    }
+
+    _getSatelliteDisplayName(productCode) {
+        const entry = satelliteEntries.find((item) => item.type === 'item' && item.code === productCode);
+        return entry?.displayName || productCode;
+    }
+
+    _clearProductsList() {
+        while (this.productsList.firstChild) {
+            this.productsList.removeChild(this.productsList.firstChild);
+        }
+    }
+
+    _renderRadarEntries() {
+        const entries = this._getRadarEntries();
+
+        entries.forEach((entry) => {
             if (entry.type === 'header') {
                 const categoryHeader = document.createElement('div');
                 categoryHeader.classList.add('radar-product-category');
@@ -127,75 +196,111 @@ class RadarPicker {
                 return;
             }
 
-            if (entry.type === 'item') {
-                const productItem = document.createElement('div');
-
-                if (entry.hasTiltOptions) {
-                    const productName = document.createElement('p');
-                    productName.textContent = productLabels[entry.code] || entry.code;
-                    productItem.appendChild(productName);
-
-                    const tiltSelector = document.createElement('select');
-                    tiltSelector.innerHTML = `
-                        <option value="0" selected>Tilt 1</option>
-                        <option value="1">Tilt 2</option>
-                        <option value="2">Tilt 3</option>
-                        <option value="3">Tilt 4</option>
-                    `;
-                    
-                    // Stop click events from bubbling to prevent double-firing
-                    tiltSelector.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                    });
-                    
-                    tiltSelector.addEventListener('change', (e) => {
-                        e.stopPropagation();
-                        const selectedTilt = Number(tiltSelector.value);
-                        const baseLabel = productLabels[entry.code] || entry.code;
-                        this.currentProduct.textContent = baseLabel;
-                        if (typeof onChangeProduct === 'function') {
-                            onChangeProduct(entry.code, selectedTilt || 0);
-                        }
-                    });
-                    
-                    productItem.appendChild(tiltSelector);
-                    
-                    // Add click handler to the productName only
-                    productName.addEventListener('click', () => {
-                        const baseLabel = productLabels[entry.code] || entry.code;
-                        this.currentProduct.textContent = baseLabel;
-                        tiltSelector.value = '0'; // Reset dropdown to Tilt 1
-                        this.setProductCode(entry.code);
-                        if (typeof onChangeProduct === 'function') {
-                            onChangeProduct(entry.code, 0);
-                    }
-                    });
-                    productName.style.cursor = 'pointer';
-                } else {
-                    const productName = document.createElement('p');
-                    productName.textContent = productLabels[entry.code] || entry.code;
-                    productItem.appendChild(productName);
-                    productItem.addEventListener('click', () => {
-                        this.setCurrentProduct(entry.code);
-                        this.setProductCode(entry.code);
-                        if (typeof onChangeProduct === 'function') {
-                            onChangeProduct(entry.code, 0);
-                        }
-                    });
-                }
-                
-                this.productsList.appendChild(productItem);
+            if (entry.type !== 'item') {
+                return;
             }
+
+            const productItem = document.createElement('div');
+
+            if (entry.hasTiltOptions) {
+                const productName = document.createElement('p');
+                productName.textContent = productLabels[entry.code] || entry.code;
+                productName.style.cursor = 'pointer';
+                productItem.appendChild(productName);
+
+                const tiltSelector = document.createElement('select');
+                tiltSelector.innerHTML = `
+                    <option value="0" selected>Tilt 1</option>
+                    <option value="1">Tilt 2</option>
+                    <option value="2">Tilt 3</option>
+                    <option value="3">Tilt 4</option>
+                `;
+
+                tiltSelector.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+
+                tiltSelector.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const selectedTilt = Number(tiltSelector.value);
+                    this.setCurrentProduct(entry.code);
+                    if (typeof this.onChangeProduct === 'function') {
+                        this.onChangeProduct(entry.code, selectedTilt || 0);
+                    }
+                });
+
+                productName.addEventListener('click', () => {
+                    tiltSelector.value = '0';
+                    this.setCurrentProduct(entry.code);
+                    if (typeof this.onChangeProduct === 'function') {
+                        this.onChangeProduct(entry.code, 0);
+                    }
+                });
+
+                productItem.appendChild(tiltSelector);
+            } else {
+                const productName = document.createElement('p');
+                productName.textContent = productLabels[entry.code] || entry.code;
+                productItem.appendChild(productName);
+                productItem.addEventListener('click', () => {
+                    this.setCurrentProduct(entry.code);
+                    if (typeof this.onChangeProduct === 'function') {
+                        this.onChangeProduct(entry.code, 0);
+                    }
+                });
+            }
+
+            this.productsList.appendChild(productItem);
         });
+    }
 
-        // Store the onChangeProduct callback for later use
-        this.onChangeProduct = onChangeProduct;
+    _renderSatelliteEntries() {
+        satelliteEntries.forEach((entry) => {
+            if (entry.type === 'header') {
+                const categoryHeader = document.createElement('div');
+                categoryHeader.classList.add('radar-product-category');
+                categoryHeader.textContent = entry.label;
+                this.productsList.appendChild(categoryHeader);
+                return;
+            }
 
-        // Restore persisted time and tilt data
-        this.restoreTimeAndTilt();
+            if (entry.type !== 'item') {
+                return;
+            }
 
-        // Append the picker to the body
-        document.body.appendChild(this.picker);
+            const productItem = document.createElement('div');
+            const productName = document.createElement('p');
+            productName.textContent = entry.displayName || entry.code;
+            productItem.appendChild(productName);
+            productItem.addEventListener('click', () => {
+                this.setCurrentProduct(entry.code);
+                if (typeof this.onChangeProduct === 'function') {
+                    this.onChangeProduct(entry.code, 0);
+                }
+            });
+            this.productsList.appendChild(productItem);
+        });
+    }
+
+    setMode(mode, currentProduct = null) {
+        this.currentMode = mode === 'satellite' ? 'satellite' : 'radar';
+        this._clearProductsList();
+
+        if (this.currentMode === 'satellite') {
+            this._renderSatelliteEntries();
+        } else {
+            this._renderRadarEntries();
+        }
+
+        const fallbackProduct = this.currentMode === 'satellite' ? 'west/conus_ch13' : 'N0B';
+        this.setCurrentProduct(currentProduct || fallbackProduct);
+
+        
+        // No time or tilt for satellite
+        if (this.currentMode === 'satellite') {
+            this.timeAndTilt.innerHTML = '';
+            return;
+        }
     }
 
     setCurrentProduct(product) {
@@ -206,16 +311,36 @@ class RadarPicker {
         }
 
         this.setProductCode(product);
+        if (String(product).includes('/')) {
+            this.currentProduct.textContent = this._getSatelliteDisplayName(product);
+            return;
+        }
+
         const normalizedProduct = String(product).replace(/\d/, '_');
         this.currentProduct.textContent = productLabels[normalizedProduct] || product || 'No product selected';
+
+        // No time or tilt for satellite
+        if (this.currentMode === 'satellite') {
+            this.timeAndTilt.innerHTML = '';
+            return;
+        }
     }
 
     setProductCode(code) {
-        const normalizedProduct = String(code).replace(/\d/, '_');
+        if (String(code).includes('/')) {
+            this.currentProductCode.textContent = `(${code.replace('conus_', '')})`;
+            return;
+        }
+
+        const normalizedProduct = String(code).replace(/\d/, '_').replace('conus_', '');
         this.currentProductCode.textContent = `(${normalizedProduct})`;
     }
 
     setTimeAndTilt(time, tilt, timeIso = null, options = {}) {
+        if (this.currentMode === 'satellite') {
+            this.timeAndTilt.innerHTML = '';
+            return;
+        }
         if (!this.timeAndTilt) return;
         this.radarTime = time;
         this.radarTilt = tilt;

@@ -1,6 +1,6 @@
 export default class Window {
     static _instances = new Set();
-    static _nextZIndex = 1000;
+    static _nextZIndex = 1001;
 
     constructor(options) {
         if (!options) options = {};

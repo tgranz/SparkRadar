@@ -16,7 +16,6 @@ const EMPTY_FEATURE_COLLECTION = {
     features: []
 };
 
-const DEBUG_ALERT_SYNC = false;
 const SYNC_PENDING_STALE_MS = 15000;
 
 class AlertLayer {
@@ -143,7 +142,6 @@ class AlertLayer {
 
         // If no more new alerts, stop the animation
         if (!hasNewAlerts) {
-            console.log(`[AlertLayer] No more new alerts on ${target}, stopping flash animation`);
             this._stopFlashAnimation(target);
         }
     }
@@ -269,9 +267,7 @@ class AlertLayer {
 
     _handleAlertClick(target, event) {
         const point = [event.lngLat.lng, event.lngLat.lat];
-        console.log(`[AlertLayer] Clicked at point: [${point[0]}, ${point[1]}]`);
         const alertMatches = this._getAlertsAtPoint(point);
-        console.log(`[AlertLayer] Found ${alertMatches.length} alerts at click point`);
         return { alertMatches, point };
     }
 
@@ -466,7 +462,7 @@ class AlertLayer {
             ${alert.message ? alert.message.split('#####\n\n').map((section, i, arr) => `
                 ${arr.length === 1 ? `` : `${i === 0 ? '<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Latest Bulletin</p>' : `<p style="margin: 10px; font-size: 0.9em; text-align: center; font-weight: bold; color: gray;">Update ${arr.length - i} of ${arr.length}</p>`}`}
                 <div style="margin-bottom: 15px;">
-                    <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${section.replace('  ', '\n').replace(/<[^>]+>/g, '')}</p>
+                    <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${section.replace(/\n\n/g, '<rmv>').replace(/\n/g, ' ').replace(/<rmv>/g, '\n\n')}</p>
                 </div>
             `).join('') : ''}
         `;
@@ -555,7 +551,6 @@ class AlertLayer {
         }
 
         const isStyleLoaded = hasUsableMapStyle(map);
-        console.log(`[AlertLayer] _scheduleAlertSync for ${target}: isStyleLoaded=${isStyleLoaded}, pending=${this.alertSyncPending[target]}`);
         
         if (isStyleLoaded) {
             this.alertSyncPending[target] = false;
@@ -577,7 +572,6 @@ class AlertLayer {
         this.alertSyncPending[target] = true;
         this.alertSyncPendingSince[target] = Date.now();
 
-        console.log(`[AlertLayer] Waiting for map ${target} style to be ready before syncing alerts`);
         waitForMapStyleReady(map).then(() => {
             this.alertSyncPending[target] = false;
             this.alertSyncPendingSince[target] = 0;
@@ -630,21 +624,6 @@ class AlertLayer {
             return;
         }
 
-        console.log(`[AlertLayer] _syncAlertsToMap: Syncing ${this.alerts.length} alerts to ${target}`);
-
-        if (DEBUG_ALERT_SYNC) {
-            try {
-                const layerIds = (map.getStyle()?.layers || []).map((layer) => layer.id);
-                console.log(`[Debug][AlertSync] pre-sync ${target}`, {
-                    sourcePresent: !!map.getSource(target === 'main' ? 'alerts-combined' : 'alerts-combined-dual'),
-                    alertLayersPresent: layerIds.filter((id) => id.startsWith(target === 'main' ? 'alerts-combined' : 'alerts-combined-dual')),
-                    top20Layers: layerIds.slice(-20)
-                });
-            } catch (error) {
-                console.warn(`[Debug][AlertSync] pre-sync snapshot failed (${target}):`, error);
-            }
-        }
-
         // Use a single GeoJSON source for ALL alerts - much better performance
         const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
         const fillBeforeLayerId = getWeatherFillBeforeLayerId(map, target);
@@ -675,8 +654,6 @@ class AlertLayer {
             
             features.push(geojson);
         });
-
-        console.log(`[AlertLayer] Using combined source approach: ${features.length} enabled alerts in 1 source, 3 layers total`);
 
         const featureCollection = {
             type: 'FeatureCollection',
@@ -813,26 +790,6 @@ class AlertLayer {
         this._startFlashAnimation(target);
 
         this.map?.layers?.applyLayerOrder(target);
-
-        if (DEBUG_ALERT_SYNC) {
-            try {
-                const layerIds = (map.getStyle()?.layers || []).map((layer) => layer.id);
-                const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
-                console.log(`[Debug][AlertSync] post-sync ${target}`, {
-                    sourcePresent: !!map.getSource(sourceId),
-                    fillPresent: !!map.getLayer(`${sourceId}-fill`),
-                    outlinePresent: !!map.getLayer(`${sourceId}-outline`),
-                    outlineOutlinePresent: !!map.getLayer(`${sourceId}-outline-outline`),
-                    newFillPresent: !!map.getLayer(`${sourceId}-fill-new`),
-                    newOutlinePresent: !!map.getLayer(`${sourceId}-outline-new`),
-                    newOutlineOutlinePresent: !!map.getLayer(`${sourceId}-outline-outline-new`),
-                    alertLayersOrder: layerIds.filter((id) => id.startsWith(sourceId)),
-                    top20Layers: layerIds.slice(-20)
-                });
-            } catch (error) {
-                console.warn(`[Debug][AlertSync] post-sync snapshot failed (${target}):`, error);
-            }
-        }
     }
 
     _isAlertsLayerEnabled() {
@@ -862,8 +819,6 @@ class AlertLayer {
         if (this.map?.isSplit()) {
             this.displayAlertsOnMap('dual');
         }
-        
-        console.log(`[AlertLayer] Displayed ${this.alerts.length} alerts`);
     }
 
     displayAlertsOnDualMap() {

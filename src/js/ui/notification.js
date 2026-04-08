@@ -8,6 +8,10 @@ export default class Notification{
         this.actions = Array.isArray(actions) ? actions : [];
         this.soundFile = soundFile;
         this.autoCloseTimeout = null;
+        this.progressAnimationFrame = null;
+        this.remainingDuration = this.duration;
+        this.countdownStartedAt = null;
+        this.hasFineHoverPointer = window.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches ?? false;
 
         this.notification = document.createElement("div");
         this.notification.classList.add("notification");
@@ -59,6 +63,17 @@ export default class Notification{
 
         this.notification.appendChild(content);
 
+        if (this.duration > 0) {
+            this.progressBar = document.createElement('div');
+            this.progressBar.classList.add('notification-progress-bar');
+
+            if (this.color) {
+                this.progressBar.style.backgroundColor = this.color;
+            }
+
+            this.notification.appendChild(this.progressBar);
+        }
+
         // Add close button event listener
         const closeBtn = header.querySelector('.notification-close-btn');
         closeBtn.addEventListener('click', () => this.close());
@@ -67,7 +82,14 @@ export default class Notification{
 
         // Auto-close after duration
         if (this.duration > 0) {
-            this.autoCloseTimeout = setTimeout(() => this.close(), this.duration);
+            this.startAutoCloseCountdown();
+
+            if (this.hasFineHoverPointer) {
+                this.handleHoverPause = () => this.pauseAutoCloseCountdown();
+                this.handleHoverResume = () => this.resumeAutoCloseCountdown();
+                this.notification.addEventListener('mouseenter', this.handleHoverPause);
+                this.notification.addEventListener('mouseleave', this.handleHoverResume);
+            }
         }
 
         // Play sound if provided from sound/{filename}
@@ -89,11 +111,107 @@ export default class Notification{
         }
     }
 
+    startAutoCloseCountdown() {
+        if (this.remainingDuration <= 0) {
+            this.close();
+            return;
+        }
+
+        if (this.autoCloseTimeout) {
+            clearTimeout(this.autoCloseTimeout);
+        }
+
+        this.countdownStartedAt = performance.now();
+        this.autoCloseTimeout = setTimeout(() => this.close(), this.remainingDuration);
+        this.resetProgressBar(this.remainingDuration);
+    }
+
+    pauseAutoCloseCountdown() {
+        this.remainingDuration = this.duration;
+
+        if (this.autoCloseTimeout) {
+            clearTimeout(this.autoCloseTimeout);
+            this.autoCloseTimeout = null;
+        }
+
+        this.countdownStartedAt = null;
+
+        if (this.progressAnimationFrame) {
+            cancelAnimationFrame(this.progressAnimationFrame);
+            this.progressAnimationFrame = null;
+        }
+
+        if (this.progressBar) {
+            const remainingScale = this.duration > 0 ? this.remainingDuration / this.duration : 0;
+            this.progressBar.style.transition = 'none';
+            this.progressBar.style.transform = `scaleX(${remainingScale})`;
+        }
+    }
+
+    resumeAutoCloseCountdown() {
+        this.remainingDuration = this.duration;
+
+        if (this.autoCloseTimeout) {
+            clearTimeout(this.autoCloseTimeout);
+            this.autoCloseTimeout = null;
+        }
+
+        if (this.progressAnimationFrame) {
+            cancelAnimationFrame(this.progressAnimationFrame);
+            this.progressAnimationFrame = null;
+        }
+
+        if (this.remainingDuration <= 0) {
+            this.close();
+            return;
+        }
+
+        this.startAutoCloseCountdown();
+    }
+
+    resetProgressBar(durationMs) {
+        if (!this.progressBar) {
+            return;
+        }
+
+        if (this.progressAnimationFrame) {
+            cancelAnimationFrame(this.progressAnimationFrame);
+            this.progressAnimationFrame = null;
+        }
+
+        const remainingScale = this.duration > 0 ? this.remainingDuration / this.duration : 0;
+
+        this.progressBar.style.transition = 'none';
+        this.progressBar.style.transform = `scaleX(${remainingScale})`;
+
+        // Force reflow so the next transition always restarts from full width.
+        this.progressBar.offsetWidth;
+
+        this.progressAnimationFrame = requestAnimationFrame(() => {
+            this.progressBar.style.transition = `transform ${durationMs}ms linear`;
+            this.progressBar.style.transform = 'scaleX(0)';
+            this.progressAnimationFrame = null;
+        });
+    }
+
     close() {
         // Clear auto-close timeout if it exists
         if (this.autoCloseTimeout) {
             clearTimeout(this.autoCloseTimeout);
             this.autoCloseTimeout = null;
+        }
+
+        if (this.progressAnimationFrame) {
+            cancelAnimationFrame(this.progressAnimationFrame);
+            this.progressAnimationFrame = null;
+        }
+
+        if (this.handleHoverPause) {
+            this.notification.removeEventListener('mouseenter', this.handleHoverPause);
+        }
+
+        if (this.handleHoverResume) {
+            this.notification.removeEventListener('mouseleave', this.handleHoverResume);
         }
 
         // Add closing class to trigger slide-out animation

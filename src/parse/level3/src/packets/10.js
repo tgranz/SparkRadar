@@ -52,11 +52,14 @@ const parser = (raf, productDescription, options = {}) => {
 	// return a structure of [radial][bin]
 	// radials provides scaled values per the product's scaling, radialsRaw provides bytes as read from the file
 	const includeRawBinData = options.includeRawBinData !== false;
+	const customDecodeDataLevel = productDescription?.plot?.decodeDataLevel;
 	const radials = new Array(result.numberRadials);
 	const radialsRaw = includeRawBinData ? new Array(result.numberRadials) : null;
 	const decoded = [];
 	decoded[0] = null;
-	decoded[1] = 'rf';
+	if (typeof customDecodeDataLevel !== 'function') {
+		decoded[1] = 'rf';
+	}
 	for (let r = 0; r < result.numberRadials; r += 1) {
 		const bytesInRadial = raf.readShort();
 		const bins = new Array(result.numberBins);
@@ -76,7 +79,9 @@ const parser = (raf, productDescription, options = {}) => {
 		for (let i = 0; i < result.numberBins; i += 1) {
 			const value = raf.readByte();
 			if (decoded[value] === undefined) {
-				decoded[value] = scaled[value];
+				decoded[value] = typeof customDecodeDataLevel === 'function'
+					? customDecodeDataLevel(value, productDescription)
+					: scaled[value];
 			}
 			bins[i] = decoded[value];
 			if (includeRawBinData) {

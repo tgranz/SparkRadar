@@ -119,7 +119,7 @@
 }
 
 .alert-list-item {
-  cursor: pointer;
+  cursor: default;
 }
 
 .alert-btns {

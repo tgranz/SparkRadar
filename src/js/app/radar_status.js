@@ -18,7 +18,6 @@ export default class RadarStatus extends Dialog {
         const infoDiv = document.createElement('div');
         infoDiv.classList.add('radar-status-info');
         const stationProperties = this.radarInfo?.properties || {};
-        console.log('Radar station properties:', stationProperties); // Debug log to inspect properties
         infoDiv.innerHTML = `
             <h2 style="width: 100%; text-align: left;">${this.station} | ${stationProperties?.name}</h2><br>
             <p><strong>Type:</strong> ${stationProperties?.stationType || 'Unknown'}</p>

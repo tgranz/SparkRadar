@@ -125,14 +125,16 @@ export function renderAlert(alert) {
             alert.priority = 14;
         } else if (alert?.productName.toLowerCase().includes('flash flood')) {
             alert.priority = 13;
-        } else if (alert?.productName.toLowerCase().includes('special marine')) {
+        } else if (alert?.productName.toLowerCase().includes('snow squall')) {
             alert.priority = 12;
-        } else if (alert?.productName.toLowerCase().includes('special weather')) {
+        }  else if (alert?.productName.toLowerCase().includes('special marine')) {
             alert.priority = 11;
-        } else if (alert?.productName.toLowerCase().includes('marine weather')) {
+        } else if (alert?.productName.toLowerCase().includes('special weather')) {
             alert.priority = 10;
-        } else if (alert?.productName.toLowerCase().includes('flood')) {
+        } else if (alert?.productName.toLowerCase().includes('marine weather')) {
             alert.priority = 9;
+        } else if (alert?.productName.toLowerCase().includes('flood')) {
+            alert.priority = 8;
         } else {
             alert.priority = 0;
         }

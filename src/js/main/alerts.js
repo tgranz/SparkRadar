@@ -41,10 +41,6 @@ class AlertService {
         this.onNewAlert = null; // Callback when a new alert is received via SSE: (alertData) => void
         this.onAlertNotificationViewMap = null;
         this.onAlertNotificationViewProduct = null;
-        
-        if (this.isMobileDevice) {
-            console.log('[AlertService] Mobile device detected - performance optimizations enabled');
-        }
     }
 
     /**
@@ -60,7 +56,6 @@ class AlertService {
         const isSmallScreen = window.innerWidth <= 768;
         
         const isMobile = mobileRegex.test(userAgent) || (isTouchDevice && isSmallScreen);
-        console.log(`[AlertService] Mobile detection: isMobile=${isMobile}, userAgent match=${mobileRegex.test(userAgent)}, touch=${isTouchDevice}, smallScreen=${isSmallScreen}`);
         
         return isMobile;
     }
@@ -86,7 +81,7 @@ class AlertService {
         this.eventSource = new EventSource(streamUrl.toString());
 
         this.eventSource.onopen = () => {
-            console.log('[AlertService] Connected to alert stream');
+            console.log('[AlertService] Connected to SparkAlerts SSE stream.');
             if (includeSseLogParam) {
                 this.shouldLogSseConnection = false;
             }
@@ -99,7 +94,6 @@ class AlertService {
         this.eventSource.addEventListener('NEW', async (e) => {
             try {
                 const data = this._normalizeAlert(JSON.parse(e.data));
-                console.log('[AlertService] New alert received:', data.name);
                 this.sseConnected = true;
                 this._updateConnectionStatus();
 
@@ -137,7 +131,6 @@ class AlertService {
             try {
                 const data = JSON.parse(e.data);
                 if (data?.status === 'connected') {
-                    console.log('[AlertService] Alert subscription established');
                     this.sseConnected = true;
                     this._updateConnectionStatus();
                     await this.fetchAlerts();
@@ -146,7 +139,6 @@ class AlertService {
 
                 if (data?.id) {
                     const normalized = this._normalizeAlert(data);
-                    console.log('[AlertService] New alert received:', normalized.name);
                     this.sseConnected = true;
                     this._updateConnectionStatus();
                     this._showAlertNotification(normalized);
@@ -163,7 +155,6 @@ class AlertService {
         };
 
         this.eventSource.onerror = (e) => {
-            console.error('[AlertService] SSE connection error:', e);
             this.sseConnected = false;
             
             // SSE frequently hiccups, do not set as disconnected until multiple failed attempts
@@ -177,7 +168,7 @@ class AlertService {
             if (this.sseReconnectAttempts < this.sseMaxReconnectAttempts) {
                 this.sseReconnectAttempts++;
                 const delay = this.sseReconnectDelay * Math.pow(1.5, this.sseReconnectAttempts - 1);
-                console.log(`[AlertService] Reconnecting in ${Math.round(delay)}ms (attempt ${this.sseReconnectAttempts}/${this.sseMaxReconnectAttempts})`);
+                console.log(`[AlertService] Reconnecting in ${Math.round(delay)}ms (attempt ${this.sseReconnectAttempts}/${this.sseMaxReconnectAttempts}).`);
                 setTimeout(() => this.subscribeToAlerts(), delay);
             } else {
                 console.error('[AlertService] Max SSE reconnection attempts reached. Falling back to polling.');
@@ -200,7 +191,6 @@ class AlertService {
 
         // Wait for map to be fully ready before first fetch (if map is provided)
         const performFirstFetch = () => {
-            console.log('[AlertService] Performing first alert fetch for polling');
             
             // Add a small delay on mobile to ensure network is ready
             const delay = this._isMobileDevice() ? 2000 : 500;
@@ -213,7 +203,6 @@ class AlertService {
                     this.fetchAlerts();
                 }, this.alertPollingRate);
                 
-                console.log(`[AlertService] Alert polling started (${this.alertPollingRate / 1000}s interval)`);
             }, delay);
         };
 
@@ -224,7 +213,6 @@ class AlertService {
             if (mapboxMap.isStyleLoaded && mapboxMap.isStyleLoaded() && !mapboxMap.isMoving()) {
                 performFirstFetch();
             } else {
-                console.log('[AlertService] Waiting for map idle before first alert fetch');
                 mapboxMap.once('idle', performFirstFetch);
             }
         } else {
@@ -241,14 +229,12 @@ class AlertService {
         if (this.eventSource) {
             this.eventSource.close();
             this.eventSource = null;
-            console.log('[AlertService] Alert subscription closed');
         }
 
         // Stop polling
         if (this.alertPollingInterval) {
             clearInterval(this.alertPollingInterval);
             this.alertPollingInterval = null;
-            console.log('[AlertService] Alert polling stopped');
         }
     }
 
@@ -260,15 +246,12 @@ class AlertService {
     async fetchAlerts(retryCount = 0) {
         // Prevent concurrent fetches
         if (this.fetchInProgress) {
-            console.log('[AlertService] Fetch already in progress, skipping...');
             return null;
         }
         
         this.fetchInProgress = true;
         
         try {
-            console.log('[AlertService] Fetching alerts from API... (attempt ' + (retryCount + 1) + ')');
-            
             // Use a longer timeout on mobile devices
             const timeout = this._isMobileDevice() ? 10000 : 5000;
             
@@ -282,9 +265,7 @@ class AlertService {
             });
             
             clearTimeout(timeoutId);
-            
-            console.log('[AlertService] Response status:', response.status, response.statusText);
-            
+                        
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             } else if (response.status === 502) {
@@ -298,7 +279,6 @@ class AlertService {
             const data = await response.json();
             
             const alertsPayload = Array.isArray(data) ? data : data.alerts;
-            console.log('[AlertService] fetchAlerts response:', { alertCount: alertsPayload?.length || 0 });
 
             if (Array.isArray(alertsPayload)) {
                 this.fetchRetryCount = 0; // Reset retry count on success
@@ -335,7 +315,6 @@ class AlertService {
             if (retryCount < this.maxFetchRetries && 
                 (error.name === 'TypeError' || error.name === 'AbortError')) {
                 const delay = Math.min(1000 * Math.pow(2, retryCount), 5000);
-                console.log(`[AlertService] Retrying fetch in ${delay}ms...`);
                 this.fetchInProgress = false; // Release lock before retry
                 setTimeout(() => this.fetchAlerts(retryCount + 1), delay);
                 return null; // Don't release lock at the end
@@ -396,7 +375,6 @@ class AlertService {
         if (manualStatus) {
             newStatus = manualStatus;
             this.connectionStatus = newStatus;
-            console.log(`[AlertService] Connection status updated: ${newStatus}`);
             // Emit event for UI updates
             document.dispatchEvent(new CustomEvent('alertConnectionStatusChanged', {
                 detail: { status: newStatus }
@@ -417,7 +395,6 @@ class AlertService {
 
         if (newStatus !== this.connectionStatus) {
             this.connectionStatus = newStatus;
-            console.log(`[AlertService] Connection status updated: ${newStatus}`);
             // Emit event for UI updates
             document.dispatchEvent(new CustomEvent('alertConnectionStatusChanged', {
                 detail: { status: newStatus }

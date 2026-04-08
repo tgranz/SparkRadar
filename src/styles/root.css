@@ -26,6 +26,7 @@ p {
 
 * {
   scrollbar-width: none;
+  font-family: 'Onest', sans-serif;
 }
 
 /* Remove tap highlight on mobile */

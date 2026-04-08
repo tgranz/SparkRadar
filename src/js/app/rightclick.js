@@ -4,6 +4,8 @@ class RightClickHandler {
 	constructor(mapInstance) {
 		this.longPressDelayMs = 550;
 		this.longPressMoveTolerancePx = 10;
+		this.menuCloseAnimationMs = 140;
+		this.menuCloseTimerId = null;
 		this.longPressHandlers = { main: null, split: null };
 
 		this.mapInstance = mapInstance;
@@ -14,7 +16,7 @@ class RightClickHandler {
 		this.boundCloseOnResize = this.closeMenu.bind(this);
 		this.boundCloseOnEscape = (event) => {
 			if (event.key === 'Escape') {
-				this.destroyMenu();
+				this.closeMenu();
 			}
 		};
 
@@ -34,6 +36,17 @@ class RightClickHandler {
 		document.body.appendChild(menu);
 		menu.addEventListener('click', (event) => {
 			event.stopPropagation();
+		});
+		menu.addEventListener('animationend', (event) => {
+			if (event.animationName === 'map-rightclick-pop-in') {
+				menu.classList.remove('opening');
+				return;
+			}
+
+			if (event.animationName === 'map-rightclick-pop-out') {
+				menu.classList.remove('closing');
+				menu.classList.add('hidden');
+			}
 		});
 
 		this.menuElement = menu;
@@ -224,6 +237,11 @@ class RightClickHandler {
 	_renderMenu(nearestStations, lngLat, target) {
 		if (!this.menuElement) return;
 
+		if (this.menuCloseTimerId !== null) {
+			clearTimeout(this.menuCloseTimerId);
+			this.menuCloseTimerId = null;
+		}
+
 		this.menuElement.innerHTML = '';
 
 		if (nearestStations.length === 0) {
@@ -243,7 +261,7 @@ class RightClickHandler {
 				button.innerHTML = `<i class="ti ti-radar-2"></i> <p>${station.id}</p>`;
 				button.addEventListener('click', () => {
 					this._selectStation(station.id, target);
-					this.destroyMenu();
+					this.closeMenu();
 				});
 				wrapper.appendChild(button);
 			});
@@ -259,17 +277,20 @@ class RightClickHandler {
 		shareButton.innerHTML = '<i class="ti ti-share"></i> <p>Share</p>';
 		shareButton.addEventListener('click', () => {
 			this._handleShareAction({ lngLat, target });
-			this.destroyMenu();
+			this.closeMenu();
 		});
 		this.menuElement.appendChild(shareButton);
 
-		this.menuElement.classList.remove('hidden');
+		this.menuElement.classList.remove('hidden', 'closing', 'opening');
+		// Force a style flush so reopening retriggers the pop-in animation.
+		void this.menuElement.offsetWidth;
+		this.menuElement.classList.add('opening');
 	}
 
 	_handleOutsidePointerDown(event) {
 		if (!this.menuElement) return;
 		if (this.menuElement.contains(event.target)) return;
-		this.destroyMenu();
+		this.closeMenu();
 	}
 
 	_positionMenu(event, target) {
@@ -358,10 +379,32 @@ class RightClickHandler {
 
 	closeMenu() {
 		if (!this.menuElement) return;
-		this.menuElement.classList.add('hidden');
+		if (this.menuElement.classList.contains('hidden') || this.menuElement.classList.contains('closing')) {
+			return;
+		}
+
+		if (this.menuCloseTimerId !== null) {
+			clearTimeout(this.menuCloseTimerId);
+			this.menuCloseTimerId = null;
+		}
+
+		this.menuElement.classList.remove('opening');
+		this.menuElement.classList.add('closing');
+
+		// Fallback in case animationend does not fire.
+		this.menuCloseTimerId = setTimeout(() => {
+			this.menuCloseTimerId = null;
+			if (!this.menuElement) return;
+			this.menuElement.classList.remove('closing');
+			this.menuElement.classList.add('hidden');
+		}, this.menuCloseAnimationMs + 50);
 	}
 
 	destroyMenu() {
+		if (this.menuCloseTimerId !== null) {
+			clearTimeout(this.menuCloseTimerId);
+			this.menuCloseTimerId = null;
+		}
 		if (!this.menuElement) return;
 		try {
 			this.menuElement.remove();

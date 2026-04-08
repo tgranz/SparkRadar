@@ -25,9 +25,7 @@ class Menu {
 
         // Create menu header with close button
         const header = document.createElement('div');
-        header.style.display = 'flex';
-        header.style.justifyContent = 'space-between';
-        header.style.alignItems = 'center';
+        header.classList.add('menu-header');
 
         const logo = document.createElement('img');
         logo.src = 'https://lite.sparkradar.app/assets/logo-rounded.webp';
@@ -46,6 +44,9 @@ class Menu {
         header.appendChild(closeBtn);
         this.menu.appendChild(header);
 
+        const menuContent = document.createElement('div');
+        menuContent.classList.add('menu-content');
+
         // Create menu items
         const menuList = document.createElement('ul');
         const menuItems = [
@@ -61,6 +62,35 @@ class Menu {
             { icon: 'book', label: 'Glossary', onClick: () => { new Glossary(); } },
             { icon: 'radar-2', label: 'Level-II Status', onClick: () => { new NEXRADStatus(); } },
         ]
+
+        // Before menu items add data selection
+        const dataSelectionWrapper = document.createElement('div');
+        dataSelectionWrapper.classList.add('menu-data-selection');
+        
+        const radarMode = document.createElement('button');
+        radarMode.classList.add('menu-data-selection-item');
+        radarMode.classList.add('active');
+        radarMode.innerHTML = `<i class="ti ti-radar-2"></i><span>Radar</span>`;
+
+        const satelliteMode = document.createElement('button');
+        satelliteMode.classList.add('menu-data-selection-item');
+        satelliteMode.innerHTML = `<i class="ti ti-satellite"></i><span>Satellite</span>`;
+
+        const setMode = (mode) => {
+            if (typeof window !== 'undefined') {
+                window.appmode = mode === 'satellite' ? 'satellite' : 'radar';
+            }
+            radarMode.classList.toggle('active', mode === 'radar');
+            satelliteMode.classList.toggle('active', mode === 'satellite');
+            document.dispatchEvent(new CustomEvent('dataModeChanged', { detail: { mode } }));
+        };
+
+        radarMode.addEventListener('click', () => setMode('radar'));
+        satelliteMode.addEventListener('click', () => setMode('satellite'));
+
+        menuContent.appendChild(dataSelectionWrapper);
+        dataSelectionWrapper.appendChild(radarMode);
+        dataSelectionWrapper.appendChild(satelliteMode);
 
         menuItems.forEach((item, index) => {
             const li = document.createElement('li');
@@ -114,7 +144,7 @@ class Menu {
         // Activity starter bar
         const activityHeader = document.createElement('div');
         activityHeader.classList.add('menu-header-object');
-        activityHeader.textContent = 'Activities (BETA)';
+        activityHeader.textContent = 'Activities';
         menuList.appendChild(activityHeader);
 
         const activityBar = document.createElement('div');
@@ -169,8 +199,8 @@ class Menu {
         info.style.marginTop = '20px';
         info.innerHTML = `SparkRadar v${version}`;
         menuList.appendChild(info);
-        
-        this.menu.appendChild(menuList);
+        menuContent.appendChild(menuList);
+        this.menu.appendChild(menuContent);
         document.body.appendChild(this.menu);
     }
 

@@ -171,14 +171,25 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
     const project = createRadarProjector(radarLocation[0], radarLocation[1]);
     const includeGeojson = options.includeGeojson === true;
     const builder = createMeshBuilder(includeGeojson);
-    const scanIsPartial = Boolean(radar?.hasGaps || radar?.isTruncated);
+    const scanIsPartial = Boolean(radar?.hasGaps || radar?.isTruncated || options?.partialScan === true);
     const headers = radar.getHeader();
+    const MAX_AZIMUTH_DELTA_DEG = 3;
 
     const forwardDelta = (fromAz, toAz) => {
         if (!Number.isFinite(fromAz) || !Number.isFinite(toAz)) return 1;
         let delta = toAz - fromAz;
         while (delta <= 0) delta += 360;
         return delta;
+    };
+
+    const clampDelta = (delta, fallbackDelta = null) => {
+        if (Number.isFinite(delta) && delta > 0 && delta <= MAX_AZIMUTH_DELTA_DEG) {
+            return delta;
+        }
+        if (Number.isFinite(fallbackDelta) && fallbackDelta > 0 && fallbackDelta <= MAX_AZIMUTH_DELTA_DEG) {
+            return fallbackDelta;
+        }
+        return 1;
     };
 
     const getAzimuthPair = (index) => {
@@ -198,16 +209,16 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
         if (next && Number.isFinite(next.azimuth)) {
             const nextDelta = forwardDelta(az1, next.azimuth);
             // For interior radials, use the true next-edge delta so adjacent wedges touch.
-            delta = nextDelta;
+            delta = clampDelta(nextDelta, prevDelta);
         } else {
             if (!scanIsPartial && headers?.[0] && Number.isFinite(headers[0].azimuth)) {
-                delta = forwardDelta(az1, headers[0].azimuth);
+                delta = clampDelta(forwardDelta(az1, headers[0].azimuth), prevDelta);
             } else {
-                delta = Number.isFinite(prevDelta) ? prevDelta : 1;
+                delta = clampDelta(prevDelta);
             }
         }
 
-        const az2 = az1 + (Number.isFinite(delta) && delta > 0 ? delta : 1);
+        const az2 = az1 + clampDelta(delta, prevDelta);
         return { az1, az2 };
     };
 
@@ -472,7 +483,13 @@ self.onmessage = (event) => {
             const radarLocation = [recordHeader.volume.latitude, recordHeader.volume.longitude];
             const extent = recordHeader.radial_length;
 
-            const { meshData, bounds, geojson } = processRadarData(radar, radarLocation, extent, chunkLayer, chunkOptions);
+            const { meshData, bounds, geojson } = processRadarData(
+                radar,
+                radarLocation,
+                extent,
+                chunkLayer,
+                { ...chunkOptions, partialScan: true }
+            );
             const meshEndMs = toEpochMs(performance.now());
 
             const metadata = {

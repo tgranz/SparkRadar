@@ -103,21 +103,11 @@ menu.innerHTML = `
         </div>
 
         <div class="layer-menu-section-header">
-            Reports
-        </div>
-        <div class="layer-menu-section">
-            <div class="layer-menu-item">
-                <h3>mPING Reports</h3>
-                <p class="tag inprogress">WIP</p>
-            </div>
-            <div class="layer-menu-item">
-                <input type="checkbox" id="toggle-mping-reports-layer" class="switch">
-            </div>
+            Storm Reports
         </div>
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Tornado Reports</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-tornado-reports-layer" class="switch">
@@ -126,7 +116,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Wind Reports</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-wind-reports-layer" class="switch">
@@ -135,7 +124,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>NWS Hail Reports</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-nws-hail-reports-layer" class="switch">
@@ -178,7 +166,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>METAR Stations</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-metars-layer" class="switch">
@@ -956,8 +943,6 @@ function renderOrderPanel(panel, mapInstance) {
             ${iconMapping[key] ? (iconMapping[key].type === 'icon' ? `<span class="layer-order-icon" style="color: var(--primary-color)"><i class="${iconMapping[key].value}"></i></span>` : `<span style="height: 18px; width: 18px;"><img style="height: 100%; width: 100%;" src="${iconMapping[key].value}"></span>`) : ''}
             <span class="layer-order-label">${LAYER_ORDER_LABELS[key] || key}</span>
         `;
-
-        console.log('Rendering layer order item:', key, 'with label:', LAYER_ORDER_LABELS[key]);
 
         panel.appendChild(item);
     });

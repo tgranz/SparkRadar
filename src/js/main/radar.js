@@ -223,7 +223,7 @@ class Radar {
             }
             
             // Parse and render the chunk using worker
-            const workerOptions = { station, chunkNumber: chunkNum };
+            const workerOptions = { station, chunkNumber: chunkNum, partialScan: true };
             const result = await this._processSingleChunkInWorker(buffer, layer, workerOptions);
             
             if (result?.meshData) {
@@ -307,14 +307,19 @@ class Radar {
 
     _getL2RenderState(layer) {
         const chunkLimit = this._getL2ChunkLimitForLayer(layer);
+        const liveChunkUrls = this.level2ChunkLoader.getChunkURLs(false);
         const fullChunkUrls = this.level2ChunkLoader.getChunkURLs(true);
         const chunkUrls = Array.isArray(fullChunkUrls)
             ? fullChunkUrls.slice(0, chunkLimit)
             : [];
+        const latestLiveChunkUrl = Array.isArray(liveChunkUrls) && liveChunkUrls.length > 0
+            ? liveChunkUrls[liveChunkUrls.length - 1]
+            : null;
         return {
             chunkLimit,
             chunkUrls,
             renderableCount: chunkUrls.length,
+            latestLiveChunkUrl,
             latestRenderableChunkUrl: chunkUrls.length > 0 ? chunkUrls[chunkUrls.length - 1] : null,
             renderKey: chunkUrls.join('|'),
         };
@@ -849,14 +854,25 @@ class Radar {
         const project = this._createRadarProjector(radarLocation[0], radarLocation[1]);
         const includeGeojson = options.includeGeojson === true;
         const builder = this._createMeshBuilder(includeGeojson);
-        const scanIsPartial = Boolean(radar?.hasGaps || radar?.isTruncated);
+        const scanIsPartial = Boolean(radar?.hasGaps || radar?.isTruncated || options?.partialScan === true);
         const headers = radar.getHeader();
+        const MAX_AZIMUTH_DELTA_DEG = 3;
 
         const forwardDelta = (fromAz, toAz) => {
             if (!Number.isFinite(fromAz) || !Number.isFinite(toAz)) return 1;
             let delta = toAz - fromAz;
             while (delta <= 0) delta += 360;
             return delta;
+        };
+
+        const clampDelta = (delta, fallbackDelta = null) => {
+            if (Number.isFinite(delta) && delta > 0 && delta <= MAX_AZIMUTH_DELTA_DEG) {
+                return delta;
+            }
+            if (Number.isFinite(fallbackDelta) && fallbackDelta > 0 && fallbackDelta <= MAX_AZIMUTH_DELTA_DEG) {
+                return fallbackDelta;
+            }
+            return 1;
         };
 
         const getAzimuthPair = (index) => {
@@ -876,16 +892,16 @@ class Radar {
             if (next && Number.isFinite(next.azimuth)) {
                 const nextDelta = forwardDelta(az1, next.azimuth);
                 // For interior radials, use the true next-edge delta so adjacent wedges touch.
-                delta = nextDelta;
+                delta = clampDelta(nextDelta, prevDelta);
             } else {
                 if (!scanIsPartial && headers?.[0] && Number.isFinite(headers[0].azimuth)) {
-                    delta = forwardDelta(az1, headers[0].azimuth);
+                    delta = clampDelta(forwardDelta(az1, headers[0].azimuth), prevDelta);
                 } else {
-                    delta = Number.isFinite(prevDelta) ? prevDelta : 1;
+                    delta = clampDelta(prevDelta);
                 }
             }
 
-            const az2 = az1 + (Number.isFinite(delta) && delta > 0 ? delta : 1);
+            const az2 = az1 + clampDelta(delta, prevDelta);
             return { az1, az2 };
         };
 
@@ -1140,7 +1156,9 @@ class Radar {
                 } else {
                     this._ensureL2ChunkStream(radarStation);
                     l2RenderState = this._getL2RenderState(layer);
-                    latestFileName = l2RenderState.latestRenderableChunkUrl;
+                    // Use the newest live chunk for timestamp/cache identity so picker time
+                    // advances as soon as new volume chunks start arriving.
+                    latestFileName = l2RenderState.latestLiveChunkUrl || l2RenderState.latestRenderableChunkUrl;
                 }
                 console.log(`[getRadarLayer] Latest file available: ${latestFileName}`);
 

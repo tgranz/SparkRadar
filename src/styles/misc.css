@@ -398,10 +398,13 @@ select:hover {
   font-weight: 600;
   flex: 1;
   min-width: 0;
+  height: calc(100% - 10px);
 }
 
 .alert-setting-top-controls,
 .alert-setting-bottom {
+  justify-content: flex-end;
+  max-width: calc(100% - 100px);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -461,11 +464,6 @@ select:hover {
   .alert-setting-top {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .alert-setting-top-controls,
-  .alert-setting-bottom {
-    width: 100%;
   }
 }
 
@@ -638,10 +636,54 @@ select:hover {
   flex-direction: column;
   gap: 5px;
   backdrop-filter: blur(10px);
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transform-origin: top left;
 }
 
 .map-rightclick-menu.hidden {
-  display: none;
+  opacity: 0;
+  transform: translateY(4px) scale(0.94);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.map-rightclick-menu.opening {
+  animation: map-rightclick-pop-in 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+}
+
+.map-rightclick-menu.closing {
+  animation: map-rightclick-pop-out 140ms cubic-bezier(0.3, 0, 0.6, 0.2) both;
+  pointer-events: none;
+}
+
+@keyframes map-rightclick-pop-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes map-rightclick-pop-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-rightclick-menu.opening,
+  .map-rightclick-menu.closing {
+    animation: none;
+  }
 }
 
 .map-rightclick-title {
@@ -998,7 +1040,7 @@ p.code {
 }
 
 .window-titlebar {
-  background-color: #33333355;
+  background-color: #111111aa;
   color: #fff;
   padding: 10px;
   padding-left: 15px;
