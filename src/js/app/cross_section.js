@@ -99,18 +99,26 @@ export default class CrossSection {
             if (this._dualMapButtonTitleBeforeDisable == null) {
                 this._dualMapButtonTitleBeforeDisable = dualMapButton.title || 'Dual-radar view';
             }
-            dualMapButton.disabled = true;
-            dualMapButton.setAttribute('aria-disabled', 'true');
-            dualMapButton.style.color = 'gray';
-            dualMapButton.style.pointerEvents = 'none';
+            if (typeof window.setToolEnabled === 'function') {
+                window.setToolEnabled(dualMapButton, false);
+            } else {
+                dualMapButton.disabled = true;
+                dualMapButton.setAttribute('aria-disabled', 'true');
+                dualMapButton.style.color = 'gray';
+                dualMapButton.style.pointerEvents = 'none';
+            }
             dualMapButton.title = 'Dual-radar view unavailable in cross-section mode';
             return;
         }
 
-        dualMapButton.disabled = false;
-        dualMapButton.setAttribute('aria-disabled', 'false');
-        dualMapButton.style.color = 'white';
-        dualMapButton.style.pointerEvents = 'auto';
+        if (typeof window.setToolEnabled === 'function') {
+            window.setToolEnabled(dualMapButton, true);
+        } else {
+            dualMapButton.disabled = false;
+            dualMapButton.setAttribute('aria-disabled', 'false');
+            dualMapButton.style.color = 'white';
+            dualMapButton.style.pointerEvents = 'auto';
+        }
         dualMapButton.title = this._dualMapButtonTitleBeforeDisable || 'Dual-radar view';
         this._dualMapButtonTitleBeforeDisable = null;
     }

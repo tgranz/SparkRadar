@@ -97,26 +97,70 @@ var splitRadar = {
 var currentVcp = null;
 
 const updateCrossSectionButtonState = (product) => {
+  const supported = isCrossSectionProductSupported(product);
+  if (typeof window.setToolEnabled === 'function') {
+    window.setToolEnabled('cross-section-button', supported);
+  } else {
+    const button = document.getElementById('cross-section-button');
+    if (!button) return;
+    button.disabled = !supported;
+    button.setAttribute('aria-disabled', String(!supported));
+  }
+
   const button = document.getElementById('cross-section-button');
   if (!button) return;
-
-  const supported = isCrossSectionProductSupported(product);
-  button.disabled = !supported;
-  button.setAttribute('aria-disabled', String(!supported));
   button.title = supported
     ? 'Cross-section view'
     : 'Cross-section unavailable for this product';
 };
 
 const setToolbarButtonState = (buttonId, disabled, title) => {
+  if (typeof window.setToolEnabled === 'function') {
+    window.setToolEnabled(buttonId, !disabled);
+  } else {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+    button.disabled = disabled;
+    button.setAttribute('aria-disabled', String(disabled));
+    button.style.color = disabled ? 'gray' : '';
+    button.style.pointerEvents = disabled ? 'none' : '';
+  }
+
   const button = document.getElementById(buttonId);
   if (!button) return;
-
-  button.disabled = disabled;
-  button.setAttribute('aria-disabled', String(disabled));
-  button.style.color = disabled ? 'gray' : '';
-  button.style.pointerEvents = disabled ? 'none' : '';
   button.title = title;
+};
+
+const resolveToolButton = (button) => {
+  if (typeof button === 'string') {
+    return document.getElementById(button);
+  }
+
+  if (button instanceof HTMLElement) {
+    return button;
+  }
+
+  return null;
+};
+
+window.setToolEnabled = function(button, enabled) {
+  const target = resolveToolButton(button);
+  if (!target) return false;
+
+  const disabled = !enabled;
+  target.disabled = disabled;
+  target.setAttribute('aria-disabled', String(disabled));
+  target.style.color = disabled ? 'gray' : '';
+  target.style.pointerEvents = disabled ? 'none' : '';
+  return true;
+};
+
+window.enableTool = function(button) {
+  return window.setToolEnabled(button, true);
+};
+
+window.disableTool = function(button) {
+  return window.setToolEnabled(button, false);
 };
 
 // Local Level III files only expose one product and one tilt, so split and
@@ -924,7 +968,7 @@ window.isAutoUpdateEnabled = function() {
 // Show welcome dialog if first time
 if (localStorage.getItem('firstUse') !== 'true') {
   const welcomeDialog = new Dialog('Welcome to SparkRadar.app', 'bolt', 
-  `<h2 style="margin-bottom: 10px; text-align: left;">Welcome to the new SparkRadar!</h2>
+  `<h2 style="margin-bottom: 10px; text-align: left;">Welcome to SparkRadar!</h2>
   <p style="margin-bottom: 10px;">Looking for the old version? It has become <a href="https://lite.sparkradar.app" target="_blank">SparkRadar Lite</a>.</p>
   <p style="margin-bottom: 10px; font-weight: bold;">Please note that the new SparkRadar is still in active development. THIS IS NOT THE FINAL PRODUCT!!! You may report any bugs or feature requests on the <a href="https://github.com/tgranz/sparkradar" target="_blank">GitHub</a>.</p>
   <p>The new SparkRadar brings more features than ever, including:</p>

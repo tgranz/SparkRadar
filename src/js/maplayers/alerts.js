@@ -47,6 +47,16 @@ class AlertLayer {
         if (this.map?.map) {
             this.map.map.on('click', this.alertPopupClickHandlers.main);
         }
+
+        document.addEventListener('settingsChanged', (event) => {
+            if (event?.detail?.key !== 'alertFlashNewlyIssued') {
+                return;
+            }
+
+            this._stopFlashAnimation('main');
+            this._stopFlashAnimation('dual');
+            this.displayAlerts();
+        });
     }
 
     _getAlertDetailsSurface() {
@@ -92,6 +102,10 @@ class AlertLayer {
         
         // Consider alerts issued within the last 60 seconds as "new"
         return ageMs >= 0 && ageMs < 60000;
+    }
+
+    _isAlertFlashEnabled() {
+        return window.settingsInstance?.getSetting('alertFlashNewlyIssued') !== false;
     }
 
     _refreshAlertNewStatus(target) {
@@ -868,6 +882,24 @@ class AlertLayer {
         const newOutlineLayerId = `${sourceId}-outline-new`;
 
         if (!map.getLayer(newFillLayerId)) return;
+
+        const flashEnabled = this._isAlertFlashEnabled();
+        if (!flashEnabled) {
+            try {
+                if (map.getLayer(newFillLayerId)) {
+                    map.setPaintProperty(newFillLayerId, 'fill-color', ['get', 'fillColor']);
+                }
+                if (map.getLayer(newOutlineLayerId)) {
+                    map.setPaintProperty(newOutlineLayerId, 'line-color', ['get', 'outlineColor']);
+                }
+            } catch {
+            }
+
+            this.alertRefreshIntervals[target] = setInterval(() => {
+                this._refreshAlertNewStatus(target);
+            }, 10000);
+            return;
+        }
 
         let startTime = Date.now();
         const duration = 1000; // 1 second pulse cycle

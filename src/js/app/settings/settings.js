@@ -519,7 +519,7 @@ function generateMapLayerVisibilitySettings(settingsInstance, container, options
     
     const backgroundHelp = document.createElement('p');
     backgroundHelp.className = 'settings-control-help';
-    backgroundHelp.textContent = 'Choose between a solid color or satellite imagery. Sometimes requires a page refersh.';
+    backgroundHelp.textContent = 'Choose between a solid color or satellite imagery.';
     backgroundControl.appendChild(backgroundHelp);
     
     container.appendChild(backgroundControl);
@@ -968,6 +968,36 @@ function generateSpotterNetworkSettings(container, settingsInstance) {
 function generateAlertSettings(settingsInstance, container) {
     container.innerHTML = '';
 
+    const flashControl = document.createElement('div');
+    flashControl.className = 'settings-control alert-setting-control';
+
+    const flashHeader = document.createElement('div');
+    flashHeader.className = 'settings-control-header';
+
+    const flashLabel = document.createElement('label');
+    flashLabel.htmlFor = 'alerts-flash-newly-issued';
+    flashLabel.textContent = 'Flash newly issued alerts';
+
+    const flashToggle = document.createElement('input');
+    flashToggle.type = 'checkbox';
+    flashToggle.id = 'alerts-flash-newly-issued';
+    flashToggle.className = 'switch';
+    flashToggle.checked = settingsInstance.getSetting('alertFlashNewlyIssued') !== false;
+    flashToggle.addEventListener('change', () => {
+        settingsInstance.setSetting('alertFlashNewlyIssued', flashToggle.checked);
+    });
+
+    flashHeader.appendChild(flashLabel);
+    flashHeader.appendChild(flashToggle);
+    flashControl.appendChild(flashHeader);
+
+    const flashHelp = document.createElement('p');
+    flashHelp.className = 'settings-control-help';
+    flashHelp.textContent = 'Flash new or updated alert polygons. Refresh the page for change to take effect.';
+    flashControl.appendChild(flashHelp);
+
+    container.appendChild(flashControl);
+
     ALERT_CATEGORIES.forEach((categoryConfig) => {
         const { name: category, alerts, visualOnly } = categoryConfig;
 
@@ -1158,6 +1188,7 @@ export default class Settings {
             mapLayerVisibility: {},
             mapLayerStyles: {},
             mapBackgroundStyle: 'default',
+            alertFlashNewlyIssued: true,
             shortcutToggleSplitView: 'm',
             shortcutToggleCrossSection: 'x',
             shortcutShowRadarStatus: 's',
@@ -1336,6 +1367,8 @@ export default class Settings {
         if (alertDetailsAppearIn !== 'dialogs' && alertDetailsAppearIn !== 'windows') {
             this.settings.alertDetailsAppearIn = 'dialogs';
         }
+
+        this.settings.alertFlashNewlyIssued = this.settings.alertFlashNewlyIssued !== false;
 
         const cacheSlots = Number(this.settings.cacheMaxSlots);
         const effectiveMax = Number.isFinite(cacheSlots) ? Math.max(3, Math.round(cacheSlots)) : 40;

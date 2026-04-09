@@ -252,18 +252,28 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     const setElementVisibleAndEnabled = (element, button, visible) => {
         if (!element || !button) return;
         element.classList.toggle('hidden', !visible);
-        button.disabled = !visible;
-        button.setAttribute('aria-disabled', String(!visible));
-        button.style.pointerEvents = visible ? '' : 'none';
+        if (typeof window.setToolEnabled === 'function') {
+            window.setToolEnabled(button, visible);
+        } else {
+            button.disabled = !visible;
+            button.setAttribute('aria-disabled', String(!visible));
+            button.style.pointerEvents = visible ? '' : 'none';
+            button.style.color = visible ? '' : 'gray';
+        }
     };
 
     const applyModeState = (mode) => {
         const normalized = mode === 'satellite' ? 'satellite' : 'radar';
         const isSatellite = normalized === 'satellite';
 
-        startSplitLayoutButton.disabled = isSatellite;
-        startSplitLayoutButton.setAttribute('aria-disabled', String(isSatellite));
-        startSplitLayoutButton.style.pointerEvents = isSatellite ? 'none' : '';
+        if (typeof window.setToolEnabled === 'function') {
+            window.setToolEnabled(startSplitLayoutButton, !isSatellite);
+        } else {
+            startSplitLayoutButton.disabled = isSatellite;
+            startSplitLayoutButton.setAttribute('aria-disabled', String(isSatellite));
+            startSplitLayoutButton.style.pointerEvents = isSatellite ? 'none' : '';
+            startSplitLayoutButton.style.color = isSatellite ? 'gray' : '';
+        }
         startSplitLayoutButton.style.opacity = isSatellite ? '0.45' : '';
         startSplitLayoutButton.title = isSatellite ? 'Dual-radar view unavailable in satellite mode' : 'Dual-radar view';
 
