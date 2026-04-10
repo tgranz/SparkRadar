@@ -57,7 +57,7 @@ export function renderAlert(alert) {
 
     const alertMessage = alert?.message || "";
     const latestAlertMessage = messages[0] || alertMessage;
-    const _is_destructive = latestAlertMessage.toLowerCase().includes('destructive') || latestAlertMessage.toLowerCase().includes('catastrophic') || false;
+    const _is_destructive = latestAlertMessage.toLowerCase().includes('destructive storm') || latestAlertMessage.toLowerCase().includes('catastrophic') || false;
     const _is_consid = !_is_destructive && latestAlertMessage.toLowerCase().includes('considerable') || false;
     const is_emergency = latestAlertMessage.includes('TORNADO EMERGENCY') || latestAlertMessage.includes('FLASH FLOOD EMERGENCY') || false;
     const is_pds = latestAlertMessage.toLowerCase().includes('particularly dangerous situation') || false;
