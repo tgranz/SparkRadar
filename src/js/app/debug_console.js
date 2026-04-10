@@ -23,6 +23,22 @@ class DebugConsole {
         this.scrollStatus = null;
         this.isVisible = false;
     }
+
+    getErrorNotificationSetting() {
+        const settingsInstance = window.settingsInstance;
+        if (settingsInstance?.getSetting) {
+            return settingsInstance.getSetting('enableErrorNotifications') !== false;
+        }
+
+        try {
+            const raw = localStorage.getItem('settings');
+            if (!raw) return true;
+            const parsed = JSON.parse(raw);
+            return parsed?.enableErrorNotifications !== false;
+        } catch {
+            return true;
+        }
+    }
     
     startIntercepting() {
         const self = this;
@@ -47,6 +63,10 @@ class DebugConsole {
             if (errormsg.toLowerCase().includes('error getting location') ||
                 errormsg.toLowerCase().includes('error loading chunk listing') ||
                 errormsg.toLowerCase().includes('fetch timeout')) {
+                return;
+            }
+
+            if (!self.getErrorNotificationSetting()) {
                 return;
             }
 

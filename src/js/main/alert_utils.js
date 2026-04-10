@@ -53,7 +53,7 @@ export function renderAlert(alert) {
     else icon = 'alert-triangle';
 
     // Check props
-    const messages = alert?.message.split('#####') || [];
+    const messages = alert?.message ? alert?.message.split('#####') || [] : [];
 
     const alertMessage = alert?.message || "";
     const latestAlertMessage = messages[0] || alertMessage;
@@ -70,13 +70,13 @@ export function renderAlert(alert) {
     const is_test = latestAlertMessage.includes('TEST') || false;
 
     // Store original product name for settings lookup
-    const originalProductName = alert?.productName.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
+    const originalProductName = alert?.productName?.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
 
     // Now re-render the title
-    if (alert?.productName.toLowerCase() == "Severe Weather Statement".toLowerCase()) {
+    if (alert?.productName?.toLowerCase() == "Severe Weather Statement".toLowerCase()) {
         alert.productName = "Severe Thunderstorm Warning";
     }
-    if (alert?.productName.toLowerCase() == "tornado warning") {
+    if (alert?.productName?.toLowerCase() == "tornado warning") {
         if (is_emergency) {
             alert.productName = "Tornado Emergency";
         } else if (is_pds) {
@@ -88,7 +88,7 @@ export function renderAlert(alert) {
         } else if (damagelevel === 'considerable') {
             alert.productName = "Considerable Tornado Warning";
         }
-    } else if (alert?.productName.toLowerCase() == "flash flood warning") {
+    } else if (alert?.productName?.toLowerCase() == "flash flood warning") {
         if (is_emergency) {
             alert.productName = "Flash Flood Emergency";
         } else if (damagelevel === 'destructive') {
@@ -96,7 +96,7 @@ export function renderAlert(alert) {
         } else if (damagelevel === 'considerable') {
             alert.productName = "Considerable Flash Flood Warning";
         }
-    } else if (alert?.productName.toLowerCase() == "severe thunderstorm warning") {
+    } else if (alert?.productName?.toLowerCase() == "severe thunderstorm warning") {
         if (damagelevel === 'destructive') {
             alert.productName = "Destructive Severe Thunderstorm Warning";
         } else if (damagelevel === 'considerable') {
@@ -117,23 +117,23 @@ export function renderAlert(alert) {
     } else if (damagelevel === 'considerable') {
         alert.priority = 20;
     } else {
-        if (alert?.productName.toLowerCase().includes('extreme')) {
+        if (alert?.productName?.toLowerCase().includes('extreme')) {
             alert.priority = 19;
-        } else if (alert?.productName.toLowerCase().includes('tornado')) {
+        } else if (alert?.productName?.toLowerCase().includes('tornado')) {
             alert.priority = 15;
-        } else if (alert?.productName.toLowerCase().includes('severe thunderstorm')) {
+        } else if (alert?.productName?.toLowerCase().includes('severe thunderstorm')) {
             alert.priority = 14;
-        } else if (alert?.productName.toLowerCase().includes('flash flood')) {
+        } else if (alert?.productName?.toLowerCase().includes('flash flood')) {
             alert.priority = 13;
-        } else if (alert?.productName.toLowerCase().includes('snow squall')) {
+        } else if (alert?.productName?.toLowerCase().includes('snow squall')) {
             alert.priority = 12;
-        }  else if (alert?.productName.toLowerCase().includes('special marine')) {
+        }  else if (alert?.productName?.toLowerCase().includes('special marine')) {
             alert.priority = 11;
-        } else if (alert?.productName.toLowerCase().includes('special weather')) {
+        } else if (alert?.productName?.toLowerCase().includes('special weather')) {
             alert.priority = 10;
-        } else if (alert?.productName.toLowerCase().includes('marine weather')) {
+        } else if (alert?.productName?.toLowerCase().includes('marine weather')) {
             alert.priority = 9;
-        } else if (alert?.productName.toLowerCase().includes('flood')) {
+        } else if (alert?.productName?.toLowerCase().includes('flood')) {
             alert.priority = 8;
         } else {
             alert.priority = 0;

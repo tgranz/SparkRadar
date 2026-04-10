@@ -1188,6 +1188,7 @@ export default class Settings {
             mapLayerVisibility: {},
             mapLayerStyles: {},
             mapBackgroundStyle: 'default',
+            enableErrorNotifications: true,
             alertFlashNewlyIssued: true,
             shortcutToggleSplitView: 'm',
             shortcutToggleCrossSection: 'x',
@@ -1368,6 +1369,7 @@ export default class Settings {
             this.settings.alertDetailsAppearIn = 'dialogs';
         }
 
+        this.settings.enableErrorNotifications = this.settings.enableErrorNotifications !== false;
         this.settings.alertFlashNewlyIssued = this.settings.alertFlashNewlyIssued !== false;
 
         const cacheSlots = Number(this.settings.cacheMaxSlots);

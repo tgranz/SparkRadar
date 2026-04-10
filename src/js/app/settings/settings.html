@@ -36,20 +36,7 @@
   <div class="settings-sections" hidden>
     <section class="settings-section" data-section="general">
       <h2>General Settings</h2>
-      <div class="settings-control">
-        <div class="settings-control-header">
-          <label for="enable-split-cursor-marker">Dual Map Cursor</label>
-          <input type="checkbox" id="enable-split-cursor-marker" name="enable-split-cursor-marker" class="switch" data-setting="enableSplitCursorMarker">
-        </div>
-        <p class="settings-control-help">In dual map mode, show a dot on the opposite map of the mouse cursor, at the same position as the mouse cursor.</p>
-      </div>
-      <div class="settings-control">
-        <div class="settings-control-header">
-          <label for="enable-location">Use Location</label>
-          <input type="checkbox" id="enable-location" name="enable-location" class="switch" data-setting="enableLocation">
-        </div>
-        <p class="settings-control-help">Enable to use location-based features such as Spotter Network location reporting and to view your location on the map.</p>
-      </div>
+      <h3 class="settings-subheader">Experience</h3>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="alert-details-appear-in">Alert Details Appear In</label>
@@ -59,6 +46,29 @@
           </select>
         </div>
         <p class="settings-control-help">When an item is clicked from a popup, choose whether it appears in a movable, resizable window or a fixed dialog. Requires page refresh.</p>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="enable-split-cursor-marker">Dual Map Cursor</label>
+          <input type="checkbox" id="enable-split-cursor-marker" name="enable-split-cursor-marker" class="switch" data-setting="enableSplitCursorMarker">
+        </div>
+        <p class="settings-control-help">In dual map mode, show a dot on the opposite map of the mouse cursor, at the same position as the mouse cursor.</p>
+      </div>
+      <h3 class="settings-subheader">Location</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="enable-location">Use Location</label>
+          <input type="checkbox" id="enable-location" name="enable-location" class="switch" data-setting="enableLocation">
+        </div>
+        <p class="settings-control-help">Enable to use location-based features such as Spotter Network location reporting and to view your location on the map.</p>
+      </div>
+      <h3 class="settings-subheader">Debugging</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="enable-error-notifications">Show Error Notifications</label>
+          <input type="checkbox" id="enable-error-notifications" name="enable-error-notifications" class="switch" data-setting="enableErrorNotifications">
+        </div>
+        <p class="settings-control-help">Turn notifications for internal errors on or off. Changing requires page refresh.</p>
       </div>
       <h3 class="settings-subheader">Settings management</h3>
       <div class="settings-control">
