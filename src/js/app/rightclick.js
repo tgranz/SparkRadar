@@ -1,4 +1,5 @@
 import Modal from '../ui/modal.js';
+import WeatherInformation from '../main/weatherinformation.js';
 
 class RightClickHandler {
 	constructor(mapInstance) {
@@ -271,6 +272,17 @@ class RightClickHandler {
 		divider.className = 'map-rightclick-divider';
 		this.menuElement.appendChild(divider);
 
+		const weatherButton = document.createElement('button');
+		weatherButton.type = 'button';
+		weatherButton.className = 'map-rightclick-button';
+		weatherButton.style.marginBottom = '6px';
+		weatherButton.innerHTML = '<i class="ti ti-sun"></i> <p>Weather here</p>';
+		weatherButton.addEventListener('click', () => {
+			this._handleWeatherAction({ lngLat, target });
+			this.closeMenu();
+		});
+		this.menuElement.appendChild(weatherButton);
+
 		const shareButton = document.createElement('button');
 		shareButton.type = 'button';
 		shareButton.className = 'map-rightclick-button map-rightclick-share';
@@ -375,6 +387,10 @@ class RightClickHandler {
             }
         ]);
         modal.open();
+	}
+
+	_handleWeatherAction(context) {
+		new WeatherInformation(context.lngLat);
 	}
 
 	closeMenu() {

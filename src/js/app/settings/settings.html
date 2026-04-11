@@ -19,6 +19,7 @@
       </div>
       <ul class="settings-nav-list">
         <li><a href="#general" class="settings-nav-item" data-section="general">General</a></li>
+        <li><a href="#units" class="settings-nav-item" data-section="units">Units</a></li>
         <li><a href="#customization" class="settings-nav-item" data-section="customization">Customization</a></li>
         <li><a href="#map" class="settings-nav-item" data-section="map">Map</a></li>
         <li><a href="#radar" class="settings-nav-item" data-section="radar">Radar</a></li>
@@ -93,6 +94,59 @@
         <p class="settings-control-help">Click to reset all settings to their defaults. This will not sign you out of Spotter Network.</p>
       </div>
     </section>
+    <section class="settings-section" data-section="units">
+      <h2>Units</h2>
+      <h4 class="settings-hint">Choose units used throughout the application.</h4>
+      <h3 class="settings-subheader">Weather at a Point</h3>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="weather-temp-unit">Temperature</label>
+          <select id="weather-temp-unit" name="weather-temp-unit" data-setting="weatherTempUnit">
+            <option value="F">Fahrenheit (F)</option>
+            <option value="C">Celsius (C)</option>
+            <option value="K">Kelvin (K)</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="weather-pressure-unit">Pressure</label>
+          <select id="weather-pressure-unit" name="weather-pressure-unit" data-setting="weatherPressureUnit">
+            <option value="MB">Millibars (MB)</option>
+            <option value="INHG">Inches of Mercury (inHg)</option>
+            <option value="MMHG">Millimeters of Mercury (mmHg)</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="weather-wind-unit">Wind Speed</label>
+          <select id="weather-wind-unit" name="weather-wind-unit" data-setting="weatherWindUnit">
+            <option value="MPH">Miles per hour (MPH)</option>
+            <option value="KPH">Kilometers per hour (KPH)</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="weather-precip-unit">Precipitation</label>
+          <select id="weather-precip-unit" name="weather-precip-unit" data-setting="weatherPrecipUnit">
+            <option value="IN">Inches (IN)</option>
+            <option value="MM">Millimeters (MM)</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="weather-distance-unit">Distance</label>
+          <select id="weather-distance-unit" name="weather-distance-unit" data-setting="weatherDistanceUnit">
+            <option value="MI">Miles (MI)</option>
+            <option value="KM">Kilometers (KM)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
     <section class="settings-section" data-section="customization">
       <h2>Customization</h2>
       <h4 class="settings-hint">Customize how SparkRadar looks.</h4>

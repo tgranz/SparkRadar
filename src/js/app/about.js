@@ -72,7 +72,13 @@ export default function openAbout(target = 'general') {
                 </div>
             </div>
 
-            <p style="margin-top: 20px; font-size: 0.85em; text-align: center; color: lightgray;">&copy; 2026 @tgranz</p>
+            <p style="margin: 20px; font-size: 0.85em; text-align: center; color: lightgray;">&copy; 2026 @tgranz</p>
+
+            <h3 style="margin-left: 10px; margin-top: 20px; margin-bottom: 10px; text-align: left; width: 100%;">Bug Hunters</h3>
+            <p style="margin: 0 10px 10px 20px; font-size: 0.95em; color: lightgray;">Huge thanks to the following bug hunters who have reported bugs and helped to improve SparkRadar! Become a bug hunter by reporting issues <a href="https://github.com/tgranz/SparkRadar/issues" target="_blank">on the GitHub</a>.</p>
+            <div id="bug-hunters-container">
+                <!-- populated in JS -->
+            </div>
         </div>
 
         <div class="about-panel" id="about-panel-map" role="tabpanel" aria-labelledby="about-tab-map">
@@ -155,6 +161,51 @@ export default function openAbout(target = 'general') {
         clearInterval(activeUsersInterval);
         originalClose();
     };
+
+    // Bug Hunters
+    const hunters = {
+        "epicgaming563": {
+            "href": "https://github.com/roplaywx",
+            "bugs": 1,
+        }
+    }
+
+    const bugHuntersContainer = dialog.content?.querySelector('#bug-hunters-container');
+    if (!bugHuntersContainer) {
+        return;
+    }
+
+    for (const [name, info] of Object.entries(hunters)) {
+        const hunterEl = document.createElement('div');
+        hunterEl.style.cssText = 'background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border-color); padding: 10px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: flex-start; flex-direction: row;';
+
+        const bugsFoundEl = document.createElement('p');
+        bugsFoundEl.textContent = `${info.bugs}`;
+        bugsFoundEl.style.borderRadius = '999px';
+        bugsFoundEl.style.fontSize = '1em';
+        bugsFoundEl.style.fontWeight = 'bold';
+        bugsFoundEl.style.background = '#27beff';
+        bugsFoundEl.style.color = 'black';
+        bugsFoundEl.style.width = 'fit-content';
+        bugsFoundEl.style.padding = '5px 15px';
+        bugsFoundEl.style.fontWeight = 'bold';
+        hunterEl.appendChild(bugsFoundEl);
+
+        const separatorEl = document.createElement('p');
+        separatorEl.textContent = ` bug${info.bugs !== 1 ? 's' : ''} found by`;
+        separatorEl.style.marginLeft = '10px';
+        hunterEl.appendChild(separatorEl);
+
+        const nameEl = document.createElement('a');
+        nameEl.textContent = `${name}`;
+        nameEl.href = info.href;
+        nameEl.target = '_blank';
+        nameEl.style.marginLeft = '10px';
+        nameEl.style.fontWeight = 'bold';
+        hunterEl.appendChild(nameEl);
+
+        bugHuntersContainer.appendChild(hunterEl);
+    }
 }
 
 document.getElementById('attribution').addEventListener('click', () => openAbout('map'));

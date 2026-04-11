@@ -1175,6 +1175,11 @@ export default class Settings {
             showTimeAndTilt: true,
             enableLocation: false,
             alertDetailsAppearIn: 'dialogs',
+            weatherTempUnit: 'F',
+            weatherPressureUnit: 'MB',
+            weatherWindUnit: 'MPH',
+            weatherPrecipUnit: 'IN',
+            weatherDistanceUnit: 'MI',
             reflectivityGateFilter: -10,
             enableSplitCursorMarker: true,
             vcpDisplayFormat: 'descriptive',
@@ -1368,6 +1373,20 @@ export default class Settings {
         if (alertDetailsAppearIn !== 'dialogs' && alertDetailsAppearIn !== 'windows') {
             this.settings.alertDetailsAppearIn = 'dialogs';
         }
+
+        const weatherUnitDefaults = {
+            weatherTempUnit: ['F', 'C', 'K'],
+            weatherPressureUnit: ['MB', 'INHG', 'MMHG'],
+            weatherWindUnit: ['MPH', 'KPH'],
+            weatherPrecipUnit: ['IN', 'MM'],
+            weatherDistanceUnit: ['MI', 'KM']
+        };
+
+        Object.entries(weatherUnitDefaults).forEach(([key, allowedValues]) => {
+            if (!allowedValues.includes(this.settings[key])) {
+                this.settings[key] = this.defaults[key];
+            }
+        });
 
         this.settings.enableErrorNotifications = this.settings.enableErrorNotifications !== false;
         this.settings.alertFlashNewlyIssued = this.settings.alertFlashNewlyIssued !== false;

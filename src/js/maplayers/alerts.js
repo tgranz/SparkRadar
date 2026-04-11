@@ -246,6 +246,11 @@ class AlertLayer {
     _getAlertsAtPoint(point) {
         const matches = [];
         for (const alert of this.alerts) {
+            const alertSettings = renderAlert(alert);
+            if (!alertSettings.enabled) {
+                continue;
+            }
+
             const geometry = this._getAlertGeometry(alert);
             if (!geometry) {
                 continue;
