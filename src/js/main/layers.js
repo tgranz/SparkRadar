@@ -19,6 +19,7 @@ import LightningLayer from "../maplayers/lightning.js";
 import SpotterNetworkPositionsLayer from "../maplayers/spotter_network_positions.js";
 import MetarStationsLayer from "../maplayers/metar_stations.js";
 import NWSStormReportsLayer from "../maplayers/nws_storm_reports.js";
+import WildfiresLayer from "../maplayers/wildfires.js";
 import { applyLayerOrder, DEFAULT_LAYER_ORDER } from "../maplayers/layer_utils.js";
 
 class Layers {
@@ -29,6 +30,7 @@ class Layers {
         this.spotterNetworkPositionHovered = false;  // Flag set when hovering over Spotter position marker
         this.metarStationHovered = false; // Flag set when hovering over METAR station marker
         this.nwsStormReportHovered = false; // Flag set when hovering over NWS storm report marker
+        this.wildfireHovered = false; // Flag set when hovering over wildfire marker
 
         // Initialize AlertService
         this.alertService = new AlertService();
@@ -44,6 +46,7 @@ class Layers {
         this.spotterNetworkPositionsLayer = new SpotterNetworkPositionsLayer(mapInstance);
         this.metarStationsLayer = new MetarStationsLayer(mapInstance);
         this.nwsStormReportsLayer = new NWSStormReportsLayer(mapInstance);
+        this.wildfiresLayer = new WildfiresLayer(mapInstance);
 
         // Layer ordering — load from localStorage or use default
         try {
@@ -117,6 +120,10 @@ class Layers {
 
             if (settings.metarStationsEnabled) {
                 this.fetchMetarStations();
+            }
+
+            if (settings.wildfiresEnabled) {
+                this.fetchWildfires();
             }
 
             if (settings.nwsTornadoReportsEnabled || settings.nwsWindReportsEnabled || settings.nwsHailReportsEnabled) {
@@ -271,7 +278,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.map?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
                 return;
             }
             
@@ -319,7 +326,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.dualMap?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
                 return;
             }
             
@@ -562,6 +569,10 @@ class Layers {
         return this.nwsStormReportsLayer.getNwsStormReports();
     }
 
+    get wildfires() {
+        return this.wildfiresLayer.getWildfires();
+    }
+
     /**
      * Get current outlook day
      */
@@ -684,7 +695,7 @@ class Layers {
                 return [];
             }
         } catch (error) {
-            console.error('[Layers] Error fetching mesoscale discussions:', error);
+            console.warn('[Layers] Error fetching mesoscale discussions:', error);
             this.mdLayer.setMesoscaleDiscussions([]);
             this._setLayerCache('mesoscaleDiscussions', []);
             this.displayMesoscaleDiscussions();
@@ -809,6 +820,13 @@ class Layers {
         }
     }
 
+    displayWildfires() {
+        this.displayWildfiresOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayWildfiresOnMap('dual');
+        }
+    }
+
     displayAlertsOnMap(target = 'main') {
         this.alertLayer.displayAlertsOnMap(target);
     }
@@ -847,6 +865,10 @@ class Layers {
 
     displayNwsStormReportsOnMap(target = 'main') {
         this.nwsStormReportsLayer.displayNwsStormReportsOnMap(target);
+    }
+
+    displayWildfiresOnMap(target = 'main') {
+        this.wildfiresLayer.displayWildfiresOnMap(target);
     }
 
     // Display on dual map methods
@@ -890,6 +912,10 @@ class Layers {
         this.displayNwsStormReportsOnMap('dual');
     }
 
+    displayWildfiresOnDualMap() {
+        this.displayWildfiresOnMap('dual');
+    }
+
     // Clear methods - delegate to layer classes
     clearAlerts(target = 'main') {
         this.alertLayer.clearAlerts(target);
@@ -929,6 +955,10 @@ class Layers {
 
     clearNwsStormReports(target = 'main') {
         this.nwsStormReportsLayer.clearNwsStormReports(target);
+    }
+
+    clearWildfires(target = 'main') {
+        this.wildfiresLayer.clearWildfires(target);
     }
 
     // Outlook methods - delegate to OutlookLayer
@@ -984,6 +1014,13 @@ class Layers {
         const result = await this.nwsStormReportsLayer.fetchNwsStormReports();
         this._setLayerCache('nwsStormReports', result);
         this.displayNwsStormReports();
+        return result;
+    }
+
+    async fetchWildfires() {
+        const result = await this.wildfiresLayer.fetchWildfires();
+        this._setLayerCache('wildfires', result);
+        this.displayWildfires();
         return result;
     }
 

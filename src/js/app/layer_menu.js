@@ -173,20 +173,20 @@ menu.innerHTML = `
         </div>
         <div class="layer-menu-section">
             <div class="layer-menu-item">
+                <h3>Wildfires</h3>
+                <p class="tag new">NEW</p>
+            </div>
+            <div class="layer-menu-item">
+                <input type="checkbox" id="toggle-wildfires-layer" class="switch">
+            </div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item">
                 <h3>Hurricanes</h3>
                 <p class="tag inprogress">WIP</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-hurricanes-layer" class="switch">
-            </div>
-        </div>
-        <div class="layer-menu-section">
-            <div class="layer-menu-item">
-                <h3>Wildfires</h3>
-                <p class="tag inprogress">WIP</p>
-            </div>
-            <div class="layer-menu-item">
-                <input type="checkbox" id="toggle-wildfires-layer" class="switch">
             </div>
         </div>
     </div>
@@ -369,6 +369,7 @@ function initializeLayerToggles(mapInstance) {
                 nwsHailReportsEnabled: settings.nwsHailReportsEnabled !== undefined ? settings.nwsHailReportsEnabled : false,
                 spotterNetworkPositionsEnabled: settings.spotterNetworkPositionsEnabled !== undefined ? settings.spotterNetworkPositionsEnabled : false,
                 metarStationsEnabled: settings.metarStationsEnabled !== undefined ? settings.metarStationsEnabled : false,
+                wildfiresEnabled: settings.wildfiresEnabled !== undefined ? settings.wildfiresEnabled : false,
                 outlookDay: settings.outlookDay || getFirstEnabledOutlookDay(outlookProducts) || null,
                 outlookProducts,
             };
@@ -386,6 +387,7 @@ function initializeLayerToggles(mapInstance) {
                 nwsHailReportsEnabled: false,
                 spotterNetworkPositionsEnabled: false,
                 metarStationsEnabled: false,
+                wildfiresEnabled: false,
                 outlookDay: null,
                 outlookProducts: normalizeOutlookProducts(null, null),
             };
@@ -443,6 +445,7 @@ function initializeLayerToggles(mapInstance) {
     const nwsHailReportsCheckbox = document.getElementById('toggle-nws-hail-reports-layer');
     const spotterNetworkPositionsCheckbox = document.getElementById('toggle-spotter-network-positions-layer');
     const metarsCheckbox = document.getElementById('toggle-metars-layer');
+    const wildfiresCheckbox = document.getElementById('toggle-wildfires-layer');
     const connectionStatusElement = document.getElementById('alerts-connection-status');
     
     // Set initial checkbox states
@@ -498,6 +501,9 @@ function initializeLayerToggles(mapInstance) {
     }
     if (metarsCheckbox) {
         metarsCheckbox.checked = settings.metarStationsEnabled;
+    }
+    if (wildfiresCheckbox) {
+        wildfiresCheckbox.checked = settings.wildfiresEnabled;
     }
 
     // Initialize storm center enabled types based on saved settings
@@ -872,6 +878,26 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    if (wildfiresCheckbox) {
+        wildfiresCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings.wildfiresEnabled = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            if (isChecked) {
+                mapInstance.layers.displayWildfires();
+                mapInstance.layers.fetchWildfires();
+            } else {
+                mapInstance.layers.displayWildfires();
+            }
+        });
+    }
+
     // Fetch alerts/watches if they're enabled, but wait for radar to load first
     // Check actual checkbox state at fetch time, not initial settings
     setTimeout(() => {
@@ -905,6 +931,9 @@ function initializeLayerToggles(mapInstance) {
         if (metarsCheckbox && metarsCheckbox.checked) {
             mapInstance.layers.fetchMetarStations();
         }
+        if (wildfiresCheckbox && wildfiresCheckbox.checked) {
+            mapInstance.layers.fetchWildfires();
+        }
     }, 5000);
 }
 
@@ -929,6 +958,7 @@ function renderOrderPanel(panel, mapInstance) {
         'metarStations': { type: 'icon' , value: 'ti ti-temperature' },
         'surfaceAnalysis': { type: 'icon' , value: 'ti ti-wind' },
         'outlook': { type: 'icon' , value: 'ti ti-calendar-event' },
+        'wildfires': { type: 'icon' , value: 'ti ti-flame' },
     };
 
     order.forEach((key, index) => {

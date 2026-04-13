@@ -21,6 +21,7 @@ import CrossSection from './cross_section.js';
 import { parseRgb, lerp, lerpColor, colorForValue, pointInRing, findValueAtPointInMesh } from './mesh.js';
 import { buildMapLayerVisibilityObjects } from '../maplayers/layer_utils.js';
 import WmsSatelliteLayer from '../maplayers/wms_satellite.js';
+import { getCurrentSetting } from './settings/setting_utils.js';
 
 const GOES_WEST_WMS_URL = 'https://mesonet.agron.iastate.edu/cgi-bin/wms/goes_west.cgi?';
 const GOES_EAST_WMS_URL = 'https://mesonet.agron.iastate.edu/cgi-bin/wms/goes_east.cgi?';
@@ -100,15 +101,9 @@ class Map {
         this.rightClickHandler = new RightClickHandler(this);
 
         // Reflectivity gate filter (for filtering out weak reflectivity values)
-        // Initialize from localStorage if available, otherwise use default
-        try {
-            const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-            this.reflectivityGateFilter = settings.reflectivityGateFilter ?? -10;
-            this.enableSplitCursorMarker = settings.enableSplitCursorMarker ?? true;
-        } catch {
-            this.reflectivityGateFilter = -10;
-            this.enableSplitCursorMarker = true;
-        }
+        const gateFilter = Number(getCurrentSetting('reflectivityGateFilter', -10));
+        this.reflectivityGateFilter = Number.isFinite(gateFilter) ? gateFilter : -10;
+        this.enableSplitCursorMarker = getCurrentSetting('enableSplitCursorMarker', true) !== false;
 
         // Listen for palette updates from settings
         document.addEventListener('paletteUpdated', (e) => {
@@ -146,9 +141,13 @@ class Map {
             if (key === 'mapLayerStyles') {
                 this.applyMapLayerStyles(value);
             }
+            if (key === 'mapBackgroundStyle') {
+                this.applyMapBackgroundStyle(value);
+            }
             if (key === 'all') {
                 this.applyMapLayerVisibility();
                 this.applyMapLayerStyles();
+                this.applyMapBackgroundStyle();
             }
         });
 
@@ -190,12 +189,10 @@ class Map {
             return visibilitySetting;
         }
 
-        try {
-            const stored = JSON.parse(localStorage.getItem('settings') || '{}');
-            return stored.mapLayerVisibility || {};
-        } catch {
-            return {};
-        }
+        const configuredVisibility = getCurrentSetting('mapLayerVisibility', {});
+        return configuredVisibility && typeof configuredVisibility === 'object'
+            ? configuredVisibility
+            : {};
     }
 
     _applyMapLayerVisibilityToMap(mapInstance, target, visibilitySetting) {
@@ -237,24 +234,21 @@ class Map {
             return styleSetting;
         }
 
-        try {
-            const stored = JSON.parse(localStorage.getItem('settings') || '{}');
-            const mapLayerStyles = stored.mapLayerStyles && typeof stored.mapLayerStyles === 'object'
-                ? stored.mapLayerStyles
-                : {};
+        const configuredStyles = getCurrentSetting('mapLayerStyles', {});
+        const mapLayerStyles = configuredStyles && typeof configuredStyles === 'object'
+            ? { ...configuredStyles }
+            : {};
 
-            // Backward compatibility for older saved settings.
-            if (typeof stored.mapLandFillColor === 'string' && stored.mapLandFillColor) {
-                mapLayerStyles['group:land'] = {
-                    ...(mapLayerStyles['group:land'] || {}),
-                    fill: stored.mapLandFillColor
-                };
-            }
-
-            return mapLayerStyles;
-        } catch {
-            return {};
+        // Backward compatibility for older saved settings.
+        const mapLandFillColor = getCurrentSetting('mapLandFillColor', null);
+        if (typeof mapLandFillColor === 'string' && mapLandFillColor) {
+            mapLayerStyles['group:land'] = {
+                ...(mapLayerStyles['group:land'] || {}),
+                fill: mapLandFillColor
+            };
         }
+
+        return mapLayerStyles;
     }
 
     _applyMapLayerStyleProperty(mapInstance, layer, property, value) {
@@ -1047,7 +1041,7 @@ class Map {
         } else {
             try { this.radarPicker.destroy(); } catch {}
             try { this.splitRadarPicker.destroy(); } catch {}
-            this.splitRadarPicker = new RadarPicker('N0G', ['calc(45% + 10px)', '10px', null, null], (product, tiltIndex) => {
+            this.splitRadarPicker = new RadarPicker('N0G', ['calc(45% + 30px)', '10px', null, null], (product, tiltIndex) => {
                 this._handleSplitPickerSelection(product, tiltIndex);
             }, false);
             this.radarPicker = new RadarPicker('N0B', ['10px', '10px', null, null], (product, tiltIndex) => {

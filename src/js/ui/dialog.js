@@ -14,6 +14,11 @@ class Dialog {
         this.dialog = document.createElement('div');
         this.dialog.id = `dialog-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // Unique ID
         this.dialog.style.overflow = 'hidden'; // Prevent scrollbars on the dialog itself
+        this.dialog.style.display = 'flex';
+        this.dialog.style.flexDirection = 'column';
+        this.dialog.style.boxSizing = 'border-box';
+        this.dialog.style.width = 'calc(100% - 20px)';
+        this.dialog.style.height = 'calc(100% - 90px)';
         this.dialog.classList.add('menu'); // Use menu styling
         this.dialog.classList.add('menu-hidden'); // Use same transition as menu
 
@@ -22,6 +27,7 @@ class Dialog {
         header.style.display = 'flex';
         header.style.justifyContent = 'space-between';
         header.style.alignItems = 'center';
+        header.style.flexShrink = '0';
         header.style.marginBottom = '20px';
 
         const logo = document.createElement('i');
@@ -48,9 +54,11 @@ class Dialog {
         this.content = document.createElement('div');
         this.content.id = 'dialog-content';
         this.content.innerHTML = htmlContent;
+        this.content.style.flex = '1 1 auto';
+        this.content.style.minHeight = '0';
+        this.content.style.overflowX = 'hidden';
         if (scrollable) {
             this.content.style.overflowY = 'auto';
-            this.content.style.maxHeight = 'calc(100% - 50px)';
         } else {
             this.content.style.overflowY = 'hidden';
         }
@@ -68,6 +76,10 @@ class Dialog {
             }
         };
         document.addEventListener('keydown', this.escListener);
+    }
+
+    getContentElement() {
+        return this.content;
     }
 
     close() {

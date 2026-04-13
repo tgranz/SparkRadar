@@ -25,7 +25,7 @@ export default class RadarStatus extends Dialog {
             <br>
         `;
 
-        this.dialog.appendChild(infoDiv);
+        this.getContentElement().appendChild(infoDiv);
 
         const content = document.createElement('div');
         content.classList.add('radar-status-content');
@@ -33,7 +33,7 @@ export default class RadarStatus extends Dialog {
             <p>Loading radar status...</p>
         `;
 
-        this.dialog.appendChild(content);
+        this.getContentElement().appendChild(content);
 
         // Fetch and display radar status
         this._fetchRadarStatus();

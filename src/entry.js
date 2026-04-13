@@ -15,6 +15,7 @@ import Inspector from "./js/ui/inspector.js";
 import Measure from "./js/app/measure.js";
 import Palettes from './js/main/palettes.js';
 import Finder from './js/app/finder.js';
+import { checkVersion, buildLatestChangeElement } from './js/app/changelog.js';
 import AnimationController from './js/app/radar_animation.js';
 import { openRadarFileUploadDialog } from './js/app/radar_file_upload.js';
 import SpotterNetwork from './js/main/spotter_network.js';
@@ -41,13 +42,13 @@ import {
 } from './js/utils/entryutils.js';
 
 // Start instances
+window.settingsInstance = new Settings();
 const locationServices = new LocationServices({
-  enabled: window.settingsInstance?.getSetting('enableLocation') !== false,
+  enabled: window.settingsInstance.getSetting('enableLocation', true) !== false,
 });
 const globalPalettes = new Palettes();
 
 // Expose instances to global scope
-window.settingsInstance = new Settings();
 window.locationServices = locationServices;
 window.globalPalettes = globalPalettes;
 window.appmode = window.appmode === 'satellite' ? 'satellite' : 'radar';
@@ -112,6 +113,35 @@ const updateCrossSectionButtonState = (product) => {
   button.title = supported
     ? 'Cross-section view'
     : 'Cross-section unavailable for this product';
+};
+
+const updateAnimationButtonState = (product = null) => {
+  const activeProduct = product || mainRadar?.product;
+  const isL2Product = inferLevelFromProduct(activeProduct) === 'L2';
+  const isCrossSectionEnabled = Boolean(map?.crossSection?.enabled);
+  const shouldDisable = isL2Product || isCrossSectionEnabled;
+
+  if (typeof window.setToolEnabled === 'function') {
+    window.setToolEnabled('animation-button', !shouldDisable);
+  } else {
+    const button = document.getElementById('animation-button');
+    if (button) {
+      button.disabled = shouldDisable;
+      button.setAttribute('aria-disabled', String(shouldDisable));
+      button.style.color = shouldDisable ? 'gray' : '';
+      button.style.pointerEvents = shouldDisable ? 'none' : '';
+    }
+  }
+
+  const button = document.getElementById('animation-button');
+  if (!button) return;
+  if (isCrossSectionEnabled) {
+    button.title = 'Animation unavailable in cross-section mode';
+  } else if (isL2Product) {
+    button.title = 'Animation unavailable for Level II products';
+  } else {
+    button.title = 'Animate past scans';
+  }
 };
 
 const setToolbarButtonState = (buttonId, disabled, title) => {
@@ -248,8 +278,10 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
         const level = inferLevelFromProduct(product);
         mainRadar = { station, product, level, options };
       updateCrossSectionButtonState(product);
+      updateAnimationButtonState(product);
         if (!isCrossSectionProductSupported(product) && map?.crossSection?.enabled) {
           map.disableCrossSection();
+          updateAnimationButtonState(product);
         }
         // Track the current main station
         map.currentMainStation = station;
@@ -457,6 +489,7 @@ const toggleCrossSectionView = () => {
 
   if (map.crossSection?.enabled) {
     map.disableCrossSection();
+    updateAnimationButtonState(mainRadar.product);
     return;
   }
 
@@ -464,11 +497,13 @@ const toggleCrossSectionView = () => {
     map.stopSplit();
     requestAnimationFrame(() => {
       map.enableCrossSection(mainRadar.station, mainRadar.product);
+      updateAnimationButtonState(mainRadar.product);
     });
     return;
   }
 
   map.enableCrossSection(mainRadar.station, mainRadar.product);
+  updateAnimationButtonState(mainRadar.product);
 };
 
 const toggleSplitMap = () => {
@@ -630,6 +665,7 @@ const toolbar = createToolbar(
 // Add the toolbar to the page
 document.body.appendChild(toolbar);
 updateCrossSectionButtonState(mainRadar.product);
+updateAnimationButtonState(mainRadar.product);
 
 // Function to load radar from archive URL and disable auto-updates
 window.loadRadarFromArchive = async function(url, station) {
@@ -967,19 +1003,27 @@ window.isAutoUpdateEnabled = function() {
 
 // Show welcome dialog if first time
 if (localStorage.getItem('firstUse') !== 'true') {
-  const welcomeDialog = new Dialog('Welcome to SparkRadar.app', 'bolt', 
+  const welcomeDialog = new Dialog('Welcome to SparkRadar', 'bolt', 
   `<h2 style="margin-bottom: 10px; text-align: left;">Welcome to SparkRadar!</h2>
-  <p style="margin-bottom: 10px;">Looking for the old version? It has become <a href="https://lite.sparkradar.app" target="_blank">SparkRadar Lite</a>.</p>
-  <p style="margin-bottom: 10px; font-weight: bold;">Please note that the new SparkRadar is still in active development. THIS IS NOT THE FINAL PRODUCT!!! You may report any bugs or feature requests on the <a href="https://github.com/tgranz/sparkradar" target="_blank">GitHub</a>.</p>
-  <p>The new SparkRadar brings more features than ever, including:</p>
+  <p>SparkRadar brings all the tools and features necessary for you to track severe weather in one place, including:</p>
   <ul class="welcomeul" style="text-align: left; margin-left: 20px;">
     <li>Split screen view</li>
-    <li>Highest resolution Level-II and Level-III radar products.</li>
-    <li>Instant weather alerts and weather watches.</li>
-    <li>More radar products including Correlation Coefficient, Spectrum Width, and more.</li>
+    <li>Highest resolution real-time radar products, as well as support to view archived L3 files, L2 files, and L2 chunks.</li>
+    <li>Instant weather alerts, watches, and mesoscale discussions.</li>
+    <li>Lightning and storm centers.</li>
+    <li>Spotter Network integration as well as storm reports from the SPC and Spotter Network.</li>
+    <li>The <b>best</b> and <b>simplest</b> interface of any radar application. Easy for beginners and beautiful for pros!</li>
+    <li>And so much more!</li>
   </ul>
-  <p style="margin-bottom: 10px;">As always, SparkRadar is completely free with no subscriptions, ads, or intrusive trackers.</p>
-  <p>YOU make SparkRadar possible! If SparkRadar has helped you, consider covering domain costs by <a href="https://www.buymeacoffee.com/tgranz" target="_blank">supporting my work</a>. Thank you!</p>
-  `);
+
+  <p style="margin-bottom: 10px;">SparkRadar will <b>NEVER</b> have subscriptions, paywalls, ads, or trackers.</p>
+  <p>YOU make SparkRadar possible! If SparkRadar has helped you, help to spread the word about SparkRadar or consider helping to cover domain costs by <a href="https://www.buymeacoffee.com/tgranz" target="_blank">supporting my work</a>. Thank you!</p>
+
+  <h3 style="margin-top: 20px; margin-bottom: 10px; text-align: left; width: 100%;">Changes in the latest update:</h3>
+  ${buildLatestChangeElement()}
+  `, {}, true);
   localStorage.setItem('firstUse', 'true');
 }
+
+// Check if the user is using the new version for the first time
+checkVersion();

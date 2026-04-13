@@ -20,7 +20,8 @@ class AlertService {
         this.sseReconnectAttempts = 0;
         this.sseMaxReconnectAttempts = 5;
         this.sseReconnectDelay = 3000; // 3 seconds
-        this.shouldLogSseConnection = true;
+        // Do not log SSE connection in development, only use for analytics in production
+        this.shouldLogSseConnection = (String(window.location).includes('localhost') || String(window.location).includes('192.168.')) ? false : true;
 
         // Polling tracking
         this.alertPollingInterval = null;
@@ -76,7 +77,10 @@ class AlertService {
         const streamUrl = new URL(`${API_BASE_URL}/subscribe`);
         const includeSseLogParam = this.shouldLogSseConnection;
         if (includeSseLogParam) {
+            console.log('[AlertService] Enabled logging for analytics in production.');
             streamUrl.searchParams.set('log', 'true');
+        } else {
+            console.log('[AlertService] Disabled logging for analytics in development.');
         }
         this.eventSource = new EventSource(streamUrl.toString());
 

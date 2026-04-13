@@ -277,18 +277,17 @@ select:hover {
 
 #anim-container {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
   position: fixed;
   bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 10px;
+  right: 10px;
   padding: 10px;
   border-radius: 10px;
   font-size: 1em;
   z-index: 1001;
-  min-width: 320px;
-  max-width: 400px;
+  width: auto;
+  max-width: 500px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--border-color);
   backdrop-filter: blur(20px);
@@ -298,7 +297,7 @@ select:hover {
 #anim-container.anim-hidden {
   opacity: 0;
   pointer-events: none;
-  transform: translateX(-50%) translateY(20px);
+  transform: translateY(20px);
 }
 
 .anim-top {
@@ -313,6 +312,9 @@ select:hover {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 14px;
 }
 
 .anim-controls button {
@@ -340,12 +342,48 @@ select:hover {
   cursor: pointer;
 }
 
+.anim-slider-wrapper {
+  flex: 1 1 auto;
+  min-width: 120px;
+  display: flex;
+  align-items: center;
+}
+
+#anim-container .anim-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(39, 190, 255, 0.85) 0%, rgba(42, 127, 255, 0.85) 100%);
+  border: 1px solid var(--border-color);
+  outline: none;
+}
+
+#anim-container .anim-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+
+#anim-container .anim-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+
 @media (max-width: 1000px) {
   #anim-container {
     left: 10px;
     right: 10px;
     transform: none;
-    min-width: unset;
     width: auto;
   }
   
@@ -360,6 +398,11 @@ select:hover {
   align-items: center;
   gap: 10px;
   flex-direction: row;
+  flex: 0 0 auto;
+}
+
+.anim-stop-button {
+  flex: 0 0 auto;
 }
 
 #dialog-title {
@@ -785,8 +828,8 @@ select:hover {
 
 .menu-activity-starter-item {
   width: auto;
-  min-width: 180px;
-  flex: 1 1 180px;
+  min-width: 150px;
+  flex: 1 1 150px;
   height: auto;
   padding: 10px 14px;
   border-radius: 10px;

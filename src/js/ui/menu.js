@@ -8,12 +8,12 @@ See LICENSE for more.
 */
 
 import about from '../app/about.js';
-import Settings from '../app/settings/settings.js';
 import debugConsole from '../app/debug_console.js';
 import version from '../../VERSION.js';
 import EmbedPlayer from '../app/activities/embed_player.js';
 import Glossary from '../app/activities/glossary.js';
 import NEXRADStatus from '../app/activities/nexradstatus.js';
+import { Changelog } from '../app/changelog.js';
 
 class Menu {
     // Constructor function
@@ -52,8 +52,9 @@ class Menu {
         const menuItems = [
             { label: 'Archive Browser (BETA)', icon: 'archive', onClick: () => { this.close(); setTimeout(() => { callbacks.onArchiveBrowser?.(); }, 250); } },
             { label: 'Upload Radar File', icon: 'upload', onClick: () => { this.close(); setTimeout(() => { callbacks.onRadarFileUpload?.(); }, 250); } },
-            { label: 'Settings', icon: 'settings', onClick: () => { this.close(); setTimeout(() => { new Settings().showSettingsMenu(); }, 250); } },
+            { label: 'Settings', icon: 'settings', onClick: () => { this.close(); setTimeout(() => { window.settingsInstance.showSettingsMenu(); }, 250); } },
             { label: 'About', icon: 'info-circle', onClick: () => { this.close(); setTimeout(() => { about(); }, 250); } },
+            { label: 'Changelog', icon: 'book', onClick: () => { this.close(); setTimeout(() => { new Changelog(); }, 250); } },
             { label: 'Help', icon: 'help-circle', onClick: () => { window.location = 'https://wiki.sparkradar.app/'; } },
         ];
 

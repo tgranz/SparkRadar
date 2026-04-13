@@ -287,7 +287,7 @@ class WatchLayer {
                 </div>
             </div>
 
-            ${watchNumber ? `<img src="https://www.spc.noaa.gov/products/watch/ww${watchNumber}_radar.gif?t=${Date.now()}" alt="SPC graphic" style="width: 100%; border-radius: 10px; margin: 0; height: auto;">` : ''}
+            ${watchNumber ? `<img src="https://www.spc.noaa.gov/products/watch/ww${watchNumber}_radar.gif?t=${Date.now()}" alt="SPC graphic unavailable at this time." style="width: 100%; border-radius: 10px; margin: 0; height: auto;">` : ''}
 
             ${preText ? `<div style="margin-top: 15px; margin-bottom: 15px;">
                 <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${preText}</p>

@@ -12,6 +12,7 @@ import { Level2Radar } from '../../parse/level2/src/index.js';
 import nexradLevel3Data from '../../parse/level3/src/browser.js';
 import RadarCache from './radar_cache.js';
 import ChunkLoader from '../../parse/chunkloader.js';
+import { getCurrentSetting } from '../app/settings/setting_utils.js';
 
 // Helper function to yield to the browser between processing iterations
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -55,16 +56,14 @@ class Radar {
 
         let savedCacheSlots = 6;
         let savedCacheSizeGB = 0;
-        try {
-            const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-            if (Number.isFinite(settings.cacheMaxSlots) && settings.cacheMaxSlots > 0) {
-                savedCacheSlots = settings.cacheMaxSlots;
-            }
-            if (Number.isFinite(settings.cacheMaxSizeGB) && settings.cacheMaxSizeGB >= 0) {
-                savedCacheSizeGB = settings.cacheMaxSizeGB;
-            }
-        } catch {
-            // Ignore malformed settings and keep defaults.
+        const configuredSlots = Number(getCurrentSetting('cacheMaxSlots', savedCacheSlots));
+        if (Number.isFinite(configuredSlots) && configuredSlots > 0) {
+            savedCacheSlots = configuredSlots;
+        }
+
+        const configuredSizeGb = Number(getCurrentSetting('cacheMaxSizeGB', savedCacheSizeGB));
+        if (Number.isFinite(configuredSizeGb) && configuredSizeGb >= 0) {
+            savedCacheSizeGB = configuredSizeGb;
         }
 
         this.cache = new RadarCache(savedCacheSlots, savedCacheSizeGB);

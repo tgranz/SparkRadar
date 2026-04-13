@@ -1,30 +1,33 @@
-/*
-
-Module to fetch the latest radar binary for the given station from the
-official Unidata AWS S3 bucket.
-
-Most of this file was written by ChatGPT.
-
-*/
-
 import { Buffer } from 'buffer';
 
 // Constants
-const BUCKET_URL = "https://unidata-nexrad-level2-chunks.s3.amazonaws.com";
+const BUCKET_URL = "https://unidata-nexrad-level2.s3.amazonaws.com";
 const LEVEL3_BUCKET_URL = "https://unidata-nexrad-level3.s3.amazonaws.com";
 const FETCH_TIMEOUT_MS = 8000;
-const LIST_CACHE_TTL_MS = 30000;
-const LATEST_CACHE_TTL_MS = 30000;
+// Increase TTLs to reduce repeated list requests
+const LIST_CACHE_TTL_MS = 10000; // 5 minutes
+const LATEST_CACHE_TTL_MS = 10000; // 5 minutes
+// Cached downloaded file max age to be considered 'instant'
+const L2_FILE_CACHE_MAX_AGE_MS = 8000; // 5 minutes
 let STATION = "";
 
 const listKeysCache = new Map();
 const latestUrlCache = new Map();
 
+function _debugLog(name, elapsedMs) {
+    if (typeof window !== 'undefined' && window.__SPARKRADAR_DEBUG__) {
+        console.log(`[SparkRadar DEBUG] ${name} took ${elapsedMs.toFixed(1)}ms`);
+    }
+}
+
 async function fetchUrl(url) {
+    const start = performance.now();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
     clearTimeout(timeoutId);
+    const elapsed = performance.now() - start;
+    _debugLog(`fetchUrl ${url}`, elapsed);
     if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
     }
@@ -32,14 +35,58 @@ async function fetchUrl(url) {
 }
 
 async function downloadFile(url) {
+    const start = performance.now();
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const response = await fetch(url, { cache: 'no-cache', signal: controller.signal });
+    // Prefer the browser HTTP cache where available to speed up repeated downloads
+    const response = await fetch(url, { cache: 'force-cache', signal: controller.signal });
     clearTimeout(timeoutId);
+    const elapsed = performance.now() - start;
+    _debugLog(`downloadFile ${url}`, elapsed);
     if (!response.ok) {
         throw new Error(`Download failed: ${response.status}`);
     }
     return response.arrayBuffer();
+}
+
+// Simple IndexedDB helper to cache latest L2 file per station
+function openIdb() {
+    return new Promise((resolve, reject) => {
+        if (typeof indexedDB === 'undefined') return resolve(null);
+        const req = indexedDB.open('sparkradar-cache', 1);
+        req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('l2files')) {
+                db.createObjectStore('l2files');
+            }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+    });
+}
+
+async function idbGet(key) {
+    const db = await openIdb();
+    if (!db) return null;
+    return new Promise((resolve) => {
+        const tx = db.transaction('l2files', 'readonly');
+        const store = tx.objectStore('l2files');
+        const r = store.get(key);
+        r.onsuccess = () => resolve(r.result ?? null);
+        r.onerror = () => resolve(null);
+    });
+}
+
+async function idbSet(key, value) {
+    const db = await openIdb();
+    if (!db) return false;
+    return new Promise((resolve) => {
+        const tx = db.transaction('l2files', 'readwrite');
+        const store = tx.objectStore('l2files');
+        const r = store.put(value, key);
+        r.onsuccess = () => resolve(true);
+        r.onerror = () => resolve(false);
+    });
 }
 
 function getDatePrefix(date) {
@@ -71,8 +118,8 @@ function parseNextContinuationToken(xml) {
 function normalizeLevel3Product(product) {
     if (!product) return product;
     const upper = product.toUpperCase();
-    // REF translates to N0R
-    if (upper === 'REF') return 'N0Z';
+    // REF (reflectivity) maps to N0B in Level 3 naming
+    if (upper === 'REF') return 'N0B';
     return upper;
 }
 
@@ -104,6 +151,8 @@ async function getLatestFileUrl(level, product = null) {
         return cached.url;
     }
 
+    const start = performance.now();
+
     if (level == 2) {
         const now = new Date();
         for (let i = 0; i < 5; i++) {
@@ -120,18 +169,30 @@ async function getLatestFileUrl(level, product = null) {
                 return latestUrl;
             }
         }
+        const elapsed = performance.now() - start;
+        _debugLog(`getLatestFileUrl level2`, elapsed);
         throw new Error(`No radar files found in last 5 days.`);
     } else if (level == 3) {
         // Level 3 bucket has flat file structure: SSS_PPP_YYYY_MM_DD_HH_MM_SS
-        // SSS = station without leading region prefix, PPP = product code
+        // SSS = station without leading continent letter (e.g., K or P), PPP = product code
         // Filter with ?list-type=2&prefix=SSS_PPP_YYYY_MM
-        // Remove leading region prefix (K for US, P for Alaska/Hawaii, etc.)
-        const stationCode = STATION.substring(1);
+        // Remove leading K or P from 4-letter ICAO station codes (e.g., KTLX -> TLX, PAHG -> AHG)
+        let stationCode = STATION;
+        if (typeof stationCode === 'string' && stationCode.length === 4) {
+            const first = stationCode.charAt(0).toUpperCase();
+            // If station looks like a 4-letter ICAO code (leading continent letter), strip the first letter
+            if (first >= 'A' && first <= 'Z') {
+                stationCode = stationCode.substring(1);
+            }
+        }
         
         // Build prefix to match station and product: "SSS_PPP_"
         const normalizedProduct = normalizeLevel3Product(product);
-        const prefixes = normalizedProduct
-            ? [`${stationCode}_${normalizedProduct}`]
+        // If the normalized product uses the display-style underscore (e.g., 'T_Z'),
+        // convert it to the actual Level-3 product prefix (e.g., 'TZ') for listing.
+        const productKey = normalizedProduct ? String(normalizedProduct).replace(/_/g, '') : null;
+        const prefixes = productKey
+            ? [`${stationCode}_${productKey}`]
             : [`${stationCode}`];
 
         const now = new Date();
@@ -158,22 +219,108 @@ async function getLatestFileUrl(level, product = null) {
             }
         }
 
+        // If we searched for a specific product and found nothing, try again without product
+        // — some stations (TDWR/T-prefix) use different product codes (e.g., TZ0) and the
+        // requested product (N0B) may not exist. Fall back to any product for the station.
+        if (normalizedProduct) {
+            const fallbackPrefixes = [`${stationCode}`];
+            const now2 = new Date();
+            for (let j = 0; j < 7; j += 1) {
+                const date = new Date(Date.UTC(now2.getUTCFullYear(), now2.getUTCMonth(), now2.getUTCDate()));
+                date.setUTCDate(date.getUTCDate() - j);
+                const yyyy = date.getUTCFullYear();
+                const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const dd = String(date.getUTCDate()).padStart(2, '0');
+
+                const datedPrefixes = fallbackPrefixes.map((prefix) => `${prefix}_${yyyy}_${mm}_${dd}`);
+                const keyLists = await Promise.all(
+                    datedPrefixes.map((datedPrefix) => listKeysForPrefix(datedPrefix, LEVEL3_BUCKET_URL))
+                );
+
+                for (const keys of keyLists) {
+                    if (keys.length > 0) {
+                        keys.sort();
+                        const latestKey = keys[keys.length - 1];
+                        const latestUrl = `${LEVEL3_BUCKET_URL}/${latestKey}`;
+                        latestUrlCache.set(cacheKey, { url: latestUrl, ts: Date.now() });
+                        return latestUrl;
+                    }
+                }
+            }
+        }
+
+        const elapsed = performance.now() - start;
+        _debugLog(`getLatestFileUrl level3`, elapsed);
         throw new Error(`No Level 3 radar files found for ${STATION}${product ? '/' + product : ''} in the last 30 days.`);
     } else {
+        const elapsed = performance.now() - start;
+        _debugLog(`getLatestFileUrl invalid`, elapsed);
         throw new Error(`Invalid level: ${level}`);
     }
 }
 
-async function loadLatestL2RadarFile(station) {
+async function loadLatestL2RadarFile(station, latestUrl = null) {
     STATION = station;
-    const latestUrl = await getLatestFileUrl(2);
-    const fileName = latestUrl.split('/').pop();
+    const cacheKey = `l2|${station}`;
+    try {
+        const cached = await idbGet(cacheKey);
+        if (cached && (Date.now() - (cached.ts || 0)) < L2_FILE_CACHE_MAX_AGE_MS) {
+            console.log(`Using cached L2 file for ${station}: ${cached.fileName}`);
+            return {
+                data: Buffer.from(cached.data),
+                fileName: cached.fileName,
+                url: cached.url
+            };
+        }
+    } catch (e) {
+        // ignore idb errors and fall back to network
+    }
+
+    // If latestUrl is provided, skip S3 listing and just download the file directly
+    if (latestUrl) {
+        const fileName = latestUrl.split('/').pop();
+        console.log(`Fetching latest radar file (URL provided): ${fileName}`);
+        const arrayBuffer = await downloadFile(latestUrl);
+        // Persist in IndexedDB for quick reloads
+        try {
+            await idbSet(cacheKey, {
+                ts: Date.now(),
+                fileName,
+                url: latestUrl,
+                data: new Uint8Array(arrayBuffer)
+            });
+        } catch (e) {
+            // ignore persistence errors
+        }
+        return {
+            data: Buffer.from(arrayBuffer),
+            fileName: fileName,
+            url: latestUrl
+        };
+    }
+
+    // Otherwise, perform S3 listing to get the latest file
+    let usedUrl = await getLatestFileUrl(2);
+    const fileName = usedUrl.split('/').pop();
     console.log(`Fetching latest radar file: ${fileName}`);
-    const arrayBuffer = await downloadFile(latestUrl);
+    const arrayBuffer = await downloadFile(usedUrl);
+
+    // Persist in IndexedDB for quick reloads
+    try {
+        await idbSet(cacheKey, {
+            ts: Date.now(),
+            fileName,
+            url: usedUrl,
+            data: new Uint8Array(arrayBuffer)
+        });
+    } catch (e) {
+        // ignore persistence errors
+    }
+
     return {
         data: Buffer.from(arrayBuffer),
         fileName: fileName,
-        url: latestUrl
+        url: usedUrl
     };
 }
 
@@ -194,7 +341,7 @@ async function checkLatestL2RadarFile(station) {
     STATION = station;
     try {
         const latestUrl = await getLatestFileUrl(2);
-        return latestUrl.split('/').pop();
+        return latestUrl; // return full URL to avoid extra list calls when downloading
     } catch (error) {
         return false;
     }
@@ -308,8 +455,16 @@ async function getPastScans(station, level, product = null, count = 10) {
         });
     } else if (level === 3) {
         // Level 3: Flat structure
-        const stationCode = station.startsWith('K') ? station.substring(1) : station;
+        // Remove a leading ICAO letter from 4-letter station codes (K, P, T, etc.)
+        let stationCode = station;
+        if (typeof stationCode === 'string' && stationCode.length === 4) {
+            const first = stationCode.charAt(0).toUpperCase();
+            if (first >= 'A' && first <= 'Z') {
+                stationCode = stationCode.substring(1);
+            }
+        }
         const normalizedProduct = normalizeLevel3Product(product);
+        const productKey = normalizedProduct ? String(normalizedProduct).replace(/_/g, '') : null;
         
         const now = new Date();
         const allKeys = [];
@@ -321,7 +476,7 @@ async function getPastScans(station, level, product = null, count = 10) {
             const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
             const dd = String(date.getUTCDate()).padStart(2, '0');
             
-            const prefix = `${stationCode}_${normalizedProduct}_${yyyy}_${mm}_${dd}`;
+            const prefix = productKey ? `${stationCode}_${productKey}_${yyyy}_${mm}_${dd}` : `${stationCode}_${yyyy}_${mm}_${dd}`;
             try {
                 const keys = await listKeysForPrefix(prefix, LEVEL3_BUCKET_URL);
                 allKeys.push(...keys);

@@ -1,4 +1,5 @@
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, getWeatherOutlineBeforeLayerId } from './layer_utils.js';
+import { getCurrentSetting } from '../app/settings/setting_utils.js';
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
@@ -266,12 +267,15 @@ class LightningLayer {
         this.data = null;
         this.syncPending = { main: false, dual: false };
         this.syncPendingSince = { main: 0, dual: 0 };
+        this.syncVersion = { main: 0, dual: 0 };
 
         // Listen for lightning settings changes
         this.settingsChangeListener = (event) => {
             const { key, value } = event.detail;
             if (key === 'lightningMarkerMode') {
                 console.log(`[LightningLayer] Settings changed: ${key} = ${value}`);
+                this.syncVersion.main += 1;
+                this.syncVersion.dual += 1;
                 this._scheduleLightningSync('main');
                 if (this.map?.isSplit()) {
                     this._scheduleLightningSync('dual');
@@ -299,14 +303,8 @@ class LightningLayer {
     }
 
     _getLightningMarkerMode() {
-        try {
-            const settings = JSON.parse(localStorage.getItem('settings') || '{}');
-            if (typeof settings.lightningMarkerMode === 'string') {
-                return settings.lightningMarkerMode;
-            }
-        } catch {
-        }
-        return DEFAULT_LIGHTNING_MARKER_MODE;
+        const markerMode = getCurrentSetting('lightningMarkerMode', DEFAULT_LIGHTNING_MARKER_MODE);
+        return typeof markerMode === 'string' ? markerMode : DEFAULT_LIGHTNING_MARKER_MODE;
     }
 
     _getSourceId(target) {
@@ -346,8 +344,8 @@ class LightningLayer {
         return ctx.getImageData(0, 0, width, height);
     }
 
-    async _ensureLightningMarkerImage(map) {
-        if (!this._usesImageMarker()) return Promise.resolve(false);
+    async _ensureLightningMarkerImage(map, shouldUseImage) {
+        if (!shouldUseImage) return Promise.resolve(false);
 
         try {
             if (map.hasImage(LIGHTNING_MARKER_IMAGE_ID)) {
@@ -447,6 +445,11 @@ class LightningLayer {
 
         const sourceId = this._getSourceId(target);
         const layerId = this._getLayerId(target);
+        const syncVersionAtStart = this.syncVersion[target];
+        const markerMode = this._getLightningMarkerMode();
+        const wantsImageMarker = markerMode === 'image';
+
+        console.log(`[LightningLayer] Syncing lightning to ${target} map with marker mode "${markerMode}"`);
 
         const now = Date.now();
         const maxAgeMs = DEFAULT_STRIKE_MAX_AGE_SECONDS * 1000;
@@ -463,7 +466,13 @@ class LightningLayer {
 
         const mapData = { type: 'FeatureCollection', features };
         const beforeLayerId = getWeatherOutlineBeforeLayerId(map, target);
-        const canUseImageMarker = await this._ensureLightningMarkerImage(map);
+        const canUseImageMarker = await this._ensureLightningMarkerImage(map, wantsImageMarker);
+
+        // Ignore stale async sync runs after settings changed again.
+        if (syncVersionAtStart !== this.syncVersion[target]) {
+            return;
+        }
+
         const markerStyle = canUseImageMarker ? 'image' : 'dot';
 
         if (!map.getSource(sourceId)) {
@@ -477,9 +486,10 @@ class LightningLayer {
 
         const existingLayer = map.getLayer(layerId);
         if (existingLayer) {
-            const existingIconImage = map.getLayoutProperty(layerId, 'icon-image');
-            const existingTextField = map.getLayoutProperty(layerId, 'text-field');
-            const isImageLayer = typeof existingIconImage === 'string' && existingIconImage === LIGHTNING_MARKER_IMAGE_ID;
+            const existingLayout = existingLayer.layout || {};
+            const existingIconImage = existingLayout['icon-image'];
+            const existingTextField = existingLayout['text-field'];
+            const isImageLayer = existingIconImage === LIGHTNING_MARKER_IMAGE_ID;
             const isDotLayer = typeof existingTextField === 'string' && existingTextField.length > 0;
 
             if ((markerStyle === 'image' && !isImageLayer) || (markerStyle === 'dot' && !isDotLayer)) {
@@ -547,6 +557,11 @@ class LightningLayer {
         if (!map) return;
 
         const sourceId = this._getSourceId(target);
+        const layerId = this._getLayerId(target);
+
+        if (map.getLayer(layerId)) {
+            map.removeLayer(layerId);
+        }
 
         if (map.getSource(sourceId)) {
             map.getSource(sourceId).setData(EMPTY_FEATURE_COLLECTION);

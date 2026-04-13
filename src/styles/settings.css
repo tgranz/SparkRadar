@@ -306,7 +306,8 @@
 
   .settings-nav.nav-open .settings-nav-list {
     display: block;
-    max-height: 100vh;
+    max-height: 50vh;
+    overflow-y: auto;
     padding-top: 0px;
   }
 
@@ -324,7 +325,12 @@
   .settings-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    padding: 0px;
+    padding-top: 20px;
+  }
+
+  .alert-setting-top-controls {
+    max-width: 100% !important;
   }
 }
 

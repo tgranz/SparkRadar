@@ -46,7 +46,7 @@
             <option value="windows">Windows</option>
           </select>
         </div>
-        <p class="settings-control-help">When an item is clicked from a popup, choose whether it appears in a movable, resizable window or a fixed dialog. Requires page refresh.</p>
+        <p class="settings-control-help">When an item is clicked from a popup, choose whether it appears in a movable, resizable window or a fixed dialog.</p>
       </div>
       <div class="settings-control">
         <div class="settings-control-header">
@@ -69,7 +69,7 @@
           <label for="enable-error-notifications">Show Error Notifications</label>
           <input type="checkbox" id="enable-error-notifications" name="enable-error-notifications" class="switch" data-setting="enableErrorNotifications">
         </div>
-        <p class="settings-control-help">Turn notifications for internal errors on or off. Changing requires page refresh.</p>
+        <p class="settings-control-help">Turn notifications for internal errors on or off.</p>
       </div>
       <h3 class="settings-subheader">Settings management</h3>
       <div class="settings-control">
@@ -159,7 +159,7 @@
             <option value="descriptive">Descriptive</option>
           </select>
         </div>
-        <p class="settings-control-help">Choose between concise ("VCP ##") or descriptive ("VCP ##: description"). Changing requires page refresh.</p>
+        <p class="settings-control-help">Choose between concise ("VCP ##") or descriptive ("VCP ##: description").</p>
       </div>
       <h3 class="settings-subheader">Lightning</h3>
       <div class="settings-control">
@@ -211,7 +211,6 @@
     <section class="settings-section" data-section="radar">
       <h2>Radar</h2>
       <h4 class="settings-hint">Customize the appearance and behavior of the radar layer.</h4>
-      <br>
       <h3 class="settings-subheader">General</h3>
       <div class="settings-control">
         <div class="settings-control-header">
@@ -221,15 +220,23 @@
         <input type="range" id="reflectivity-gate-filter" name="reflectivity-gate-filter" min="-30" max="50" step="0.5" value="-10" data-setting="reflectivityGateFilter">
         <p class="settings-control-help">Reflectivity gates ("pixels") with dBz values below this threshold will be hidden. Turn up to increase performance, or down to view more radar clutter.</p>
       </div>
+      <h3 class="settings-subheader">Animation</h3>
       <div class="settings-control">
         <div class="settings-control-header">
           <label for="animation-frame-count">Animation Frames</label>
           <span class="settings-control-value" data-for="animation-frame-count"></span>
         </div>
         <input type="range" id="animation-frame-count" name="animation-frame-count" min="3" max="40" step="1" value="15" data-fallback-max="40" data-setting="animationFrameCount">
-        <p class="settings-control-help">Animate this many frames in the animate tool. The maximum number of frames is limited to the cache slot limit below. SparkRadar recommends 6-12 frames. Reload the page for changes to take effect.</p>
+        <p class="settings-control-help">Animate this many frames in the animate tool. The maximum number of frames is limited to the cache slot limit below. SparkRadar recommends 6-12 frames.</p>
       </div>
-      <br>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="animation-speed">Animation Speed</label>
+          <span class="settings-control-value" data-for="animation-speed"></span>
+        </div>
+        <input type="range" id="animation-speed" name="animation-speed" min="0.1" max="2" step="0.1" value="0.5" data-setting="animationSpeed">
+        <p class="settings-control-help">Adjust the delay in seconds between frames in the animate tool. The smaller the value, the faster the animation.</p>
+      </div>
       <h3 class="settings-subheader">Customization</h3>
       <div class="settings-control palette-pickers">
         <div class="settings-control-header">
@@ -246,9 +253,10 @@
         <input type="button" id="color-palettes-srv" name="color-palettes-srv" value="Storm Relative Velocity" data-setting="uploadPaletteSRV">
         <input type="button" id="color-palettes-daa" name="color-palettes-daa" value="1-hr Precipitation Accumulation" data-setting="uploadPaletteDAA">
         <input type="button" id="color-palettes-dta" name="color-palettes-dta" value="Storm Total Accumulation" data-setting="uploadPaletteDTA">
-        <p class="settings-control-help">Palettes are .pal files that tell the radar how to color the radar mesh.</p>
+        <p class="settings-control-help">Palettes are .pal files that tell the radar how to color the radar mesh. You can
+          <a href="https://radarscope.zendesk.com/hc/en-us/articles/4642122920722-Creating-a-Custom-Color-Palette-for-RadarScope" target="_blank">create your own palettes</a>
+          or <a href="https://www.wxtools.org/" target="_blank">download some here</a>.</p>
       </div>
-      <br>
       <h3 class="settings-subheader">Radar Cache <i class="tag beta">ADVANCED</i></h3>
       <div class="settings-control">
         <div class="settings-control-header">

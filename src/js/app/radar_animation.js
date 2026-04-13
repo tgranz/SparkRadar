@@ -16,8 +16,36 @@ export default class AnimationController {
         this.currentProduct = null;
         this.currentLevel = null;
         this.mainOrSplit = 'main';
+        this.settingsChangeListener = null;
+
+        this._refreshFrameDelayFromSettings();
+        this._setupSettingsListener();
         
         this._createUI();
+    }
+
+    _setupSettingsListener() {
+        this.settingsChangeListener = (event) => {
+            const { key } = event?.detail || {};
+            if (key === 'animationSpeed' || key === 'all') {
+                this._refreshFrameDelayFromSettings();
+            }
+        };
+
+        document.addEventListener('settingsChanged', this.settingsChangeListener);
+    }
+
+    _getConfiguredFrameDelayMs() {
+        const settings = window.settingsInstance;
+        const speedSeconds = Number(settings?.getSetting('animationSpeed', 0.5));
+        const normalizedSeconds = Number.isFinite(speedSeconds)
+            ? Math.max(0.1, Math.min(2, speedSeconds))
+            : 0.5;
+        return Math.round(normalizedSeconds * 1000);
+    }
+
+    _refreshFrameDelayFromSettings() {
+        this.frameDelay = this._getConfiguredFrameDelayMs();
     }
     
     _createUI() {
@@ -26,31 +54,22 @@ export default class AnimationController {
         animationControllerDiv.classList.add('anim-hidden'); // Hidden by default
         document.body.appendChild(animationControllerDiv);
 
-        // Animation slider
-        this.animationSlider = document.createElement('input');
-        this.animationSlider.type = 'range';
-        this.animationSlider.min = '0';
-        this.animationSlider.max = '0';
-        this.animationSlider.value = '0';
-        this.animationSlider.addEventListener('input', () => this._onSliderChange());
-        animationControllerDiv.appendChild(this.animationSlider);
-
-        // Controls container
+        // Controls container (single-row layout)
         const controls = document.createElement('div');
         controls.classList.add('anim-controls');
         animationControllerDiv.appendChild(controls);
 
-        // Control functions wrapper
-        const wrapper = document.createElement('div');
-        wrapper.classList.add('anim-controls-wrapper');
-        controls.appendChild(wrapper);
+        // Left transport controls
+        const leftControls = document.createElement('div');
+        leftControls.classList.add('anim-controls-wrapper');
+        controls.appendChild(leftControls);
 
         // Previous frame button
         this.prevFrameButton = document.createElement('button');
         this.prevFrameButton.innerHTML = '<i class="ti ti-player-track-prev"></i>';
         this.prevFrameButton.title = 'Previous frame';
         this.prevFrameButton.addEventListener('click', () => this.stepBackward());
-        wrapper.appendChild(this.prevFrameButton);
+        leftControls.appendChild(this.prevFrameButton);
 
         // Play/Pause button
         this.playPauseButton = document.createElement('button');
@@ -63,17 +82,32 @@ export default class AnimationController {
                 this.togglePlayPause();
             }
         });
-        wrapper.appendChild(this.playPauseButton);
+        leftControls.appendChild(this.playPauseButton);
 
         // Next frame button
         this.nextFrameButton = document.createElement('button');
         this.nextFrameButton.innerHTML = '<i class="ti ti-player-track-next"></i>';
         this.nextFrameButton.title = 'Next frame';
         this.nextFrameButton.addEventListener('click', () => this.stepForward());
-        wrapper.appendChild(this.nextFrameButton);
+        leftControls.appendChild(this.nextFrameButton);
+
+        // Center slider
+        const sliderWrapper = document.createElement('div');
+        sliderWrapper.classList.add('anim-slider-wrapper');
+        controls.appendChild(sliderWrapper);
+
+        this.animationSlider = document.createElement('input');
+        this.animationSlider.type = 'range';
+        this.animationSlider.min = '0';
+        this.animationSlider.max = '0';
+        this.animationSlider.value = '0';
+        this.animationSlider.classList.add('anim-slider');
+        this.animationSlider.addEventListener('input', () => this._onSliderChange());
+        sliderWrapper.appendChild(this.animationSlider);
 
         // Close button
         const closeButton = document.createElement('button');
+        closeButton.classList.add('anim-stop-button');
         closeButton.innerHTML = '<i class="ti ti-x"></i>';
         closeButton.title = 'Exit animation mode';
         closeButton.addEventListener('click', () => this.stop());
@@ -96,6 +130,8 @@ export default class AnimationController {
     async start(station, product, level, mainOrSplit = 'main') {
         if (this.isLoading) return;
         showLoadingAnimation();
+
+        this._refreshFrameDelayFromSettings();
         
         this.currentStation = station;
         this.currentProduct = product;
@@ -135,7 +171,6 @@ export default class AnimationController {
             await this._loadFrame(this.currentFrameIndex);
             this._displayCurrentFrame();
             
-            new Toast(`Ready to animate.`).show();
             this.isLoading = false;
             hideLoadingAnimation();
             
@@ -291,6 +326,8 @@ export default class AnimationController {
 
     play() {
         if (this.isPlaying || this.frames.length === 0) return;
+
+        this._refreshFrameDelayFromSettings();
         
         this.isPlaying = true;
         this.playPauseButton.innerHTML = '<i class="ti ti-player-pause"></i>';

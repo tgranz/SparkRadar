@@ -993,7 +993,7 @@ function generateAlertSettings(settingsInstance, container) {
 
     const flashHelp = document.createElement('p');
     flashHelp.className = 'settings-control-help';
-    flashHelp.textContent = 'Flash new or updated alert polygons. Refresh the page for change to take effect.';
+    flashHelp.textContent = 'Flash new or updated alert polygons.';
     flashControl.appendChild(flashHelp);
 
     container.appendChild(flashControl);
@@ -1186,6 +1186,7 @@ export default class Settings {
             cacheMaxSlots: 24,
             cacheMaxSizeGB: 1,
             animationFrameCount: 6,
+            animationSpeed: 0.5,
             primaryColor: '#27beff',
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
@@ -1278,8 +1279,9 @@ export default class Settings {
         }
     }
 
-    getSetting(key) {
-        return this.settings[key];
+    getSetting(key, fallbackValue = undefined) {
+        const value = this.settings[key];
+        return typeof value === 'undefined' ? fallbackValue : value;
     }
 
     getMapTileSource() {
@@ -1397,10 +1399,16 @@ export default class Settings {
         const animationFrames = Number(this.settings.animationFrameCount);
         if (!Number.isFinite(animationFrames)) {
             this.settings.animationFrameCount = Math.min(15, effectiveMax);
-            return;
+        } else {
+            this.settings.animationFrameCount = Math.max(3, Math.min(effectiveMax, Math.round(animationFrames)));
         }
 
-        this.settings.animationFrameCount = Math.max(3, Math.min(effectiveMax, Math.round(animationFrames)));
+        const animationSpeed = Number(this.settings.animationSpeed);
+        if (!Number.isFinite(animationSpeed)) {
+            this.settings.animationSpeed = this.defaults.animationSpeed;
+        } else {
+            this.settings.animationSpeed = Math.max(0.1, Math.min(2, animationSpeed));
+        }
     }
 
     _withAlpha(hexColor, alpha) {

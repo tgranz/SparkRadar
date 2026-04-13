@@ -1,4 +1,5 @@
 import { buildAlertDefaults } from "../app/settings/settings.js";
+import { getCurrentSetting } from "../app/settings/setting_utils.js";
 
 
 export function getAlertSettings(alertName) {
@@ -7,20 +8,15 @@ export function getAlertSettings(alertName) {
         // e.g., "Severe Thunderstorm Warning" -> "alert_severe_thunderstorm_warning"
         const settingKey = `alert_${alertName.replace(/\s+/g, '_').toLowerCase()}`;
         
-        // Try to get from localStorage settings
-        const storedSettings = localStorage.getItem('settings');
-        if (storedSettings) {
-            const parsed = JSON.parse(storedSettings);
-            if (parsed[settingKey]) {
-                const value = parsed[settingKey];
-                if (value && typeof value === 'object') {
-                    if (!value.color && (value.fillColor || value.borderColor)) {
-                        value.color = value.fillColor || value.borderColor;
-                    }
-                    return value;
+        const configuredValue = getCurrentSetting(settingKey, null);
+        if (configuredValue) {
+            if (configuredValue && typeof configuredValue === 'object') {
+                if (!configuredValue.color && (configuredValue.fillColor || configuredValue.borderColor)) {
+                    configuredValue.color = configuredValue.fillColor || configuredValue.borderColor;
                 }
-                return parsed[settingKey];
+                return configuredValue;
             }
+            return configuredValue;
         }
 
         const defaults = buildAlertDefaults();
