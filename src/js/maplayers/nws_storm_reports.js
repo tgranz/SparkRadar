@@ -17,19 +17,19 @@ const REPORT_TYPES = {
         url: `https://www.spc.noaa.gov/climo/reports/${SPC_REPORT_DATE_TOKEN}_torn.csv`,
         iconId: 'nws-storm-report-tornado-icon',
         color: '#ff2121',
-        title: 'Tornado Report'
+        title: 'NWS Tornado Report'
     },
     wind: {
         url: `https://www.spc.noaa.gov/climo/reports/${SPC_REPORT_DATE_TOKEN}_wind.csv`,
         iconId: 'nws-storm-report-wind-icon',
         color: '#2a7fff',
-        title: 'Wind Report'
+        title: 'NWS Wind Report'
     },
     hail: {
         url: `https://www.spc.noaa.gov/climo/reports/${SPC_REPORT_DATE_TOKEN}_hail.csv`,
         iconId: 'nws-storm-report-hail-icon',
         color: '#00af00',
-        title: 'Hail Report'
+        title: 'NWS Hail Report'
     }
 };
 

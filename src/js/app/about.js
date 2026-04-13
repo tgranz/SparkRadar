@@ -291,7 +291,7 @@ export default function openAbout(target = 'general') {
 
     updateActiveUsers();
     updateAnalyticsChart();
-    const activeUsersInterval = setInterval(updateActiveUsers, 5000);
+    const activeUsersInterval = setInterval(updateActiveUsers, 3000);
 
     const originalClose = dialog.close.bind(dialog);
     dialog.close = () => {

@@ -2,7 +2,8 @@ import Modal from '../ui/modal.js';
 import WeatherInformation from '../main/weatherinformation.js';
 
 class RightClickHandler {
-	constructor(mapInstance) {
+	constructor(mapInstance, enabled = true) {
+		this.enabled = enabled;
 		this.longPressDelayMs = 550;
 		this.longPressMoveTolerancePx = 10;
 		this.menuCloseAnimationMs = 140;
@@ -183,6 +184,7 @@ class RightClickHandler {
 	}
 
 	_showForEvent(event, target) {
+		if (!this.enabled) return;
 		if (!event?.lngLat || !event?.point) {
 			return;
 		}

@@ -1,5 +1,31 @@
 const entries = [
     {
+        version : "1.5.1",
+        date: "April 13, 2026",
+        changes: [
+            {
+                text: "Spotter Network Reports (BETA): Toggle them on in the layer menu.",
+                type: "new"
+            },
+            {
+                text: "Fix mesoscale discussions occasionally not hiding when turned off.",
+                type: "bugfix"
+            },
+            {
+                text: "Make links not clickable in watch and mesoscale discussion dialogs.",
+                type: "bugfix"
+            },
+            {
+                text: "Add setting to enable/disable right-click menu on the map.",
+                type: "enhancement"
+            },
+            {
+                text: "Adjust tornado probability color scale in mesoscale discussions.",
+                type: "enhancement"
+            },
+        ]
+    },
+    {
         version : "1.5.0",
         date: "April 13, 2026",
         changes: [
@@ -88,7 +114,7 @@ const styling = `
     }
 
     .latest {
-        background-color: var(--primary-color);
+        background-color: #00af00;
         color: black;
         font-size: 0.75em;
         padding: 2px 6px;
@@ -129,7 +155,7 @@ export class Changelog extends Dialog {
         var isFirst = true;
         entries.forEach(entry => {
             html += `
-                <div class="changelog-entry">
+                <div class="changelog-entry" style="margin-bottom: 20px;">
                     <div class="changelog-header">
                         <h3>v${entry.version} ${isFirst ? '<span class="latest">Latest</span>' : ''}</h3>
                         <span class="changelog-date">${entry.date}</span>
@@ -171,7 +197,7 @@ export function buildLatestChangeElement() {
         ${styling}
         <div class="changelog-entry">
             <div class="changelog-header">
-                <h3>v${latestEntry.version} <span class="latest">Latest</span></h3>
+                <h3>v${latestEntry.version}></h3>
                 <span class="changelog-date">${latestEntry.date}</span>
             </div>
             <ul>

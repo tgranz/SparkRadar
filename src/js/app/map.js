@@ -98,7 +98,7 @@ class Map {
 
         // Radar station markers, handlers and timers
         this.radarStationsLayer = new RadarStationsLayer(this);
-        this.rightClickHandler = new RightClickHandler(this);
+        this.rightClickHandler = new RightClickHandler(this, getCurrentSetting('enableRightClickMenu', true) !== false);
 
         // Reflectivity gate filter (for filtering out weak reflectivity values)
         const gateFilter = Number(getCurrentSetting('reflectivityGateFilter', -10));
@@ -134,6 +134,14 @@ class Map {
             }
             if (key === 'enableSplitCursorMarker') {
                 this.enableSplitCursorMarker = value;
+            }
+            if (key === 'enableRightClickMenu') {
+                if (this.rightClickHandler) {
+                    this.rightClickHandler.enabled = value !== false;
+                    if (!this.rightClickHandler.enabled) {
+                        this.rightClickHandler.closeMenu();
+                    }
+                }
             }
             if (key === 'mapLayerVisibility') {
                 this.applyMapLayerVisibility(value);

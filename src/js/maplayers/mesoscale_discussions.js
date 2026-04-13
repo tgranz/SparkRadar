@@ -228,7 +228,7 @@ class MesoscaleDiscussionLayer {
 
                 const windColor = peakWind?.numeric != null ? severityColorScale[Math.min(Math.max(0, Math.floor((peakWind.numeric - 60) / 5)), severityColorScale.length - 1)] : null;
                 const hailColor = peakHail?.numeric != null ? severityColorScale[Math.min(Math.max(0, Math.floor((peakHail.numeric - 1.0) / 0.5)), severityColorScale.length - 1)] : null;
-                const tornadoColor = peakTornado?.numeric != null ? severityColorScale[Math.min(Math.max(0, Math.floor((peakTornado.numeric - 90) / 10)), severityColorScale.length - 1)] : null;
+                const tornadoColor = peakTornado?.numeric != null ? severityColorScale[Math.min(Math.max(0, Math.floor((peakTornado.numeric - 90) / 15)), severityColorScale.length - 1)] : null;
                 const watchProbColor = watchProb ? severityColorScale[Math.min(Math.round(parseFloat(watchProb) / 100 * 6), severityColorScale.length - 1)] : null;
 
                 const html = `
@@ -245,7 +245,7 @@ class MesoscaleDiscussionLayer {
                     }
 
                     ${preText ? `<div style="margin-bottom: 15px;">
-                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; font-size: 0.85em;">${preText}</p>
+                        <p style="margin: 0; white-space: pre-wrap; line-height: 1.5; font-family: 'Consolas', mono, monospace; background: black; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); overflow-wrap: break-word; pointer-events: none; font-size: 0.85em;">${preText}</p>
                         </div>` : ''}
                 `;
                 if (this._getAlertDetailsSurface() === 'windows') {

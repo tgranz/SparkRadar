@@ -17,6 +17,7 @@ import StormCentersLayer from "../maplayers/storm_centers.js";
 import SurfaceAnalysisLayer from "../maplayers/surface_analysis.js";
 import LightningLayer from "../maplayers/lightning.js";
 import SpotterNetworkPositionsLayer from "../maplayers/spotter_network_positions.js";
+import SpotterNetworkReportsLayer from "../maplayers/spotter_network_reports.js";
 import MetarStationsLayer from "../maplayers/metar_stations.js";
 import NWSStormReportsLayer from "../maplayers/nws_storm_reports.js";
 import WildfiresLayer from "../maplayers/wildfires.js";
@@ -28,6 +29,7 @@ class Layers {
         this.openPopup = null;  // Track currently open popup
         this.stormCenterHovered = false;  // Flag set when hovering over storm center marker
         this.spotterNetworkPositionHovered = false;  // Flag set when hovering over Spotter position marker
+        this.spotterNetworkReportHovered = false; // Flag set when hovering over Spotter report marker
         this.metarStationHovered = false; // Flag set when hovering over METAR station marker
         this.nwsStormReportHovered = false; // Flag set when hovering over NWS storm report marker
         this.wildfireHovered = false; // Flag set when hovering over wildfire marker
@@ -44,6 +46,7 @@ class Layers {
         this.surfaceAnalysisLayer = new SurfaceAnalysisLayer(mapInstance);
         this.lightningLayer = new LightningLayer(mapInstance);
         this.spotterNetworkPositionsLayer = new SpotterNetworkPositionsLayer(mapInstance);
+        this.spotterNetworkReportsLayer = new SpotterNetworkReportsLayer(mapInstance);
         this.metarStationsLayer = new MetarStationsLayer(mapInstance);
         this.nwsStormReportsLayer = new NWSStormReportsLayer(mapInstance);
         this.wildfiresLayer = new WildfiresLayer(mapInstance);
@@ -116,6 +119,10 @@ class Layers {
 
             if (settings.spotterNetworkPositionsEnabled) {
                 this.fetchSpotterNetworkPositions();
+            }
+
+            if (settings.spotterNetworkReportsEnabled) {
+                this.fetchSpotterNetworkReports();
             }
 
             if (settings.metarStationsEnabled) {
@@ -278,7 +285,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.map?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
                 return;
             }
             
@@ -326,7 +333,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.dualMap?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
                 return;
             }
             
@@ -559,6 +566,10 @@ class Layers {
      */
     get spotterNetworkPositions() {
         return this.spotterNetworkPositionsLayer.getSpotterNetworkPositions();
+    }
+
+    get spotterNetworkReports() {
+        return this.spotterNetworkReportsLayer.getSpotterNetworkReports();
     }
 
     get metarStations() {
@@ -806,6 +817,13 @@ class Layers {
         }
     }
 
+    displaySpotterNetworkReports() {
+        this.displaySpotterNetworkReportsOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displaySpotterNetworkReportsOnMap('dual');
+        }
+    }
+
     displayMetarStations() {
         this.displayMetarStationsOnMap('main');
         if (this.map?.isSplit()) {
@@ -859,6 +877,10 @@ class Layers {
         this.spotterNetworkPositionsLayer.displaySpotterNetworkPositionsOnMap(target);
     }
 
+    displaySpotterNetworkReportsOnMap(target = 'main') {
+        this.spotterNetworkReportsLayer.displaySpotterNetworkReportsOnMap(target);
+    }
+
     displayMetarStationsOnMap(target = 'main') {
         this.metarStationsLayer.displayMetarStationsOnMap(target);
     }
@@ -904,6 +926,10 @@ class Layers {
         this.displaySpotterNetworkPositionsOnMap('dual');
     }
 
+    displaySpotterNetworkReportsOnDualMap() {
+        this.displaySpotterNetworkReportsOnMap('dual');
+    }
+
     displayMetarStationsOnDualMap() {
         this.displayMetarStationsOnMap('dual');
     }
@@ -947,6 +973,10 @@ class Layers {
 
     clearSpotterNetworkPositions(target = 'main') {
         this.spotterNetworkPositionsLayer.clearSpotterNetworkPositions(target);
+    }
+
+    clearSpotterNetworkReports(target = 'main') {
+        this.spotterNetworkReportsLayer.clearSpotterNetworkReports(target);
     }
 
     clearMetarStations(target = 'main') {
@@ -1000,6 +1030,13 @@ class Layers {
         const result = await this.spotterNetworkPositionsLayer.fetchSpotterNetworkPositions();
         this._setLayerCache('spotterNetworkPositions', result);
         this.displaySpotterNetworkPositions();
+        return result;
+    }
+
+    async fetchSpotterNetworkReports() {
+        const result = await this.spotterNetworkReportsLayer.fetchSpotterNetworkReports();
+        this._setLayerCache('spotterNetworkReports', result);
+        this.displaySpotterNetworkReports();
         return result;
     }
 

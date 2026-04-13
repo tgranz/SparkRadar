@@ -1182,6 +1182,7 @@ export default class Settings {
             weatherDistanceUnit: 'MI',
             reflectivityGateFilter: -10,
             enableSplitCursorMarker: true,
+            enableRightClickMenu: true,
             vcpDisplayFormat: 'descriptive',
             cacheMaxSlots: 24,
             cacheMaxSizeGB: 1,

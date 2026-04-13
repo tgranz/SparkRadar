@@ -199,6 +199,7 @@ export function isRadarRelatedLayerId(layerId = '') {
         || layerId.startsWith('surface-analysis-')
         || layerId.startsWith('lightning-')
         || layerId.startsWith('spotter-network-position-')
+        || layerId.startsWith('spotter-network-report-')
         || layerId.startsWith('wildfire-')
         || layerId.startsWith('nws-storm-report-')
         || layerId.startsWith('metar-station-')
@@ -401,7 +402,7 @@ export function pointInPolygon(point, rings) {
 // ─── Layer Ordering ──────────────────────────────────────────────────────────
 
 export const DEFAULT_LAYER_ORDER = [
-    'signatures', 'labels', 'metarStations', 'nwsStormReports', 'wildfires', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
+    'signatures', 'labels', 'metarStations', 'nwsStormReports', 'spotterNetworkReports', 'wildfires', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
 ];
 
 export const LAYER_ORDER_LABELS = {
@@ -413,6 +414,7 @@ export const LAYER_ORDER_LABELS = {
     surfaceAnalysis:       'Surface Fronts',
     lightning:             'Lightning',
     spotterNetworkPositions:'Spotter Network Positions',
+    spotterNetworkReports: 'Spotter Network Reports',
     wildfires:             'Wildfires',
     nwsStormReports:       'NWS Storm Reports',
     metarStations:         'METAR Stations',
@@ -464,6 +466,7 @@ function _getGroupLayerIds(map, group, target) {
             case 'surfaceAnalysis':     return id.startsWith('surface-analysis-');
             case 'lightning':           return id.startsWith('lightning-');
             case 'spotterNetworkPositions': return id.startsWith('spotter-network-position-');
+            case 'spotterNetworkReports': return id.startsWith('spotter-network-report-');
             case 'wildfires':           return id.startsWith('wildfire-');
             case 'nwsStormReports':     return id.startsWith('nws-storm-report-');
             case 'metarStations':       return id.startsWith('metar-station-');

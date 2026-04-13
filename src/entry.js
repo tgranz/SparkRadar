@@ -914,10 +914,12 @@ updateIntervalId = setInterval(async () => {
       console.log("Running secondary updates...");
       map.updateRadarStations();
       map.fetchOutlooks();
-      map.fetchDiscussions();
 
       try {
         const layerSettings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+        if (layerSettings.mesoscaleDiscussionsEnabled === true) {
+          map.fetchDiscussions();
+        }
         if (layerSettings.lightningEnabled === true) {
           map.fetchLightning();
         }
