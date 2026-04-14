@@ -95,6 +95,7 @@ export default class Notification{
         // Play sound if provided from sound/{filename}
         if (this.soundFile) {
             this.audio = new Audio(`sound/${this.soundFile}`);
+            this.audio.volume = 0.5; // decrease volume
             this.audio.play().catch((err) => {
                 if (err.name === 'NotAllowedError') {
                     setTimeout(() => {

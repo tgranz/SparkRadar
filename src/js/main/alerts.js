@@ -101,7 +101,7 @@ class AlertService {
                 this.sseConnected = true;
                 this._updateConnectionStatus();
 
-                this._showAlertNotification(data);
+                this._showAlertNotification(data, true);
 
                 if (this.onNewAlert) {
                     this.onNewAlert(data);
@@ -109,7 +109,7 @@ class AlertService {
 
                 setTimeout(async () => {
                     await this.fetchAlerts();
-                }, 500);
+                }, 250);
             } catch (error) {
                 console.error('[AlertService] Error processing NEW event:', error);
             }
@@ -117,11 +117,16 @@ class AlertService {
 
         this.eventSource.addEventListener('UPDATE', async (e) => {
             try {
-                if (e?.data) {
-                    JSON.parse(e.data);
+                if (!e?.data) {
+                    return;
                 }
+
+                const data = this._normalizeAlert(JSON.parse(e.data));
                 this.sseConnected = true;
                 this._updateConnectionStatus();
+
+                this._showAlertNotification(data, false);
+
                 setTimeout(async () => {
                     await this.fetchAlerts();
                 }, 250);
@@ -409,10 +414,11 @@ class AlertService {
     /**
      * Shows a notification for a new alert
      * @param {Object} alertData - Alert data from SSE or API
+     * @param {boolean} isNew - Indicates if the alert is new or just an update
      */
-    _showAlertNotification(alertData) {
+    _showAlertNotification(alertData, isNew = true) {
         const rendered = renderAlert(alertData);
-                
+        
         // Don't send notifications for unknown alerts
         if (rendered.name === 'Unknown Alert') return;
 
@@ -457,15 +463,50 @@ class AlertService {
             onClick: () => this.onAlertNotificationViewProduct?.(alertData)
         });
 
-        new Notification(
-            "New Alert",
-            `A new ${rendered.name} has been issued.${meta ? `<br><br>${meta}` : ''}`,
-            rendered.notif.icon,
-            rendered.color,
-            8000,
-            actions,
-            rendered.notif.soundFile
-        );
+        if (isNew) {
+            new Notification(
+                "New Alert",
+                `A new ${rendered.name} has been issued.${meta ? `<br><br>${meta}` : ''}`,
+                rendered.notif.icon,
+                rendered.color,
+                8000,
+                actions,
+                rendered.notif.soundFile
+            );
+        } else {
+            const action = alertData.vtec?.actionCode || null;
+
+            if (action !== 'NEW' || action !== 'CAN' || action !== 'EXP' || action !== 'ROU ') {
+                let actionStr = '';
+                switch (action) {
+                    case 'CON':
+                    case 'EXA':
+                        actionStr = 'updated';
+                        break;
+                    case 'EXT':
+                        actionStr = 'extended';
+                        break;
+                    case 'UPG':
+                        actionStr = 'upgraded';
+                        break;
+                    case 'COR':
+                        actionStr = 'corrected';
+                        break;
+                    default:
+                        actionStr = 'updated';
+                }
+
+                new Notification(
+                    "Alert Update",
+                    `A ${rendered.name} has been ${actionStr}.${meta ? `<br><br>${meta}` : ''}`,
+                    rendered.notif.icon,
+                    rendered.color,
+                    8000,
+                    actions,
+                    rendered.notif.soundFile
+                );
+            }
+        }
     }
 
     _getAlertName(alertData) {

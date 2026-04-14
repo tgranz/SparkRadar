@@ -1,5 +1,19 @@
 const entries = [
     {
+        version : "1.5.2",
+        date: "April 14, 2026",
+        changes: [
+            {
+                text: "Add upgrade/update notifications for alerts.",
+                type: "enhancement"
+            },
+            {
+                text: "Adjust volume of notification sounds.",
+                type: "enhancement"
+            },
+        ]
+    },
+    {
         version : "1.5.1",
         date: "April 13, 2026",
         changes: [
@@ -197,7 +211,7 @@ export function buildLatestChangeElement() {
         ${styling}
         <div class="changelog-entry">
             <div class="changelog-header">
-                <h3>v${latestEntry.version}></h3>
+                <h3>v${latestEntry.version}</h3>
                 <span class="changelog-date">${latestEntry.date}</span>
             </div>
             <ul>

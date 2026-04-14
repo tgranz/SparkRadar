@@ -133,6 +133,7 @@ function previewNotificationSound(soundFile) {
     if (!soundFile || soundFile === 'none') return;
 
     const audio = new Audio(`sound/${soundFile}`);
+    audio.volume = 0.5; // decrease volume
     activePreviewAudio = audio;
 
     const clearPreview = () => {
