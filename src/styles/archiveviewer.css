@@ -5,7 +5,7 @@
   width: 100%;
   color: white;
   padding: 10px 15px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   font-family: 'Onest', sans-serif;
   transition: all 0.2s ease;
@@ -36,7 +36,7 @@
   border: 1px solid var(--border-color);
   color: white;
   padding: 8px 16px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
@@ -61,7 +61,7 @@
   margin-bottom: 8px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   transition: all 0.2s ease;
 }
 
@@ -100,7 +100,7 @@
 
 .archive-searchresult {
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
   color: white;
@@ -123,7 +123,7 @@
   color: white;
   font-size: 0.9em;
   padding: 8px 16px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   cursor: pointer;
   transition: all 0.2s ease;
   width: auto;

@@ -3,6 +3,7 @@
   --secondary-color: #2a7fff;
   --border-color: gray;
   --secondary-border-color: rgba(39, 190, 255, 0.2);
+  --roundness: 10px;
 }
 
 html,
@@ -62,7 +63,7 @@ button {
   height: 38px;
   display: flex;
   cursor: pointer;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   color: white;
   background-color: transparent;
   align-items: center;

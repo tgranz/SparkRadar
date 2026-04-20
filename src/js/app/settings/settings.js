@@ -969,6 +969,11 @@ function generateSpotterNetworkSettings(container, settingsInstance) {
 function generateAlertSettings(settingsInstance, container) {
     container.innerHTML = '';
 
+    const flashingSubheader = document.createElement('h3');
+    flashingSubheader.textContent = 'Flashing';
+    flashingSubheader.classList.add('settings-subheader');
+    container.append(flashingSubheader);
+
     const flashControl = document.createElement('div');
     flashControl.className = 'settings-control alert-setting-control';
 
@@ -998,6 +1003,44 @@ function generateAlertSettings(settingsInstance, container) {
     flashControl.appendChild(flashHelp);
 
     container.appendChild(flashControl);
+
+    const flashTime = document.createElement('div');
+    flashTime.className = 'settings-control alert-setting-control';
+
+    const flashTimeHeader = document.createElement('div');
+    flashTimeHeader.className = 'settings-control-header';
+
+    const flashTimeLabel = document.createElement('label');
+    flashTimeLabel.htmlFor = 'alerts-flash-newly-issued-time';
+    flashTimeLabel.textContent = 'Flash for';
+
+    const flashTimeToggle = document.createElement('select');
+    flashTimeToggle.id = 'alerts-flash-newly-issued-time';
+    flashTimeToggle.innerHTML = 
+    `<option value="10">10 seconds</option>
+    <option value="30">30 seconds</option>
+    <option value="60">60 seconds</option>`;
+    flashTimeToggle.value = String(settingsInstance.getSetting('alertFlashNewlyIssuedTime', 60));
+    flashTimeToggle.addEventListener('change', () => {
+        settingsInstance.setSetting('alertFlashNewlyIssuedTime', Number(flashTimeToggle.value));
+    });
+
+    flashTimeHeader.appendChild(flashTimeLabel);
+    flashTimeHeader.appendChild(flashTimeToggle);
+    flashTime.appendChild(flashTimeHeader);
+
+    const flashTimeHelp = document.createElement('p');
+    flashTimeHelp.className = 'settings-control-help';
+    flashTimeHelp.textContent = 'Alerts are considered "new" or "updated" for this duration after the issued time.';
+    flashTime.appendChild(flashTimeHelp);
+
+    container.appendChild(flashTime);
+
+    const colorSubheader = document.createElement('h3');
+    colorSubheader.textContent = 'Alert Colors';
+    colorSubheader.classList.add('settings-subheader');
+    colorSubheader.style.marginBottom = '0px';
+    container.append(colorSubheader);
 
     ALERT_CATEGORIES.forEach((categoryConfig) => {
         const { name: category, alerts, visualOnly } = categoryConfig;
@@ -1193,11 +1236,13 @@ export default class Settings {
             secondaryColor: '#2a7fff',
             borderColor: '#808080',
             secondaryBorderColor: '#27beff',
+            roundness: 10,
             mapLayerVisibility: {},
             mapLayerStyles: {},
             mapBackgroundStyle: 'default',
-            enableErrorNotifications: true,
+            enableErrorNotifications: false,
             alertFlashNewlyIssued: true,
+            alertFlashNewlyIssuedTime: 60,
             shortcutToggleSplitView: 'm',
             shortcutToggleCrossSection: 'x',
             shortcutShowRadarStatus: 's',
@@ -1365,11 +1410,15 @@ export default class Settings {
         const secondary = this.settings.secondaryColor || this.defaults.secondaryColor;
         const border = this.settings.borderColor || this.defaults.borderColor;
         const secondaryBorder = this.settings.secondaryBorderColor || this.defaults.secondaryBorderColor;
+        const roundness = Number.isFinite(Number(this.settings.roundness))
+            ? Number(this.settings.roundness)
+            : this.defaults.roundness;
 
         root.style.setProperty('--primary-color', primary);
         root.style.setProperty('--secondary-color', secondary);
         root.style.setProperty('--border-color', border);
         root.style.setProperty('--secondary-border-color', this._withAlpha(secondaryBorder, 0.2));
+        root.style.setProperty('--roundness', `${roundness}px`);
     }
 
     _normalizeSettings() {
@@ -1395,6 +1444,13 @@ export default class Settings {
         this.settings.enableErrorNotifications = this.settings.enableErrorNotifications !== false;
         this.settings.alertFlashNewlyIssued = this.settings.alertFlashNewlyIssued !== false;
 
+        const flashNewlyIssuedSeconds = Number(this.settings.alertFlashNewlyIssuedTime);
+        if (![10, 30, 60].includes(flashNewlyIssuedSeconds)) {
+            this.settings.alertFlashNewlyIssuedTime = 60;
+        } else {
+            this.settings.alertFlashNewlyIssuedTime = flashNewlyIssuedSeconds;
+        }
+
         const cacheSlots = Number(this.settings.cacheMaxSlots);
         const effectiveMax = Number.isFinite(cacheSlots) ? Math.max(3, Math.round(cacheSlots)) : 40;
 
@@ -1410,6 +1466,13 @@ export default class Settings {
             this.settings.animationSpeed = this.defaults.animationSpeed;
         } else {
             this.settings.animationSpeed = Math.max(0.1, Math.min(2, animationSpeed));
+        }
+
+        const roundness = Number(this.settings.roundness);
+        if (!Number.isFinite(roundness)) {
+            this.settings.roundness = this.defaults.roundness;
+        } else {
+            this.settings.roundness = Math.max(0, Math.min(50, Math.round(roundness)));
         }
     }
 

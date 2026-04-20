@@ -76,7 +76,7 @@
           <label for="enable-error-notifications">Show Error Notifications</label>
           <input type="checkbox" id="enable-error-notifications" name="enable-error-notifications" class="switch" data-setting="enableErrorNotifications">
         </div>
-        <p class="settings-control-help">Turn notifications for internal errors on or off.</p>
+        <p class="settings-control-help">Turn notifications for internal errors on or off. Some errors you see may not actually be issues.</p>
       </div>
       <h3 class="settings-subheader">Settings management</h3>
       <div class="settings-control">
@@ -193,23 +193,33 @@
         </div>
       </div>
     <div class="settings-control">
-        <div class="settings-control-header">
-          <label for="border-color">Border Color</label>
-          <input type="color" id="border-color" name="border-color" value="#808080" data-setting="borderColor">
-        </div>
+      <div class="settings-control-header">
+        <label for="border-color">Border Color</label>
+        <input type="color" id="border-color" name="border-color" value="#808080" data-setting="borderColor">
       </div>
-      <div class="settings-control">
-        <div class="settings-control-header">
-          <label for="secondary-border-color">Secondary Border Color</label>
-          <input type="color" id="secondary-border-color" name="secondary-border-color" value="#27beff" data-setting="secondaryBorderColor">
-        </div>
+    </div>
+    <div class="settings-control">
+      <div class="settings-control-header">
+        <label for="secondary-border-color">Secondary Border Color</label>
+        <input type="color" id="secondary-border-color" name="secondary-border-color" value="#27beff" data-setting="secondaryBorderColor">
       </div>
+    </div>
+
+    <h3 class="settings-subheader">Style</h3>
+    <div class="settings-control">
+      <div class="settings-control-header">
+        <label for="roundness">Roundness</label>
+        <span class="settings-control-value" data-for="roundness"></span>
+      </div>
+      <input type="range" id="roundness" name="roundness" min="0" max="50" step="1" value="10" data-setting="roundness">
+      <p class="settings-control-help">Adjust the border-radius of the entire application.</p>
+    </div>
 
     </section>
 
     <section class="settings-section" data-section="map">
       <h2>Map</h2>
-      <h4 class="settings-hint">Customize map features and styling (BETA).</h4>
+      <h4 class="settings-hint">Customize map features and styling.</h4>
       <div id="map-settings-container">
         <!-- populated by JS -->
       </div>

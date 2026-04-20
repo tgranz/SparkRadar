@@ -1,9 +1,10 @@
-import { renderAlert } from '../main/alert_utils.js';
+import { getAlertSettings, renderAlert } from '../main/alert_utils.js';
 
 export default class AlertList {
     constructor(layersInstance = null) {
         // Store reference to Layers instance for showing dialogs
         this.layersInstance = layersInstance;
+        this.activeCategoryFilter = null;
 
         const formatDate = (dateStr) => {
             if (!dateStr) return 'N/A';
@@ -39,6 +40,72 @@ export default class AlertList {
         `;
         this.list.appendChild(header);
 
+        // Underneath add TOR, SVR, SWS, FFW, and FLW counters
+        const categoryContainer = document.createElement('div');
+        categoryContainer.classList.add('alert-category-container');
+        const torWarningCount = document.createElement('div');
+        torWarningCount.classList.add('alert-category-count');
+        torWarningCount.dataset.category = 'tor';
+        torWarningCount.setAttribute('role', 'button');
+        torWarningCount.setAttribute('tabindex', '0');
+        torWarningCount.innerHTML = `<i class="ti ti-tornado"></i> <span class="count">0</span>`;
+        categoryContainer.appendChild(torWarningCount);
+        const svrWarningCount = document.createElement('div');
+        svrWarningCount.classList.add('alert-category-count');
+        svrWarningCount.dataset.category = 'svr';
+        svrWarningCount.setAttribute('role', 'button');
+        svrWarningCount.setAttribute('tabindex', '0');
+        svrWarningCount.innerHTML = `<i class="ti ti-bolt"></i> <span class="count">0</span>`;
+        categoryContainer.appendChild(svrWarningCount);
+        const swsWarningCount = document.createElement('div');
+        swsWarningCount.classList.add('alert-category-count');
+        swsWarningCount.dataset.category = 'sws';
+        swsWarningCount.setAttribute('role', 'button');
+        swsWarningCount.setAttribute('tabindex', '0');
+        swsWarningCount.innerHTML = `<i class="ti ti-alert-circle"></i> <span class="count">0</span>`;
+        categoryContainer.appendChild(swsWarningCount);
+        const ffwWarningCount = document.createElement('div');
+        ffwWarningCount.classList.add('alert-category-count');
+        ffwWarningCount.dataset.category = 'ffw';
+        ffwWarningCount.setAttribute('role', 'button');
+        ffwWarningCount.setAttribute('tabindex', '0');
+        ffwWarningCount.innerHTML = `<i class="ti ti-ripple"></i> <span class="count">0</span>`;
+        categoryContainer.appendChild(ffwWarningCount);
+        const flwWarningCount = document.createElement('div');
+        flwWarningCount.classList.add('alert-category-count');
+        flwWarningCount.dataset.category = 'flw';
+        flwWarningCount.setAttribute('role', 'button');
+        flwWarningCount.setAttribute('tabindex', '0');
+        flwWarningCount.innerHTML = `<i class="ti ti-droplet"></i> <span class="count">0</span>`;
+        categoryContainer.appendChild(flwWarningCount);
+        this.list.appendChild(categoryContainer);
+
+        this.categoryContainer = categoryContainer;
+        this.categoryCountEls = {
+            tor: torWarningCount,
+            svr: svrWarningCount,
+            sws: swsWarningCount,
+            ffw: ffwWarningCount,
+            flw: flwWarningCount,
+        };
+
+        this._applyCategoryThemeColors();
+        this._updateCategoryFilterVisualState();
+
+        categoryContainer.addEventListener('click', (event) => {
+            const button = event.target.closest('.alert-category-count');
+            if (!button) return;
+            this._toggleCategoryFilter(button.dataset.category || null);
+        });
+
+        categoryContainer.addEventListener('keydown', (event) => {
+            if (event.key !== 'Enter' && event.key !== ' ') return;
+            const button = event.target.closest('.alert-category-count');
+            if (!button) return;
+            event.preventDefault();
+            this._toggleCategoryFilter(button.dataset.category || null);
+        });
+
         const searchInput = header.querySelector('.alert-search');
         this.searchInput = searchInput;
         searchInput.addEventListener('input', () => {
@@ -57,6 +124,14 @@ export default class AlertList {
             const alerts = event?.detail?.alerts ?? [];
             this._setCount(count);
             this._setAlerts(alerts);
+        });
+
+        document.addEventListener('settingsChanged', (event) => {
+            const key = event?.detail?.key || '';
+            if (typeof key !== 'string' || !key.startsWith('alert_')) {
+                return;
+            }
+            this._applyCategoryThemeColors();
         });
 
         this.opener.addEventListener('click', () => {
@@ -81,8 +156,90 @@ export default class AlertList {
         const alertItems = this.list.querySelectorAll('.alert-item');
         alertItems.forEach(item => {
             const text = item.textContent.toLowerCase();
-            item.style.display = text.includes(query) ? '' : 'none';
+            const category = item.dataset.category || '';
+            const categoryMatches = !this.activeCategoryFilter || category === this.activeCategoryFilter;
+            item.style.display = text.includes(query) && categoryMatches ? '' : 'none';
         });
+    }
+
+    _toggleCategoryFilter(category) {
+        if (!category) return;
+        this.activeCategoryFilter = this.activeCategoryFilter === category ? null : category;
+        this._updateCategoryFilterVisualState();
+        this._applySearchFilter();
+    }
+
+    _updateCategoryFilterVisualState() {
+        if (!this.categoryCountEls) return;
+        const categories = ['tor', 'svr', 'sws', 'ffw', 'flw'];
+        for (const category of categories) {
+            const el = this.categoryCountEls[category];
+            if (!el) continue;
+            const isActive = this.activeCategoryFilter === category;
+            el.classList.toggle('active', isActive);
+            el.setAttribute('aria-pressed', String(isActive));
+        }
+    }
+
+    _normalizeColor(color, fallback) {
+        if (typeof color !== 'string' || !color.trim()) return fallback;
+        const trimmed = color.trim();
+        return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+    }
+
+    _applyCategoryThemeColors() {
+        if (!this.categoryCountEls) return;
+
+        const torColor = this._normalizeColor(getAlertSettings('Tornado Warning')?.color, '#ff2121');
+        const svrColor = this._normalizeColor(getAlertSettings('Severe Thunderstorm Warning')?.color, '#ff9900');
+        const swsColor = this._normalizeColor(getAlertSettings('Special Weather Statement')?.color, '#60a5fa');
+        const ffwColor = this._normalizeColor(getAlertSettings('Flash Flood Warning')?.color, '#10b981');
+        const flwColor = this._normalizeColor(getAlertSettings('Flood Warning')?.color, '#38bdf8');
+
+        const categoryTheme = {
+            tor: torColor,
+            svr: svrColor,
+            sws: swsColor,
+            ffw: ffwColor,
+            flw: flwColor,
+        };
+
+        for (const [category, color] of Object.entries(categoryTheme)) {
+            const el = this.categoryCountEls[category];
+            if (!el) continue;
+            el.style.backgroundColor = color + '33';
+            el.style.borderColor = color;
+        }
+    }
+
+    _updateCategoryCounts(processedAlerts) {
+        if (!this.categoryCountEls) return;
+        const counts = { tor: 0, svr: 0, sws: 0, ffw: 0, flw: 0 };
+
+        for (const entry of processedAlerts) {
+            const category = this._categorizeAlert(entry.rendered?.name || '');
+            if (category && typeof counts[category] === 'number') {
+                counts[category] += 1;
+            }
+        }
+
+        for (const [category, count] of Object.entries(counts)) {
+            const el = this.categoryCountEls[category];
+            const countSpan = el?.querySelector('.count');
+            if (countSpan) {
+                countSpan.textContent = String(count);
+            }
+        }
+    }
+
+    _categorizeAlert(alertName) {
+        const name = String(alertName || '').toLowerCase();
+        if (name.includes('tornado')) return 'tor';
+        if (name.includes('severe thunderstorm')) return 'svr';
+        if (name.includes('flash flood')) return 'ffw';
+        if (name.includes('flood warning')) return 'flw';
+        if (name.includes('special weather')) return 'sws';
+        return null;
     }
 
     _setAlerts(alerts) {
@@ -91,6 +248,7 @@ export default class AlertList {
         mainList.innerHTML = '';
         if (!alerts || alerts.length === 0) {
             mainList.innerHTML = '<div class="alert-item">No active alerts.</div>';
+            this._updateCategoryCounts([]);
             return;
         }
 
@@ -107,7 +265,8 @@ export default class AlertList {
         const getPriority = (rendered) => Number(rendered?.priority) || 0;
 
         const now = Date.now();
-        const ONE_MINUTE_MS = 60 * 1000;
+        const configuredSeconds = Number(window.settingsInstance?.getSetting('alertFlashNewlyIssuedTime', 60));
+        const recentWindowMs = ([10, 30, 60].includes(configuredSeconds) ? configuredSeconds : 60) * 1000;
 
         // Pre-process: render, filter unknowns, compute recency & priority
         const processed = [];
@@ -121,7 +280,7 @@ export default class AlertList {
             ));
 
             const issuedTime = Date.parse(alert?.issued || alert?.issuedAt) || 0;
-            const isRecent = (now - issuedTime) < ONE_MINUTE_MS;
+            const isRecent = (now - issuedTime) < recentWindowMs;
             const priority = getPriority(rendered);
 
             if (rendered.props.is_emergency && rendered.name.toLowerCase().includes('tornado')) {
@@ -146,6 +305,7 @@ export default class AlertList {
         const buildItem = ({ alert, rendered, has_valid_geometry }) => {
             const item = document.createElement('div');
             item.classList.add('alert-item', 'alert-list-item');
+            item.dataset.category = this._categorizeAlert(rendered?.name || '') || '';
             item.innerHTML = `
                 <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
                     <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.name}</h3>
@@ -199,6 +359,8 @@ export default class AlertList {
 
         // Full priority-sorted list
         processed.forEach(entry => mainList.appendChild(buildItem(entry)));
+
+        this._updateCategoryCounts(processed);
 
         // Preserve active search filtering after list refresh
         this._applySearchFilter();

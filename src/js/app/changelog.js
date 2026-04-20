@@ -1,5 +1,31 @@
 const entries = [
     {
+        version : "1.6.0",
+        date: "April 14, 2026",
+        changes: [
+            {
+                text: "Alert category counts: See the active alert count for each type of alert.",
+                type: "new"
+            },
+            {
+                text: "Add setting to adjust how long an alert is considered \"new\" or \"updated\" and a setting to adjust UI border-radius.",
+                type: "enhancement"
+            },
+            {
+                text: "Enhance and optomize application loading.",
+                type: "enhancement"
+            },
+            {
+                text: "Run another update after load to ensure all layers have loaded.",
+                type: "enhancement"
+            },
+            {
+                text: "Change radar product selection text when using a shortcut to change the radar product. Thanks to @manthatssocool.",
+                type: "bugfix"
+            },
+        ]
+    },
+    {
         version : "1.5.2",
         date: "April 14, 2026",
         changes: [
@@ -88,7 +114,7 @@ const styling = `
     .changelogtype {
         display: inline-block;
         padding: 2px 6px;
-        border-radius: 10px;
+        border-radius: var(--roundness);
         margin-right: 5px;
         font-size: 0.75em;
         font-weight: bold;
@@ -112,7 +138,7 @@ const styling = `
     .changelog-entry {
         padding: 20px;
         border: 1px solid var(--border-color);
-        border-radius: 10px;
+        border-radius: var(--roundness);
     }
 
     .changelog-header {
@@ -132,7 +158,7 @@ const styling = `
         color: black;
         font-size: 0.75em;
         padding: 2px 6px;
-        border-radius: 10px;
+        border-radius: var(--roundness);
         margin-left: 10px;
     }
 

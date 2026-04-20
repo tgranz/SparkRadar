@@ -145,7 +145,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Spotter Reports</h3>
-                <p class="tag beta">BETA</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-spotter-network-reports-layer" class="switch">
@@ -174,7 +173,6 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Wildfires</h3>
-                <p class="tag new">NEW</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-wildfires-layer" class="switch">
@@ -183,7 +181,7 @@ menu.innerHTML = `
         <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Hurricanes</h3>
-                <p class="tag inprogress">WIP</p>
+                <p class="tag inprogress">COMING SOON</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-hurricanes-layer" class="switch">

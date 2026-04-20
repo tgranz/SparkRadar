@@ -8,7 +8,7 @@ See LICENSE for more.
 
 import Dialog from "../ui/dialog.js";
 import Window from "../ui/window.js";
-import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 import { renderAlert } from "../main/alert_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
@@ -49,7 +49,8 @@ class AlertLayer {
         }
 
         document.addEventListener('settingsChanged', (event) => {
-            if (event?.detail?.key !== 'alertFlashNewlyIssued') {
+            const key = event?.detail?.key;
+            if (key !== 'alertFlashNewlyIssued' && key !== 'alertFlashNewlyIssuedTime') {
                 return;
             }
 
@@ -99,9 +100,15 @@ class AlertLayer {
         const now = Date.now();
         const issued = new Date(issuedAt).getTime();
         const ageMs = now - issued;
+        const flashWindowMs = this._getNewAlertWindowMs();
         
-        // Consider alerts issued within the last 60 seconds as "new"
-        return ageMs >= 0 && ageMs < 60000;
+        return ageMs >= 0 && ageMs < flashWindowMs;
+    }
+
+    _getNewAlertWindowMs() {
+        const configuredSeconds = Number(window.settingsInstance?.getSetting('alertFlashNewlyIssuedTime', 60));
+        const clampedSeconds = [10, 30, 60].includes(configuredSeconds) ? configuredSeconds : 60;
+        return clampedSeconds * 1000;
     }
 
     _isAlertFlashEnabled() {
@@ -574,9 +581,7 @@ class AlertLayer {
         if (isStyleLoaded) {
             this.alertSyncPending[target] = false;
             this.alertSyncPendingSince[target] = 0;
-            waitForRadarLayer(map, target).then(() => {
-                this._syncAlertsToMap(target);
-            });
+            this._syncAlertsToMap(target);
             return;
         }
 
@@ -594,9 +599,7 @@ class AlertLayer {
         waitForMapStyleReady(map).then(() => {
             this.alertSyncPending[target] = false;
             this.alertSyncPendingSince[target] = 0;
-            waitForRadarLayer(map, target).then(() => {
-                this._syncAlertsToMap(target);
-            });
+            this._syncAlertsToMap(target);
         });
     }
 
@@ -636,9 +639,7 @@ class AlertLayer {
         if (!hasUsableMapStyle(map)) {
             console.warn(`[AlertLayer] _syncAlertsToMap: Style not ready for target ${target}; waiting and retrying.`);
             waitForMapStyleReady(map).then(() => {
-                waitForRadarLayer(map, target).then(() => {
-                    this._syncAlertsToMap(target);
-                });
+                this._syncAlertsToMap(target);
             });
             return;
         }

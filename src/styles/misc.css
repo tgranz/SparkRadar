@@ -16,7 +16,7 @@
   background-color: rgb(0, 0, 0, 0.3);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   color: white;
   font-weight: bold;
   font-size: 1.1em;
@@ -51,7 +51,7 @@
   backdrop-filter: blur(20px);
   color: white;
   padding: 10px 10px 15px 10px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   z-index: 10000;
   flex-direction: row;
@@ -157,7 +157,7 @@
   backdrop-filter: blur(20px);
   color: white;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   z-index: 10000;
   display: flex;
   flex-direction: column;
@@ -186,7 +186,7 @@
   width: 100%;
   color: white;
   padding: 10px 15px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   font-family: 'Onest', sans-serif;
   transition: all 0.2s ease;
@@ -205,7 +205,7 @@
   flex: 0 0 auto;
   width: 44px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   border: 1px solid var(--border-color);
   background: rgba(0, 0, 0, 0.3);
   color: white;
@@ -239,7 +239,7 @@
   margin-bottom: 8px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   transition: all 0.2s ease;
   cursor: pointer;  
 }
@@ -263,7 +263,7 @@ select {
   border: 1px solid var(--border-color);
   color: white;
   padding: 8px 12px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   font-family: 'Onest', sans-serif;
   transition: all 0.2s ease;
@@ -283,7 +283,7 @@ select:hover {
   left: 10px;
   right: 10px;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   z-index: 1001;
   width: auto;
@@ -596,7 +596,7 @@ select:hover {
     padding: 8px 10px;
     background: rgba(255,255,255,0.2);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
+    border-radius: var(--roundness);
     cursor: grab;
     user-select: none;
     transition: background 0.15s;
@@ -632,7 +632,7 @@ select:hover {
 .layer-order-badge {
     font-size: 0.7em;
     padding: 2px 7px;
-    border-radius: 10px;
+    border-radius: var(--roundness);
     background: rgba(39,190,255,0.2);
     color: var(--primary-color);
     font-weight: bold;
@@ -648,7 +648,7 @@ select:hover {
 
 .radar-station-marker {
   border: 2px solid black;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -672,7 +672,7 @@ select:hover {
   min-width: 200px;
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
   padding: 10px;
   display: flex;
@@ -750,7 +750,7 @@ select:hover {
 
 .map-rightclick-button {
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   color: #fff;
   font-family: 'Onest', sans-serif;
   font-size: 0.9em;
@@ -799,7 +799,7 @@ select:hover {
   border: 1px solid var(--border-color);
   color: white;
   padding: 10px 15px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   font-family: 'Onest', sans-serif;
   transition: all 0.2s ease;
@@ -832,7 +832,7 @@ select:hover {
   flex: 1 1 150px;
   height: auto;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   border: 1px solid var(--border-color);
   background: none;
   color: white;
@@ -863,7 +863,7 @@ select:hover {
   flex-direction: row;
   align-items: center;
   gap: 20px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-weight: bold;
 }
 
@@ -921,7 +921,7 @@ select:hover {
   backdrop-filter: blur(20px);
   color: white;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   z-index: 100000;
   display: flex;
   flex-direction: column;
@@ -961,7 +961,7 @@ select:hover {
 
 .modal-footer button {
   width: 100%;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em !important;
 }
 
@@ -969,7 +969,7 @@ select:hover {
   background: none;
   color: white;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   padding: 10px 20px;
   font-size: 0.9em;
   transition: background-color 0.2s ease, border-color 0.2s ease;
@@ -1002,7 +1002,7 @@ p.code {
   border: 1px solid var(--border-color);
   color: white;
   padding: 20px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   font-family: 'Onest', sans-serif;
   width: 100px;
@@ -1028,7 +1028,7 @@ p.code {
   background: #ff212133;
   padding: 10px;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 0.9em;
   width: 100%;
   text-wrap: nowrap;
@@ -1055,7 +1055,7 @@ p.code {
   background: rgba(0, 0, 0, 0.3);
   color: white;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-family: 'Onest', sans-serif;
   font-size: 0.95em;
   padding: 10px;
@@ -1065,7 +1065,7 @@ p.code {
 }
 
 .window {
-  border-radius: 10px;
+  border-radius: var(--roundness);
   overflow: hidden;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   background-color: rgba(0, 0, 0, 0.5);
@@ -1161,7 +1161,7 @@ p.code {
 
 .taskbar-icon {
   font-size: 1.5em;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   padding: 10px;
   border: 1px solid var(--border-color);
   aspect-ratio: 1;
@@ -1213,7 +1213,7 @@ p.code {
   transform: translateY(-50%);
   background-color: rgba(0, 0, 0, 0.5);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
@@ -1237,7 +1237,7 @@ p.code {
   justify-content: space-between;
   align-items: center;
   border: 1px solid var(--secondary-border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   margin-top: 10px;
 }
 

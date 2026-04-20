@@ -321,6 +321,12 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
 
     // Immediately sync colorbar for picker-driven product changes on the corresponding map.
     updateColorbarForMap(mainOrSplit, product);
+
+    // Keep picker UI synchronized for non-picker product changes (e.g. shortcuts).
+    const activePicker = mainOrSplit === 'split' ? map.splitRadarPicker : map.radarPicker;
+    if (activePicker && typeof activePicker.setCurrentProduct === 'function') {
+      activePicker.setCurrentProduct(product);
+    }
     
     try {
       const suppressLoading = options?.skipLoading === true;
@@ -580,8 +586,22 @@ map.map.on('load', async () => {
     // Add radar stations
     map.updateRadarStations();
 
-    // Add radar
-    await setRadar(null, null, 'main');
+    // Start radar first so startup render is prioritized.
+    const initialRadarLoad = setRadar(null, null, 'main');
+
+    // Kick off critical overlays shortly after radar fetch starts.
+    // This keeps overlays fast while reducing first-load radar contention.
+    setTimeout(() => {
+      Promise.allSettled([
+        map.fetchAlerts(),
+        map.fetchWatches(),
+        map.fetchOutlooks(),
+      ]).catch(() => {
+        // Individual fetch errors are handled by each layer method.
+      });
+    }, 200);
+
+    await initialRadarLoad;
 
     // Re-apply current layer order after initial load to ensure correct order
     setTimeout(() => {
@@ -709,7 +729,7 @@ let lastCheckedRadar = { main: null, split: null }; // Track last checked radar 
 let baselineCheckCount = { main: 0, split: 0 }; // Track how many checks we've seen stable
 const STATION_CHANGE_DEBOUNCE = 5000; // 5 second debounce after station change
 const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
-var updateTimes = 0;
+var updateTimes = 10;
 var updateIntervalId = null;
 var autoUpdateEnabled = true;
 

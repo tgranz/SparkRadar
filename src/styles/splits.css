@@ -34,7 +34,7 @@
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
   padding: 5px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   display: flex;
   gap: 5px;
 }

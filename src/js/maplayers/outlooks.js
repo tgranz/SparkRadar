@@ -6,7 +6,7 @@ Manages SPC outlook display on the map
 See LICENSE for more.
 */
 
-import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
@@ -195,9 +195,7 @@ class OutlookLayer {
         if (hasUsableMapStyle(map)) {
             this.outlookSyncPending[target] = false;
             this.outlookSyncPendingSince[target] = 0;
-            waitForRadarLayer(map, target).then(() => {
-                this._syncOutlookToMap(target);
-            });
+            this._syncOutlookToMap(target);
             return;
         }
 
@@ -215,9 +213,7 @@ class OutlookLayer {
         waitForMapStyleReady(map).then(() => {
             this.outlookSyncPending[target] = false;
             this.outlookSyncPendingSince[target] = 0;
-            waitForRadarLayer(map, target).then(() => {
-                this._syncOutlookToMap(target);
-            });
+            this._syncOutlookToMap(target);
         });
     }
 

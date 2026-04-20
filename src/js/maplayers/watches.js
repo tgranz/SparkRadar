@@ -8,7 +8,7 @@ See LICENSE for more.
 
 import Dialog from "../ui/dialog.js";
 import Window from "../ui/window.js";
-import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
+import { hasUsableMapStyle, waitForMapStyleReady, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
@@ -340,9 +340,7 @@ class WatchLayer {
         if (hasUsableMapStyle(map)) {
             this.watchSyncPending[target] = false;
             this.watchSyncPendingSince[target] = 0;
-            waitForRadarLayer(map, target).then(() => {
-                this._syncWatchesToMap(target);
-            });
+            this._syncWatchesToMap(target);
             return;
         }
 
@@ -360,9 +358,7 @@ class WatchLayer {
         waitForMapStyleReady(map).then(() => {
             this.watchSyncPending[target] = false;
             this.watchSyncPendingSince[target] = 0;
-            waitForRadarLayer(map, target).then(() => {
-                this._syncWatchesToMap(target);
-            });
+            this._syncWatchesToMap(target);
         });
     }
 

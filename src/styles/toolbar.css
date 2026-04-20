@@ -35,7 +35,7 @@
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-color);
   padding: 5px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
 }
 
 #cross-section-button:disabled {
@@ -82,7 +82,7 @@
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   will-change: backdrop-filter;
 }
 
@@ -237,7 +237,7 @@
   backdrop-filter: blur(20px);
   border: 1px solid gray;
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   display: flex;
   flex-direction: row;
   min-width: 50px;
@@ -261,7 +261,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   cursor: pointer;
   border: none;
   font-size: 1.2em;

@@ -62,7 +62,7 @@
   backdrop-filter: blur(20px);
   color: white;
   padding: 10px 20px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   font-size: 1em;
   z-index: 10000;
   opacity: 0;
@@ -88,7 +88,7 @@
   width: 400px;
   color: white;
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--roundness);
   padding: 10px;
   max-width: 260px;
   max-height: 250px;
@@ -172,7 +172,7 @@
   transition: border-color 0.2s ease, background-color 0.2s ease;
   background-color: rgba(0, 0, 0, 0);
   padding: 10px;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   cursor: pointer;
 }
 
@@ -183,7 +183,7 @@
 .popup-dot {
   width: 5px;
   height: 100%;
-  border-radius: 10px;
+  border-radius: var(--roundness);
   margin-top: 0;
 }
 

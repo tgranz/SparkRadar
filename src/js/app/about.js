@@ -1,5 +1,21 @@
 import Dialog from "../ui/dialog.js";
 
+// Bug Hunters
+const hunters = {
+    "redbird2010": {
+        "href": "https://github.com/redbird20102",
+        "bugs": 2,
+    },
+    "epicgaming563": {
+        "href": "https://github.com/roplaywx",
+        "bugs": 1,
+    },
+    "manthatssocool": {
+        "href": "https://github.com/manthatssocool",
+        "bugs": 1,
+    },
+}
+
 export default function openAbout(target = 'general') {
     const aboutContent = `
     <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
@@ -52,7 +68,7 @@ export default function openAbout(target = 'general') {
         </div>
 
         <div class="about-panel about-panel-active" id="about-panel-general" style="height: calc(100% - 70px); overflow-y: auto;" role="tabpanel" aria-labelledby="about-tab-general">
-            <div style="width: calc(100% - 22px); margin-bottom: 20px; padding: 10px; border: 1px solid var(--border-color); border-radius: 10px;">
+            <div style="width: calc(100% - 22px); margin-bottom: 20px; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--roundness);">
                 <h3 style="margin: 10px; text-align: left; width: 100%;">About</h3>
                 <p style="margin: 10px; font-size: lightgray; font-size: 0.95em;"><strong>SparkRadar</strong> is a 100% free, open-source, advanced weather radar visualization app that runs in your browser. Because everyone experiences weather. Knowing what's coming shouldn't be a mystery.</p>
                 <p style="margin: 10px; font-size: lightgray; font-size: 0.95em;">SparkRadar is on its <strong>third rewrite</strong> since development started in 2024. Every version is open source on <a href="https://github.com/tgranz/sparkradar">GitHub</a>.</p>
@@ -60,9 +76,9 @@ export default function openAbout(target = 'general') {
                 <p style="margin: 10px; font-size: lightgray; font-size: 0.95em; font-weight: bold;">If SparkRadar has helped you, please spread the word about SparkRadar! Or, consider supporting my projects by <a href="https://buymeacoffee.com/tgranz" target="_blank">buying me a coffee</a>. Thank you!</p>
             </div>
 
-            <div style="width: calc(100% - 22px); margin-bottom: 20px; padding: 10px; border: 1px solid var(--border-color); border-radius: 10px;">
+            <div style="width: calc(100% - 22px); margin-bottom: 20px; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--roundness);">
                 <div class="badge-container" style="gap: 10px; display: flex; justify-content: space-around; flex-direction: row; align-items: center; width: 100%; flex-wrap: wrap;">
-                    <div style="background-color: #fff5ec; color: #F6821F; font-size: 14px; padding: 4px; border-radius: 10px;">
+                    <div style="background-color: #fff5ec; color: #F6821F; font-size: 14px; padding: 4px; border-radius: var(--roundness);">
                         <p style="margin-bottom: 0px; font-weight: bold; text-align: center;">Secured by</p>
                         <img src="https://cdn.brandfetch.io/idJ3Cg8ymG/theme/dark/logo.svg?c=1bxid64Mup7aczewSAYMX&amp;t=1667589504295" alt="Cloudflare" style="height: 45px; width: auto; margin-right: 0px; vertical-align: middle;">
                     </div>
@@ -78,13 +94,13 @@ export default function openAbout(target = 'general') {
             </div>
 
             <div style="width: 100%; padding: 0px; margin-bottom: 20px;">
-                <div id="about-analytics-chart" style="padding: 10px; background: #ffffff08; border: 1px solid var(--border-color); border-radius: 10px;">
+                <div id="about-analytics-chart" style="padding: 10px; background: #ffffff08; border: 1px solid var(--border-color); border-radius: var(--roundness);">
                         <strong style="display: block; margin-bottom: 8px;">Views in the Last 30 Days</strong>
                         <p style="margin: 0; color: lightgray; font-size: 0.9em;">Loading analytics...</p>
                 </div>
             </div>
 
-            <div style="width: calc(100% - 22px); padding: 10px; margin-bottom: 20px; border: 1px solid var(--border-color); border-radius: 10px;">
+            <div style="width: calc(100% - 22px); padding: 10px; margin-bottom: 20px; border: 1px solid var(--border-color); border-radius: var(--roundness);">
                 <h3 style="margin: 10px; text-align: left; width: 100%;">Bug Hunters</h3>
                 <p style="margin: 10px; font-size: 0.95em; color: lightgray;">Huge thanks to the following bug hunters who have reported bugs and helped to improve SparkRadar! Become a bug hunter by reporting issues <a href="https://github.com/tgranz/SparkRadar/issues" target="_blank">on the GitHub</a>.</p>
                 <div id="bug-hunters-container">
@@ -299,18 +315,6 @@ export default function openAbout(target = 'general') {
         originalClose();
     };
 
-    // Bug Hunters
-    const hunters = {
-        "redbird2010": {
-            "href": "https://github.com/redbird20102",
-            "bugs": 2,
-        },
-        "epicgaming563": {
-            "href": "https://github.com/roplaywx",
-            "bugs": 1,
-        }
-    }
-
     const bugHuntersContainer = dialog.content?.querySelector('#bug-hunters-container');
     if (!bugHuntersContainer) {
         return;
@@ -318,7 +322,7 @@ export default function openAbout(target = 'general') {
 
     for (const [name, info] of Object.entries(hunters)) {
         const hunterEl = document.createElement('div');
-        hunterEl.style.cssText = 'background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border-color); padding: 10px; border-radius: 10px; margin: 10px; display: flex; align-items: center; justify-content: flex-start; flex-direction: row;';
+        hunterEl.style.cssText = 'background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border-color); padding: 10px; border-radius: var(--roundness); margin: 10px; display: flex; align-items: center; justify-content: flex-start; flex-direction: row;';
 
         const bugsFoundEl = document.createElement('p');
         bugsFoundEl.textContent = `${info.bugs}`;
