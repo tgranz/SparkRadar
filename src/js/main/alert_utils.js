@@ -34,6 +34,7 @@ export function getAlertSettings(alertName) {
 
 export function renderAlert(alert) {
     const name = alert?.productName?.toLowerCase() || null;
+    const alertProperties = alert?.properties || {};
     let icon = 'alert-triangle';
 
     // Find the icon
@@ -53,20 +54,17 @@ export function renderAlert(alert) {
 
     const alertMessage = alert?.message || "";
     const latestAlertMessage = messages[0] || alertMessage;
-    const _is_destructive = latestAlertMessage.toLowerCase().includes('destructive storm') || latestAlertMessage.toLowerCase().includes('catastrophic') || false;
-    const _is_consid = !_is_destructive && latestAlertMessage.toLowerCase().includes('considerable') || false;
-    const is_emergency = latestAlertMessage.includes('TORNADO EMERGENCY') || latestAlertMessage.includes('FLASH FLOOD EMERGENCY') || false;
-    const is_pds = latestAlertMessage.toLowerCase().includes('particularly dangerous situation') || false;
-    const damagelevel = _is_destructive ? 'destructive' : _is_consid ? 'considerable' : 'normal';
+    const is_destructive = !!alertProperties.isDestructive;
+    const is_consid = !!alertProperties.isConsiderable;
+    const is_emergency = !!alertProperties.isEmergency;
+    const is_pds = !!alertProperties.isPds;
+    const damagelevel = is_destructive ? 'destructive' : is_consid ? 'considerable' : 'normal';
     const hailMatch = latestAlertMessage.match(/max hail size...(.*?)\n/i);
     const maxHailSize = hailMatch ? hailMatch[1].trim() : null;
     const windMatch = latestAlertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
     const maxWindGust = windMatch ? windMatch[1].trim() : null;
-    const is_confirmed_tor = latestAlertMessage.includes('TORNADO...OBSERVED') || false;
+    const is_confirmed_tor = !!alertProperties.isTorConfirmed || latestAlertMessage.includes('TORNADO...OBSERVED') || false;
     const is_test = latestAlertMessage.includes('TEST') || false;
-
-    // Store original product name for settings lookup
-    const originalProductName = alert?.productName?.replace(/(CONSIDERABLE|DESTRUCTIVE|CATASTROPHIC)/gi, '').trim() || "Unknown Alert";
 
     // Now re-render the title
     if (alert?.productName?.toLowerCase() == "Severe Weather Statement".toLowerCase()) {
@@ -150,10 +148,10 @@ export function renderAlert(alert) {
             is_pds: is_pds,
             is_emergency: is_emergency,
             damagelevel: damagelevel,
-            is_tor_possible: latestAlertMessage.toLowerCase().includes('tornado...possible') || false,
-            is_tor_observed: is_confirmed_tor,
-            is_tor_radar_indicated: latestAlertMessage.toLowerCase().includes('tornado...radar indicated') || false,
-            is_waterspout_possible: latestAlertMessage.toLowerCase().includes('waterspout...possible') || false,
+            is_tor_possible: !!alertProperties.isTorPossible,
+            is_tor_observed: !!alertProperties.isTorConfirmed,
+            is_tor_radar_indicated: !!alertProperties.isTorRadarIndicated,
+            is_waterspout_possible: !!alertProperties.isWaterspoutPossible,
             max_hail_size: maxHailSize,
             max_wind_gust: maxWindGust,
             is_test: is_test
