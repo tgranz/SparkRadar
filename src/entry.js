@@ -582,8 +582,24 @@ map.currentMainStation = initialStation;
 layerMenu.init(map);
 layerMenu.initOrderPanel(map);
 
+let hasSubscribedToAlertStream = false;
+const ensureAlertStreamSubscription = () => {
+  if (hasSubscribedToAlertStream) {
+    return;
+  }
+  map.subscribeToAlerts();
+  hasSubscribedToAlertStream = true;
+};
+
+// Start SSE subscription as soon as map/layers are constructed so it is not
+// blocked by map style load or radar startup delays.
+ensureAlertStreamSubscription();
+
 // Initial map render
 map.map.on('load', async () => {
+  // Ensure subscription exists when the map finishes loading.
+  ensureAlertStreamSubscription();
+
     // Add radar stations
     map.updateRadarStations();
 
@@ -612,8 +628,7 @@ map.map.on('load', async () => {
       }
     }, 15 * 1000);
 
-    // Subscribe to real-time alert updates via SSE
-    map.subscribeToAlerts();
+    // SSE subscription is started at the top of this load handler.
 });
 
 // Build the animation controller and expose it globally

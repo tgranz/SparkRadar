@@ -1,5 +1,15 @@
 const entries = [
     {
+        version : "1.6.2",
+        date: "April 23, 2026",
+        changes: [
+            {
+                text: "Resolve alert SSE stream + notification issues.",
+                type: "bugfix"
+            },
+        ]
+    },
+    {
         version : "1.6.1",
         date: "April 23, 2026",
         changes: [
