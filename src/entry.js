@@ -8,6 +8,7 @@ import Menu from "./js/ui/menu.js";
 import Radar from "./js/backend/radar.js";
 import RadarStatus from "./js/frontend/radar_status.js";
 import Dialog from './js/ui/dialog.js';
+import Notification from './js/ui/notification.js';
 import AlertList from "./js/frontend/alert_list.js";
 import Draw from "./js/frontend/draw.js";
 import ArchiveBrowser from "./js/frontend/archive_browser.js";
@@ -858,13 +859,15 @@ fetch('https://api.sparkradar.app/announcement')
       if (new Date() < new Date(data.stopShowing)) {
         window.announcement = data;
 
-        if (data.showNotification) new Notification(
-          'Announcement',
-          data.message,
-          data.icon ? data.icon : 'bell-ringing',
-          data.color ? data.color : '#27beff',
-          10000
-        );
+        if (data?.showNotification) {
+          new Notification(
+            'Announcement',
+            data.message,
+            data.icon ? data.icon : 'bell-ringing',
+            data.color ? data.color : '#27beff',
+            10000
+          );
+        }
       }
     }
   })
