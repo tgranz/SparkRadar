@@ -3,28 +3,29 @@ import { Buffer } from 'buffer';
 if (!globalThis.Buffer) globalThis.Buffer = Buffer;
 
 
-import Map from "./js/app/map.js";
+import Map from "./js/frontend/map.js";
 import Menu from "./js/ui/menu.js";
-import Radar from "./js/main/radar.js";
-import RadarStatus from "./js/app/radar_status.js";
+import Radar from "./js/backend/radar.js";
+import RadarStatus from "./js/frontend/radar_status.js";
 import Dialog from './js/ui/dialog.js';
-import AlertList from "./js/app/alert_list.js";
-import Draw from "./js/app/draw.js";
-import ArchiveBrowser from "./js/app/archive_browser.js";
+import AlertList from "./js/frontend/alert_list.js";
+import Draw from "./js/frontend/draw.js";
+import ArchiveBrowser from "./js/frontend/archive_browser.js";
 import Inspector from "./js/ui/inspector.js";
-import Measure from "./js/app/measure.js";
-import Palettes from './js/main/palettes.js';
-import Finder from './js/app/finder.js';
-import { checkVersion, buildLatestChangeElement } from './js/app/changelog.js';
-import AnimationController from './js/app/radar_animation.js';
-import { openRadarFileUploadDialog } from './js/app/radar_file_upload.js';
-import SpotterNetwork from './js/main/spotter_network.js';
-import LocationServices from "./js/main/location_services.js";
-import { createToolbar } from "./js/app/toolbars/toolbar.js";
+import Measure from "./js/frontend/measure.js";
+import Palettes from './js/backend/palettes.js';
+import Finder from './js/frontend/finder.js';
+import { checkVersion, buildLatestChangeElement } from './js/frontend/changelog.js';
+import AnimationController from './js/frontend/radar_animation.js';
+import { openRadarFileUploadDialog } from './js/frontend/radar_file_upload.js';
+import SpotterNetwork from './js/backend/spotter_network.js';
+import LocationServices from "./js/backend/location_services.js";
+import { initializeIntervalUpdates } from './js/backend/updater.js';
+import { createToolbar } from "./js/frontend/toolbars/toolbar.js";
 import { hideLoadingAnimation, showLoadingAnimation } from "./js/ui/loader.js";
-import { layerMenu } from "./js/app/layer_menu.js";
-import Settings from './js/app/settings/settings.js';
-import setupKeybinds from './js/main/shortcuts.js';
+import { layerMenu } from "./js/frontend/layer_menu.js";
+import Settings from './js/frontend/settings/settings.js';
+import setupKeybinds from './js/backend/shortcuts.js';
 import {
   formatVcpDisplay,
   inferLevelFromProduct,
@@ -640,8 +641,7 @@ const toolbar = createToolbar(
         level: inferLevelFromProduct(newProduct),
         options: { gate_limit: -30 }
       };
-      lastStationChangeTime.split = Date.now();
-      lastCheckedRadar.split = null;
+      intervalUpdates?.markManualChange('split');
       map.splitMap('horizontal', { station: mainRadar.station, product: newProduct });
       return;
     }
@@ -679,7 +679,8 @@ const toolbar = createToolbar(
       'main'
     );
   },
-  () => { startMeasure(); }
+  () => { startMeasure(); },
+  () => map.toggleRadarStationsVisible()
 );
 
 // Add the toolbar to the page
@@ -687,9 +688,17 @@ document.body.appendChild(toolbar);
 updateCrossSectionButtonState(mainRadar.product);
 updateAnimationButtonState(mainRadar.product);
 
+// Track archive mode
+var archiveMode = { main: null, split: null }; // Stores archive URL when in archive mode
+
+// Track uploaded local files for each target (main/split)
+var localFileMode = { main: null, split: null };
+
+let intervalUpdates = null;
+
 // Function to load radar from archive URL and disable auto-updates
 window.loadRadarFromArchive = async function(url, station) {
-  autoUpdateEnabled = false;
+  intervalUpdates?.disableAutoUpdates();
   archiveMode.main = url;
   localFileMode.main = null;
   console.log('Auto-updates disabled. Loading archive file...');
@@ -708,7 +717,11 @@ const menu = new Menu({
       setRadar,
       getMainStation: () => mainRadar.station,
       setAutoUpdateEnabled: (enabled) => {
-        autoUpdateEnabled = enabled;
+        if (enabled) {
+          intervalUpdates?.enableAutoUpdates();
+        } else {
+          intervalUpdates?.disableAutoUpdates();
+        }
       },
       setArchiveMode: (target, value) => {
         archiveMode[target] = value;
@@ -722,255 +735,21 @@ const menu = new Menu({
   },
 });
 
-// Refresh handler to update radar data with debouncing and station change detection
-let updateInProgress = false;
-let lastStationChangeTime = { main: 0, split: 0 };
-let lastCheckedRadar = { main: null, split: null }; // Track last checked radar state
-let baselineCheckCount = { main: 0, split: 0 }; // Track how many checks we've seen stable
-const STATION_CHANGE_DEBOUNCE = 5000; // 5 second debounce after station change
-const BASELINE_CHECKS_REQUIRED = 2; // Require 2 stable checks before updating
-var updateTimes = 10;
-var updateIntervalId = null;
-var autoUpdateEnabled = true;
-
-// Track archive mode
-var archiveMode = { main: null, split: null }; // Stores archive URL when in archive mode
-
-// Track uploaded local files for each target (main/split)
-var localFileMode = { main: null, split: null };
-
-// Track manually-selected product per target to avoid chunk refreshes reading stale map state
-var selectedProduct = { main: 'N0B', split: 'N0G' }; // Initialize to defaults matching mainRadar/splitRadar
-
-// Track when stations or products change
-// tbh i dont know why this is here
-const originalSetRadar = setRadar;
-setRadar = async function(station, product, mainOrSplit, options) {
-  const stationChanged = station && (
-    (mainOrSplit === 'main' && station !== mainRadar.station) ||
-    (mainOrSplit === 'split' && station !== splitRadar.station)
-  );
-  
-  const productChanged = product && (
-    (mainOrSplit === 'main' && product !== mainRadar.product) ||
-    (mainOrSplit === 'split' && product !== splitRadar.product)
-  );
-  
-  if (stationChanged || productChanged) {
-    lastStationChangeTime[mainOrSplit] = Date.now();
-    lastCheckedRadar[mainOrSplit] = null; // Reset on station/product change
-    baselineCheckCount[mainOrSplit] = 0; // Reset baseline count
-  }
-
-  // Track user-selected product so chunk refreshes always use the right one
-  if (product) {
-    selectedProduct[mainOrSplit] = product;
-  }
-
-  return originalSetRadar(station, product, mainOrSplit, options);
-};
-
 const sn = new SpotterNetwork();
 window.spotterNetworkInstance = sn; // Expose globally
 sn.login();
 
-// Trigger near-immediate redraws when new realtime Level-II chunks arrive.
-const realtimeChunkRefreshState = {
-  main: { timerId: null, inFlight: false, pendingChunkUrl: null, lastProcessedChunkUrl: null },
-  split: { timerId: null, inFlight: false, pendingChunkUrl: null, lastProcessedChunkUrl: null },
-};
-
-// Debounce gate: skip chunk-driven refreshes if a manual product/station change just occurred.
-// This prevents automatic chunk refreshes from overriding recent user selections with stale state.
-const MANUAL_CHANGE_DEBOUNCE_MS = 2000;
-
-const scheduleRealtimeChunkRefresh = (target, chunkUrl = null) => {
-  const state = realtimeChunkRefreshState[target];
-  if (!state || state.inFlight) return;
-
-  // Skip refresh if user just manually changed product or station
-  const timeSinceManualChange = Date.now() - lastStationChangeTime[target];
-  if (timeSinceManualChange < MANUAL_CHANGE_DEBOUNCE_MS) {
-    console.log(`[L2ChunkRender] Skipping chunk refresh (${target}) - recent manual change (${timeSinceManualChange}ms ago)`);
-    return;
-  }
-
-  if (chunkUrl && state.lastProcessedChunkUrl === chunkUrl) {
-    return;
-  }
-
-  state.pendingChunkUrl = chunkUrl || state.pendingChunkUrl;
-  if (state.timerId) clearTimeout(state.timerId);
-
-  state.timerId = setTimeout(async () => {
-    state.timerId = null;
-    if (state.inFlight) return;
-    state.inFlight = true;
-
-    try {
-      const station = target === 'main' ? mainRadar.station : splitRadar.station;
-      // Use our tracked product selection instead of reading map state,
-      // since map.currentRadarProduct may be stale or not synced during product changes
-      const product = selectedProduct[target] || 
-        (target === 'main' ? mainRadar.product : splitRadar.product) ||
-        (target === 'main' ? map.currentRadarProduct : map.currentRadarProductSplit);
-
-      const isL2 = inferLevelFromProduct(product) === 'L2';
-      const isArchive = !!archiveMode[target];
-      const isLocal = !!localFileMode[target];
-      if (!isL2 || isArchive || isLocal) {
-        state.pendingChunkUrl = null;
-        return;
-      }
-
-      await originalSetRadar(station, product, target, {
-        gate_limit: -30,
-        skipLoading: true,
-      });
-
-      state.lastProcessedChunkUrl = state.pendingChunkUrl;
-      state.pendingChunkUrl = null;
-    } catch (error) {
-      console.error(`[L2ChunkRender] Realtime chunk refresh failed (${target}):`, error);
-    } finally {
-      state.inFlight = false;
-    }
-  }, 200);
-};
-
-window.addEventListener('sparkradar:l2-chunk-update', (event) => {
-  const station = event?.detail?.station || null;
-  const chunkUrl = event?.detail?.chunkUrl || null;
-  if (!station) return;
-
-  if (station === mainRadar.station) {
-    scheduleRealtimeChunkRefresh('main', chunkUrl);
-  }
-
-  if (map.hasSplitMap && map.hasSplitMap() && station === splitRadar.station) {
-    scheduleRealtimeChunkRefresh('split', chunkUrl);
-  }
+intervalUpdates = initializeIntervalUpdates({
+  map,
+  radar,
+  inferLevelFromProduct,
+  setRadar,
+  getMainRadar: () => mainRadar,
+  getSplitRadar: () => splitRadar,
+  getArchiveMode: () => archiveMode,
+  getLocalFileMode: () => localFileMode,
 });
-
-updateIntervalId = setInterval(async () => {
-  if (!autoUpdateEnabled || updateInProgress) return;
-  updateInProgress = true;
-  updateTimes ++;
-  try {
-    console.log("Running routine update.");
-
-    // Only check main map if station hasn't changed recently.
-    // Realtime chunk-streamed L2 refreshes via chunk events instead of this 10s loop.
-    if (Date.now() - lastStationChangeTime.main > STATION_CHANGE_DEBOUNCE) {
-      const mainProduct = selectedProduct.main || map.currentRadarProduct || mainRadar.product;
-      const isRealtimeChunkL2Main = inferLevelFromProduct(mainProduct) === 'L2' && !archiveMode.main && !localFileMode.main;
-
-      if (!isRealtimeChunkL2Main) {
-        const currentMainRadarKey = `${mainRadar.station}_${mainProduct}_${inferLevelFromProduct(mainProduct)}`;
-        const lastMainRadarKey = lastCheckedRadar.main;
-
-        if (lastMainRadarKey === currentMainRadarKey) {
-          // Station is stable, increment baseline count
-          baselineCheckCount.main++;
-
-          // Only check for updates after we've baselined multiple times
-          if (baselineCheckCount.main >= BASELINE_CHECKS_REQUIRED) {
-            try {
-              const updateAvailable = await radar.isUpdateAvailable(mainRadar.station, mainProduct);
-              if (updateAvailable) {
-                console.log(`[Main Map] Update available for ${currentMainRadarKey}`);
-                await originalSetRadar(null, mainProduct, 'main', { gate_limit: -30 });
-                baselineCheckCount.main = 0; // Reset after update
-              }
-            } catch (error) {
-              console.error('Error checking main map update:', error);
-            }
-          }
-        } else {
-          // First check or station changed, just record it
-          lastCheckedRadar.main = currentMainRadarKey;
-          baselineCheckCount.main = 1;
-        }
-      }
-    }
-
-    // Only check split map if it exists and station hasn't changed recently.
-    // Realtime chunk-streamed L2 refreshes via chunk events instead of this 10s loop.
-    if (map.hasSplitMap() && Date.now() - lastStationChangeTime.split > STATION_CHANGE_DEBOUNCE) {
-      const splitProduct = selectedProduct.split || map.currentRadarProductSplit || splitRadar.product;
-      const isRealtimeChunkL2Split = inferLevelFromProduct(splitProduct) === 'L2' && !archiveMode.split && !localFileMode.split;
-
-      if (!isRealtimeChunkL2Split) {
-        const currentSplitRadarKey = `${splitRadar.station}_${splitProduct}_${inferLevelFromProduct(splitProduct)}`;
-        const lastSplitRadarKey = lastCheckedRadar.split;
-
-        if (lastSplitRadarKey === currentSplitRadarKey) {
-          // Station is stable, increment baseline count
-          baselineCheckCount.split++;
-
-          // Only check for updates after we've baselined multiple times
-          if (baselineCheckCount.split >= BASELINE_CHECKS_REQUIRED) {
-            try {
-              const updateAvailable = await radar.isUpdateAvailable(splitRadar.station, splitProduct);
-              if (updateAvailable) {
-                console.log(`[Split Map] Update available for ${currentSplitRadarKey}`);
-                await originalSetRadar(null, splitProduct, 'split', { gate_limit: -30 });
-                baselineCheckCount.split = 0; // Reset after update
-              }
-            } catch (error) {
-              console.error('Error checking split map update:', error);
-            }
-          }
-        } else {
-          // First check or station changed, just record it
-          lastCheckedRadar.split = currentSplitRadarKey;
-          baselineCheckCount.split = 1;
-        }
-      }
-    }
-
-    // Update radar stations and outlooks every 12 cycles (2mins)
-    if (updateTimes >= 12) {
-      console.log("Running secondary updates...");
-      map.updateRadarStations();
-      map.fetchOutlooks();
-
-      try {
-        const layerSettings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
-        if (layerSettings.mesoscaleDiscussionsEnabled === true) {
-          map.fetchDiscussions();
-        }
-        if (layerSettings.lightningEnabled === true) {
-          map.fetchLightning();
-        }
-        if (layerSettings.spotterNetworkPositionsEnabled === true) {
-          map.fetchSpotterNetworkPositions();
-        }
-        if (layerSettings.metarStationsEnabled === true) {
-          map.fetchMetarStations();
-        }
-        if (layerSettings.nwsTornadoReportsEnabled === true || layerSettings.nwsWindReportsEnabled === true || layerSettings.nwsHailReportsEnabled === true) {
-          map.fetchNwsStormReports();
-        }
-      } catch (error) {
-        console.error('Error loading layer settings for periodic updates:', error);
-      }
-
-      updateTimes = 0;
-    }
-
-    // Update alerts and watches
-    console.log('[Debug] invoking periodic fetches: alerts, watches, storm-centers');
-    map.fetchAlerts();
-    map.fetchWatches();
-    map.fetchStormCenters();
-
-    console.log("UPDATETIMES:", updateTimes);
-
-  } finally {
-    updateInProgress = false;
-  }
-}, 10 * 1000); // Run updates every 10 seconds
+setRadar = intervalUpdates.setRadar;
 
 // Set up keyboard shortcuts
 setupKeybinds({
@@ -1000,11 +779,7 @@ setupKeybinds({
 });
 
 window.enableAutoUpdates = function() {
-  autoUpdateEnabled = true;
-  archiveMode.main = null;
-  archiveMode.split = null;
-  localFileMode.main = null;
-  localFileMode.split = null;
+  intervalUpdates?.enableAutoUpdates();
   console.log('Auto-updates re-enabled.');
   // Rebuild product picker to show all products
   map.rebuildRadarPicker('main', false);
@@ -1015,12 +790,12 @@ window.enableAutoUpdates = function() {
 };
 
 window.disableAutoUpdates = function() {
-  autoUpdateEnabled = false;
+  intervalUpdates?.disableAutoUpdates();
   console.log('Auto-updates disabled.');
 };
 
 window.isAutoUpdateEnabled = function() {
-  return autoUpdateEnabled;
+  return intervalUpdates?.isAutoUpdateEnabled() ?? false;
 };
 
 // Show welcome dialog if first time

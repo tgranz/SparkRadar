@@ -1,5 +1,5 @@
 import settingsHTML from './settings.html?raw';
-import Palettes from '../../main/palettes.js';
+import Palettes from '../../backend/palettes.js';
 import Toast from '../../ui/toast.js';
 import Modal from '../../ui/modal.js';
 import Window from '../../ui/window.js';

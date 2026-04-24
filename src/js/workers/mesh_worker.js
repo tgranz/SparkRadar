@@ -11,7 +11,7 @@ Responds:  { type: 'meshResult', id, vertexData }
 See LICENSE for more.
 */
 
-import { buildVertexDataFromMesh } from '../app/mesh.js';
+import { buildVertexDataFromMesh } from '../frontend/mesh.js';
 
 self.onmessage = (e) => {
     const { type, id, meshData, colorStops, palette, reflectivityGateFilter } = e.data;

@@ -1,4 +1,4 @@
-import { getAlertSettings, renderAlert } from '../main/alert_utils.js';
+import { getAlertSettings, renderAlert } from '../backend/alert_utils.js';
 
 export default class AlertList {
     constructor(layersInstance = null) {

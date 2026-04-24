@@ -1,5 +1,5 @@
 import Modal from '../ui/modal.js';
-import WeatherInformation from '../main/weatherinformation.js';
+import WeatherInformation from '../backend/weatherinformation.js';
 
 class RightClickHandler {
 	constructor(mapInstance, enabled = true) {

@@ -9,12 +9,12 @@ See LICENSE for more.
 
 import earcut from 'earcut';
 import { createSplitToolbar } from "./toolbars/split_toolbar.js";
-import Palettes from "../main/palettes.js";
+import Palettes from "../backend/palettes.js";
 import { showLoadingAnimation, hideLoadingAnimation } from "../ui/loader.js";
 import RadarPicker from "./radar_picker.js";
-import Layers from "../main/layers.js";
+import Layers from "../backend/layers.js";
 import RadarStationsLayer from "../maplayers/radar_stations.js";
-import Radar3D from "../main/3dradar.js";
+import Radar3D from "../backend/3dradar.js";
 import Notification from '../ui/notification.js';
 import RightClickHandler from './rightclick.js';
 import CrossSection from './cross_section.js';
@@ -98,6 +98,7 @@ class Map {
 
         // Radar station markers, handlers and timers
         this.radarStationsLayer = new RadarStationsLayer(this);
+        this.radarStationsVisiblePreference = true;
         this.rightClickHandler = new RightClickHandler(this, getCurrentSetting('enableRightClickMenu', true) !== false);
 
         // Reflectivity gate filter (for filtering out weak reflectivity values)
@@ -382,10 +383,36 @@ class Map {
             this.setSatelliteProduct(this.currentSatelliteProduct);
         } else {
             this.wmsSatelliteLayer?.hide();
-            this.radarStationsLayer?.show();
+            if (this.radarStationsVisiblePreference) {
+                this.radarStationsLayer?.show();
+            } else {
+                this.radarStationsLayer?.hide();
+            }
             this._restoreRadarLayer('main');
             this._restoreRadarLayer('dual');
         }
+    }
+
+    setRadarStationsVisible(visible) {
+        const shouldShow = visible !== false;
+        this.radarStationsVisiblePreference = shouldShow;
+
+        if (this.dataMode === 'satellite') {
+            this.radarStationsLayer?.hide();
+            return shouldShow;
+        }
+
+        if (shouldShow) {
+            this.radarStationsLayer?.show();
+        } else {
+            this.radarStationsLayer?.hide();
+        }
+
+        return shouldShow;
+    }
+
+    toggleRadarStationsVisible() {
+        return this.setRadarStationsVisible(!this.radarStationsVisiblePreference);
     }
 
     _handleMainPickerSelection(product, tiltIndex = 0) {

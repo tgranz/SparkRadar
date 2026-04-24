@@ -12,7 +12,7 @@ import { Level2Radar } from '../../parse/level2/src/index.js';
 import nexradLevel3Data from '../../parse/level3/src/browser.js';
 import RadarCache from './radar_cache.js';
 import ChunkLoader from '../../parse/chunkloader.js';
-import { getCurrentSetting } from '../app/settings/setting_utils.js';
+import { getCurrentSetting } from '../frontend/settings/setting_utils.js';
 
 // Helper function to yield to the browser between processing iterations
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));

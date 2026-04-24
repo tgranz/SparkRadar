@@ -9,7 +9,7 @@ See LICENSE for more.
 import Dialog from "../ui/dialog.js";
 import Window from "../ui/window.js";
 import { hasUsableMapStyle, waitForMapStyleReady, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
-import { renderAlert } from "../main/alert_utils.js";
+import { renderAlert } from "../backend/alert_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',

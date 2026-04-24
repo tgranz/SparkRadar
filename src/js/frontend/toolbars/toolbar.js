@@ -1,6 +1,6 @@
 import Toast from "../../ui/toast";
 
-export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick, onMeasureClick) {    
+export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick, onMeasureClick, onStationsToggleClick) {
     // Create main toolbar
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
@@ -95,6 +95,26 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     finderButton.addEventListener('click', () => {
         if (typeof onFinderClick === 'function') {
             onFinderClick();
+        }
+    });
+
+    // Create tool buttons (inside toolbox)
+    const stationsToggleButton = document.createElement('button');
+    stationsToggleButton.type = 'button';
+    stationsToggleButton.classList.add('active');
+    stationsToggleButton.innerHTML = '<i class="ti ti-radar-2"></i>';
+    stationsToggleButton.title = 'Toggle radar stations';
+    stationsToggleButton.addEventListener('click', () => {
+        if (window.appmode === 'satellite') {
+            return;
+        }
+        if (typeof onStationsToggleClick === 'function') {
+            const isVisible = onStationsToggleClick();
+            if (typeof isVisible === 'boolean') {
+                const message = isVisible ? 'Hide radar stations' : 'Show radar stations';
+                stationsToggleButton.title = message;
+                stationsToggleButton.classList.toggle('active', isVisible);
+            }
         }
     });
 
@@ -230,7 +250,7 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
 
     // Handle responsive station info layout
     const updateStationInfoLayout = () => {
-        if (window.innerWidth <= 550) {
+        if (window.innerWidth <= 600) {
             stationInfoDiv.id = 'toolbar-station-info-mobile';
         } else {
             stationInfoDiv.id = 'toolbar-station-info';
@@ -277,6 +297,19 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
         startSplitLayoutButton.style.opacity = isSatellite ? '0.45' : '';
         startSplitLayoutButton.title = isSatellite ? 'Dual-radar view unavailable in satellite mode' : 'Dual-radar view';
 
+        if (typeof window.setToolEnabled === 'function') {
+            window.setToolEnabled(stationsToggleButton, !isSatellite);
+        } else {
+            stationsToggleButton.disabled = isSatellite;
+            stationsToggleButton.setAttribute('aria-disabled', String(isSatellite));
+            stationsToggleButton.style.pointerEvents = isSatellite ? 'none' : '';
+            stationsToggleButton.style.color = isSatellite ? 'gray' : '';
+        }
+        stationsToggleButton.style.opacity = isSatellite ? '0.45' : '';
+        stationsToggleButton.title = isSatellite
+            ? 'Radar stations unavailable in satellite mode'
+            : 'Toggle radar stations';
+
         stationInfoDiv.classList.toggle('hidden', isSatellite);
         stationInfoDiv.style.pointerEvents = isSatellite ? 'none' : '';
         stationInfoDiv.setAttribute('aria-hidden', String(isSatellite));
@@ -299,6 +332,7 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     // Assemble toolbar hierarchy
     toolbar.appendChild(openMenuButton);
     toolbar.appendChild(openLayerPickerButton);
+    toolbar.appendChild(stationsToggleButton);
     toolbar.appendChild(startSplitLayoutButton);
     toolbar.appendChild(toolboxButton);
     toolbar.appendChild(finderButton);

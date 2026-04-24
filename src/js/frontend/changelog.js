@@ -1,7 +1,25 @@
 const entries = [
     {
+        version : "1.6.1",
+        date: "April 23, 2026",
+        changes: [
+            {
+                text: "Radar Stations Toggle: Turn radar stations on or off from the toolbar.",
+                type: "new"
+            },
+            {
+                text: "Migrate to looking for a volume scan ID gap for L2 instead of the L2ChunkAPI. Thanks to Aden Koperczak for this idea.",
+                type: "enhancement"
+            },
+            {
+                text: "Fix alerts such that cancellation messages are ignored when looking for alert properties.",
+                type: "bugfix"
+            },
+        ]
+    },
+    {
         version : "1.6.0",
-        date: "April 14, 2026",
+        date: "April 16, 2026",
         changes: [
             {
                 text: "Alert category counts: See the active alert count for each type of alert.",
@@ -17,6 +35,10 @@ const entries = [
             },
             {
                 text: "Run another update after load to ensure all layers have loaded.",
+                type: "enhancement"
+            },
+            {
+                text: "Update alert priorities and order.",
                 type: "enhancement"
             },
             {

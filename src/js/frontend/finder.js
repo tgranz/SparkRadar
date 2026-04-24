@@ -48,8 +48,15 @@ export default class Finder {
         this.isTyping = false;
         this.typingTimeout = null;
         this.searchSequence = 0;
-        this.isFirstElement = true;
+        this.currentHighlightIndex = -1;
+        this.results = [];
         this.handleCloseClick = () => this.close();
+        this.handleKeyDown = (e) => this._onKeyDown(e);
+        this.handleEscapeKey = (e) => {
+            if (e.key === 'Escape') {
+                this.close();
+            }
+        };
 
         if (document.getElementById('finder')) {
             console.warn('[Finder] Finder instance already exists. Reusing existing instance.');
@@ -111,6 +118,75 @@ export default class Finder {
             }
             this.performSearch(query);
         });
+    }
+
+    _onKeyDown(e) {
+        // When search input is focused, only allow arrow keys and Enter
+        console.log('Key down:', e.key, 'Focused element:', document.activeElement);
+        if (document.activeElement === this.searchInput) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                this._highlightNext();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                this._highlightPrevious();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                this._activateHighlighted();
+            }
+            // Allow spacebar and other keys to work normally in input
+            return;
+        }
+    }
+
+    _highlightNext() {
+        if (this.results.length === 0) return;
+        this.currentHighlightIndex = (this.currentHighlightIndex + 1) % this.results.length;
+        this._updateHighlight();
+    }
+
+    _highlightPrevious() {
+        if (this.results.length === 0) return;
+        this.currentHighlightIndex = this.currentHighlightIndex <= 0 
+            ? this.results.length - 1 
+            : this.currentHighlightIndex - 1;
+        this._updateHighlight();
+    }
+
+    _updateHighlight() {
+        const resultItems = this.resultsContainer.querySelectorAll('.finder-result');
+        resultItems.forEach((item, index) => {
+            if (index === this.currentHighlightIndex) {
+                item.classList.add('finder-result-highlighted');
+                item.scrollIntoView({ block: 'nearest' });
+            } else {
+                item.classList.remove('finder-result-highlighted');
+            }
+        });
+    }
+
+    _activateHighlighted() {
+        if (this.currentHighlightIndex >= 0 && this.currentHighlightIndex < this.results.length) {
+            const result = this.results[this.currentHighlightIndex];
+            if (result.action) {
+                result.action();
+            }
+        } else {
+            console.log('No result is currently highlighted.');
+        }
+    }
+
+    _addResult(icon, text, action) {
+        const resultItem = buildResultItem(icon, text);
+        resultItem.addEventListener('click', () => {
+            action();
+        });
+        resultItem.addEventListener('mouseenter', () => {
+            this.currentHighlightIndex = this.results.length;
+            this._updateHighlight();
+        });
+        this.resultsContainer.appendChild(resultItem);
+        this.results.push({ icon, text, action, element: resultItem });
     }
 
     async _searchNominatim(q){
@@ -195,36 +271,31 @@ export default class Finder {
 
     async performSearch(query) {
         const currentSearchSequence = ++this.searchSequence;
+        // Clear any highlighted items before rebuilding
+        const oldHighlighted = this.resultsContainer.querySelectorAll('.finder-result-highlighted');
+        oldHighlighted.forEach(item => item.classList.remove('finder-result-highlighted'));
+        
         this.resultsContainer.innerHTML = '';
+        this.results = [];
+        console.log('Cleared results array.');
+        this.currentHighlightIndex = -1;
+
         if (query.length === 0) {
             return;
         }
 
-        this.isFirstElement = true;
-        
-        // First look for direct link matches
+        // Search for direct link matches
         for (const [url, ...keywords] of links) {
+            if (this.results.length >= 25) break;
             if (keywords.some(keyword => keyword.includes(query.toLowerCase()))) {
-                const resultItem = buildResultItem('link', `Go to ${url}`);
-                resultItem.addEventListener('click', () => {
+                this._addResult('link', `Go to ${url}`, () => {
                     window.open(url, '_blank');
                     this.close();
                 });
-                if (this.isFirstElement) {
-                    resultItem.classList.add('finder-result-first');
-                    document.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            window.open(url, '_blank');
-                            this.close();
-                        }
-                    }, { once: true });
-                }
-                this.resultsContainer.appendChild(resultItem);
-                this.isFirstElement = false;
             }
         }
 
-        // Next look for radar station matches
+        // Search for radar station matches
         const radarStations = window.radarStationFeatures || [];
         const matchingStations = radarStations.filter(station => {
             const name = station.properties?.name || '';
@@ -232,43 +303,21 @@ export default class Finder {
             return name.toLowerCase().includes(query.toLowerCase()) || icao.toLowerCase().includes(query.toLowerCase());
         });
 
-        if (matchingStations.length > 0) {
-            const sectionHeader = document.createElement('p');
-            sectionHeader.textContent = 'Radar Stations:';
-            sectionHeader.style.padding = '10px';
-            sectionHeader.style.fontWeight = 'bold';
-            this.resultsContainer.appendChild(sectionHeader);
+        matchingStations.forEach(station => {
+            if (this.results.length >= 25) return;
+            const name = station.properties?.name || 'Unknown';
+            const icao = station.properties?.id || 'Unknown callsign';
+            const bbox = station.bbox || station.properties?.bbox;
+            const lat = station.geometry?.coordinates[1] || station.properties?.latitude;
+            const lon = station.geometry?.coordinates[0] || station.properties?.longitude;
 
-            matchingStations.forEach(station => {
-                const name = station.properties?.name || 'Unknown';
-                const icao = station.properties?.id || 'Unknown callsign';
-                const resultItem = buildResultItem('radar-2', `${icao} (${name})`);
-                resultItem.addEventListener('click', () => {
-                    const bbox = station.bbox || station.properties?.bbox;
-                    const lat = station.geometry?.coordinates[1] || station.properties?.latitude;
-                    const lon = station.geometry?.coordinates[0] || station.properties?.longitude;
-                    this._setMapView(bbox, 11, lat, lon);
-                    this.close();
-                });
-                if (this.isFirstElement) {
-                    resultItem.classList.add('finder-result-first');
-                    document.addEventListener('keydown', (e) => {
-                        if (e.key === 'Enter') {
-                            const bbox = station.bbox || station.properties?.bbox;
-                            const lat = station.geometry?.coordinates[1] || station.properties?.latitude;
-                            const lon = station.geometry?.coordinates[0] || station.properties?.longitude;
-                            this._setMapView(bbox, 8, lat, lon);
-                            this.close();
-                        }
-                    }, { once: true });
-                }
-                this.resultsContainer.appendChild(resultItem);
-                this.isFirstElement = false;
+            this._addResult('radar-2', `${icao} (${name})`, () => {
+                this._setMapView(bbox, 11, lat, lon);
+                this.close();
             });
-        }
+        });
 
-
-        // Finally, search Nominatim for any remaining queries (longer than 4 chars)
+        // Search Nominatim for queries longer than 4 characters
         if (query.length > 4) {
             if (this.isTyping) {
                 clearTimeout(this.typingTimeout);
@@ -280,37 +329,30 @@ export default class Finder {
                 this.isTyping = false;
                 const results = await this._searchNominatim(query);
 
-                // Ignore stale responses from older searches.
+                // Ignore stale responses from older searches
                 if (currentSearchSequence !== this.searchSequence) {
                     return;
                 }
 
-                const sectionHeader = document.createElement('p');
-                sectionHeader.innerHTML = 'From <a href="https://nominatim.org/" target="_blank">Nominatim</a>:';
-                sectionHeader.style.padding = '10px';
-                sectionHeader.style.fontWeight = 'bold';
-                this.resultsContainer.appendChild(sectionHeader);
-
                 if (results && results.length > 0) {
+                    // Remove any "no results" placeholder before adding Nominatim results
+                    const noResultsItems = this.resultsContainer.querySelectorAll('.finder-no-results');
+                    noResultsItems.forEach(item => item.remove());
+
                     results.forEach(result => {
-                        const resultItem = buildResultItem('map-pin', result.display_name);
-                        resultItem.addEventListener('click', () => {
+                        if (this.results.length >= 25) return;
+                        this._addResult('map-pin', result.display_name, () => {
                             this._setMapView(result.boundingbox, 11, result.lat, result.lon);
                             this.close();
                         });
-                        if (this.isFirstElement) {
-                            resultItem.classList.add('finder-result-first');
-                            document.addEventListener('keydown', (e) => {
-                                if (e.key === 'Enter') {
-                                    this._setMapView(result.boundingbox, 11, result.lat, result.lon);
-                                    this.close();
-                                }
-                            }, { once: true });
-                        }
-                        this.resultsContainer.appendChild(resultItem);
-                        this.isFirstElement = false;
                     });
-                } else if (this.resultsContainer.innerHTML === '') {
+
+                    // Update highlighting in case this is the first batch of results
+                    if (this.currentHighlightIndex === -1 && this.results.length > 0) {
+                        this.currentHighlightIndex = 0;
+                        this._updateHighlight();
+                    }
+                } else if (this.results.length === 0) {
                     const noResultsItem = document.createElement('div');
                     noResultsItem.classList.add('finder-no-results');
                     noResultsItem.textContent = 'No results found';
@@ -319,12 +361,18 @@ export default class Finder {
             }, 500);
         }
 
-        if (this.isFirstElement && this.resultsContainer.innerHTML === '') {
+        if (this.results.length === 0 && query.length <= 4) {
             const noResultsItem = document.createElement('div');
             noResultsItem.classList.add('finder-no-results');
+            noResultsItem.textContent = 'No results found';
             this.resultsContainer.appendChild(noResultsItem);
         }
 
+        // Auto-highlight first result
+        if (this.results.length > 0) {
+            this.currentHighlightIndex = 0;
+            this._updateHighlight();
+        }
     }
 
     open() {
@@ -334,25 +382,30 @@ export default class Finder {
         requestAnimationFrame(() => {
             setTimeout(() => {this.searchInput.focus();}, 210);
         });
-        this.escListener = (e) => {
-            if (e.key === 'Escape') {
-                this.close();
-            }
-        };
-        document.addEventListener('keydown', this.escListener);
+        document.addEventListener('keydown', this.handleEscapeKey);
+        document.addEventListener('keydown', this.handleKeyDown);
         this.searchInput.value = '';
         this.resultsContainer.innerHTML = '';
+        this.results = [];
+        console.log('Cleared results array.');
+        this.currentHighlightIndex = -1;
     }
 
     close() {
+        // Remove event listeners immediately
+        document.removeEventListener('keydown', this.handleEscapeKey);
+        document.removeEventListener('keydown', this.handleKeyDown);
+        this.searchInput.value = '';
+        this.resultsContainer.innerHTML = '';
+        this.results = [];
+        console.log('Cleared results array.');
+        this.currentHighlightIndex = -1;
+
         this.wrapper.classList.add('finder-closing');
         this.wrapper.addEventListener('animationend', () => {
             if (this.wrapper.classList.contains('finder-closing')) {
                 this.wrapper.classList.add('finder-hidden');
                 this.wrapper.classList.remove('finder-closing');
-                this.searchInput.value = '';
-                this.resultsContainer.innerHTML = '';
-                document.removeEventListener('keydown', this.escListener);
             }
         }, { once: true });
     }

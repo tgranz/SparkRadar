@@ -1,5 +1,5 @@
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, getWeatherOutlineBeforeLayerId } from './layer_utils.js';
-import { getCurrentSetting } from '../app/settings/setting_utils.js';
+import { getCurrentSetting } from '../frontend/settings/setting_utils.js';
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
