@@ -44,6 +44,42 @@ export function getAlertSettings(alertName) {
     }
 }
 
+export function getTornadoStatus(props = {}) {
+    const hasObserved = Boolean(props?.is_tor_observed);
+    const hasEmergency = Boolean(props?.is_emergency);
+    const hasPds = Boolean(props?.is_pds);
+    const hasRadarIndicated = Boolean(props?.is_tor_radar_indicated);
+    const hasPossible = Boolean(props?.is_tor_possible);
+
+    if (hasObserved && hasEmergency) {
+        return { text: 'Deadly', color: '#c021ff' };
+    }
+
+    if (hasObserved && hasPds) {
+        return { text: 'Dangerous', color: '#ff00ff' };
+    }
+
+    if (hasObserved) {
+        return { text: 'Observed', color: '#b80000' };
+    }
+
+    if (hasRadarIndicated) {
+        return { text: 'Radar Indicated', color: '#ff2121' };
+    }
+
+    if (hasPossible) {
+        return { text: 'Possible', color: '#ffa200' };
+    }
+
+    return null;
+}
+
+export function getTornadoStatusHtml(props = {}, label = 'Tornado') {
+    const status = getTornadoStatus(props);
+    if (!status) return '';
+    return `<strong>${label}:</strong> <span style="color: ${status.color};">${status.text}</span>`;
+}
+
 export function renderAlert(alert) {
     const name = (alert?.productName || '').toLowerCase();
 
@@ -97,7 +133,7 @@ export function renderAlert(alert) {
     const windMatch = latestAlertMessage.match(/max wind gust\.\.\.(.*?)(\r?\n|$)/i);
     const maxWindGust = windMatch ? windMatch[1].trim() : null;
     const is_confirmed_tor = latestAlertMessage.includes('tornado...observed') || false;
-    const is_test = latestAlertMessage.includes('test') || false;
+    const is_test = latestAlertMessage.includes(' test') || false;
 
     // Now re-render the title
     if (alert?.productName?.toLowerCase() == "Severe Weather Statement".toLowerCase()) {

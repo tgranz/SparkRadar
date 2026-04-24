@@ -1,4 +1,4 @@
-import { getAlertSettings, renderAlert } from '../backend/alert_utils.js';
+import { getAlertSettings, getTornadoStatusHtml, renderAlert } from '../backend/alert_utils.js';
 
 export default class AlertList {
     constructor(layersInstance = null) {
@@ -306,12 +306,14 @@ export default class AlertList {
             const item = document.createElement('div');
             item.classList.add('alert-item', 'alert-list-item');
             item.dataset.category = this._categorizeAlert(rendered?.name || '') || '';
+            const torString = getTornadoStatusHtml(rendered.props);
+
             item.innerHTML = `
                 <div style="margin-bottom: 20px; padding: 15px; background: ${rendered.color}30; border-left: 4px solid ${rendered.color}; border-radius: 10px;">
                     <h3 style="margin: 0 0 10px 0; text-align: left; color: ${rendered.color};">${rendered.name}</h3>
                     <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                         <strong>Expires:</strong> <span>${this.formatDate(alert.expiry || alert.expiresAt)}</span>
-                        ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : (rendered.props.is_tor_observed ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Observed</span>` : (rendered.props.is_tor_radar_indicated ? `<strong>Tornado:</strong> <span style="color: #ffcc00;">Radar Indicated</span>` : ''))}
+                        ${torString}
                         ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                         ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()}</span>` : ''}
                         ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}

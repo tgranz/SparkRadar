@@ -1,5 +1,19 @@
 const entries = [
     {
+        version : "1.6.3",
+        date: "April 24, 2026",
+        changes: [
+            {
+                text: "Add support for application announcements.",
+                type: "new"
+            },
+            {
+                text: "Update tornado tags for alerts, now shows \"dangerous\" or \"deadly\" for PDS tornadoes and tornado emergencies respectively.",
+                type: "enhancement"
+            }
+        ]
+    },
+    {
         version : "1.6.2",
         date: "April 23, 2026",
         changes: [

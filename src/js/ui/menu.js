@@ -46,6 +46,7 @@ class Menu {
 
         const menuContent = document.createElement('div');
         menuContent.classList.add('menu-content');
+        this.menuContent = menuContent;
 
         // Create menu items
         const menuList = document.createElement('ul');
@@ -92,6 +93,8 @@ class Menu {
         menuContent.appendChild(dataSelectionWrapper);
         dataSelectionWrapper.appendChild(radarMode);
         dataSelectionWrapper.appendChild(satelliteMode);
+
+        this._renderAnnouncement();
 
         menuItems.forEach((item, index) => {
             const li = document.createElement('li');
@@ -205,7 +208,40 @@ class Menu {
         document.body.appendChild(this.menu);
     }
 
+    _renderAnnouncement() {
+        if (!this.menuContent) return;
+
+        const existing = this.menuContent.querySelector('.menu-announcement');
+        if (existing) {
+            existing.remove();
+        }
+
+        const announcementData = window.announcement;
+        if (!announcementData?.message) return;
+
+        const icon = typeof announcementData.icon === 'string' && announcementData.icon.trim()
+            ? announcementData.icon
+            : 'bell-ringing';
+        const color = typeof announcementData.color === 'string' && announcementData.color.trim()
+            ? announcementData.color
+            : '#27beff';
+
+        const announcement = document.createElement('div');
+        announcement.classList.add('menu-announcement');
+        announcement.innerHTML = `<i style="font-size: 1.1em;" class="ti ti-${icon}"></i><p>${announcementData.message}</p>`;
+        announcement.style.cssText = `background: ${color}33; color: ${color}; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--roundness); margin-top: 10px; font-size: 0.9em;`;
+
+        const menuList = this.menuContent.querySelector('ul');
+        if (menuList) {
+            this.menuContent.insertBefore(announcement, menuList);
+            return;
+        }
+
+        this.menuContent.appendChild(announcement);
+    }
+
     open() {
+        this._renderAnnouncement();
         this.menu.classList.remove('menu-hidden');
 
         // Remove the dialog if esc is pressed

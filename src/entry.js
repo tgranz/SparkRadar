@@ -839,3 +839,35 @@ if (localStorage.getItem('firstUse') !== 'true') {
 
 // Check if the user is using the new version for the first time
 checkVersion();
+
+// Read announcements
+fetch('https://api.sparkradar.app/announcement')
+  .then((response) => response.json())
+  .then((data) => {
+    /* Assuming data structure:
+    {
+      "message": "This is an announcement <b>with HTML</b> content.",
+      "icon": "note",
+      "stopShowing": "2026-05-01T00:00:00Z",
+      "color": "#ffcc00",
+      "showNotification": true
+    }
+    */
+
+    if (data?.message && data?.stopShowing) {      
+      if (new Date() < new Date(data.stopShowing)) {
+        window.announcement = data;
+
+        if (data.showNotification) new Notification(
+          'Announcement',
+          data.message,
+          data.icon ? data.icon : 'bell-ringing',
+          data.color ? data.color : '#27beff',
+          10000
+        );
+      }
+    }
+  })
+  .catch(() => {
+    // Ignore errors
+  });

@@ -8,7 +8,7 @@ See LICENSE for more.
 */
 
 import Notification from "../ui/notification.js";
-import { renderAlert } from "./alert_utils.js";
+import { getTornadoStatus, renderAlert } from "./alert_utils.js";
 
 /**
  * AlertService manages alert data fetching via SSE and polling
@@ -432,12 +432,9 @@ class AlertService {
 
         let meta = '';
         var metaObj = [];
-        if (rendered.props.is_tor_possible) {
-            metaObj.push('<b style="color: #ff2121;">Tornado: Possible</b>');
-        } else if (rendered.props.is_tor_observed) {
-            metaObj.push('<b style="color: #ff2121;">Tornado: Observed</b>');
-        } else if (rendered.props.is_tor_radar_indicated) {
-            metaObj.push('<b style="color: #ff2121;">Tornado: Radar Indicated</b>');
+        const torStatus = getTornadoStatus(rendered.props);
+        if (torStatus) {
+            metaObj.push(`<b style="color: ${torStatus.color};">Tornado: ${torStatus.text}</b>`);
         }
         if (rendered.props.is_waterspout_possible) {
             metaObj.push('<b style="color: #ff2121;">Waterspout: Possible</b>');

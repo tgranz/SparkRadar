@@ -9,7 +9,7 @@ See LICENSE for more.
 import Dialog from "../ui/dialog.js";
 import Window from "../ui/window.js";
 import { hasUsableMapStyle, waitForMapStyleReady, pointInPolygon, getWeatherFillBeforeLayerId, getWeatherOutlineBeforeLayerId } from "./layer_utils.js";
-import { renderAlert } from "../backend/alert_utils.js";
+import { getTornadoStatus, getTornadoStatusHtml, renderAlert } from "../backend/alert_utils.js";
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
@@ -350,10 +350,12 @@ class AlertLayer {
             const expiry = alert.expiry || alert.expiresAt ? `Expires: ${alertExpiry}` : '';
 
             const rendered = renderAlert(alert);
+            const torStatus = getTornadoStatus(rendered.props);
+            const torPopupMeta = torStatus ? ` | <b>Tornado: ${torStatus.text}</b>` : '';
 
             const meta = `
             ${expiry}
-            ${rendered.props.is_tor_possible ? ' | <b>Tornado Possible</b>' : (rendered.props.is_tor_observed ? ' | <b>Confirmed Tornado</b>' : (rendered.props.is_tor_radar_indicated ? ' | <b>Radar Indicated</b>' : ''))}
+            ${torPopupMeta}
             ${rendered.props.is_waterspout_possible ? ' | <b>Waterspout Possible</b>' : ''}
             ${rendered.props.max_wind_gust && rendered.props.max_hail_size ? `<br>Wind: ${rendered.props.max_wind_gust.toUpperCase()} | Hail: ${rendered.props.max_hail_size.toUpperCase()}` : (rendered.props.max_hail_size ? `<br>Hail: ${rendered.props.max_hail_size.toUpperCase()}` : (rendered.props.max_wind_gust ? `<br>Wind: ${rendered.props.max_wind_gust.toUpperCase()}` : ''))}
             ${(rendered.props.is_emergency && rendered.name.includes("Tornado")) ? '<br><b>TORNADO EMERGENCY</b>' : rendered.props.is_pds ? '<br><b>PARTICULARLY DANGEROUS SITUATION</b>' : ''}
@@ -479,7 +481,7 @@ class AlertLayer {
                     <strong>Issued:</strong> <span>${formatDate(alert.issued || alert.receivedAt)}</span>
                     <strong>Expires:</strong> <span>${formatDate(alert.expiry || alert.expiresAt)}</span>
                     ${alert.sender || alert.nwsOffice ? `<strong>Sender:</strong> <span>${alert.sender || alert.nwsOffice}</span>` : ''}
-                    ${rendered.props.is_tor_possible ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Possible</span>` : (rendered.props.is_tor_observed ? `<strong>Tornado:</strong> <span style="color: #ff2121;">Observed</span>` : (rendered.props.is_tor_radar_indicated ? `<strong>Tornado:</strong> <span style="color: #ffcc00;">Radar Indicated</span>` : ''))}
+                    ${getTornadoStatusHtml(rendered.props)}
                     ${rendered.props.is_waterspout_possible ? `<strong>Waterspout:</strong> <span style="color: #ff2121;">Possible</span>` : ''}
                     ${rendered.props.max_hail_size ? `<strong>Max Hail:</strong> <span>${rendered.props.max_hail_size.toUpperCase()} (${expandHailSize(rendered.props.max_hail_size)})</span>` : ''}
                     ${rendered.props.max_wind_gust ? `<strong>Max Wind:</strong> <span>${rendered.props.max_wind_gust.toUpperCase()}</span>` : ''}
