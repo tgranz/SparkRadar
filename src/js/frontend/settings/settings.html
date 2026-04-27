@@ -237,6 +237,13 @@
         <input type="range" id="reflectivity-gate-filter" name="reflectivity-gate-filter" min="-30" max="50" step="0.5" value="-10" data-setting="reflectivityGateFilter">
         <p class="settings-control-help">Reflectivity gates ("pixels") with dBz values below this threshold will be hidden. Turn up to increase performance, or down to view more radar clutter.</p>
       </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
+          <label for="enable-velocity-dealias">Velocity Dealiasing</label>
+          <input type="checkbox" id="enable-velocity-dealias" name="enable-velocity-dealias" class="switch" data-setting="enableVelocityDealias">
+        </div>
+        <p class="settings-control-help">Enable dealiasing for Level-II velocity. Dealiasing attempts to correct incorrect velocity gates by guessing their correct values based on the surrounding gates. May increase loading times by about a second.</p>
+      </div>
       <h3 class="settings-subheader">Animation</h3>
       <div class="settings-control">
         <div class="settings-control-header">

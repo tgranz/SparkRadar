@@ -1349,14 +1349,13 @@ class Map {
         }
     }
 
-    _buildTiltedProduct(baseProduct, tiltIndex) {
+    _buildTiltedProduct(baseProduct, tiltCode) {
         if (!baseProduct) return baseProduct;
-        if (!Number.isFinite(tiltIndex)) return baseProduct;
 
         if (baseProduct.includes('_')) {
-            const tilt = Math.max(0, Math.min(4, Math.floor(tiltIndex)));
+            const tilt = String(tiltCode ?? '0');
             const suffix = baseProduct.slice(2);
-            if (baseProduct === 'N_G' && tilt >= 2) {
+            if (baseProduct === 'N_S' && (tilt === '1' || tilt === '2' || tilt === '3')) {
                 return `N${tilt}U`;
             }
             return `N${tilt}${suffix}`;

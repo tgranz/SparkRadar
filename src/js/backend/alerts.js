@@ -418,12 +418,13 @@ class AlertService {
      */
     _showAlertNotification(alertData, isNew = true) {
         const rendered = renderAlert(alertData);
+        const notifConfig = isNew ? rendered.notif : (rendered.updnotif || rendered.notif);
         
         // Don't send notifications for unknown alerts
         if (rendered.name === 'Unknown Alert') return;
 
         // Don't send notifications if user has disabled them for this alert type
-        if (!rendered.notif.enabled) return;
+        if (!notifConfig?.enabled) return;
 
         const hasValidGeometry = !!(alertData?.geometry && (
             (Array.isArray(alertData.geometry) && alertData.geometry.length > 0) ||
@@ -464,11 +465,11 @@ class AlertService {
             new Notification(
                 "New Alert",
                 `A new ${rendered.name} has been issued.${meta ? `<br><br>${meta}` : ''}`,
-                rendered.notif.icon,
+                notifConfig.icon,
                 rendered.color,
                 8000,
                 actions,
-                rendered.notif.soundFile
+                notifConfig.soundFile
             );
         } else {
             const action = alertData.vtec?.actionCode || null;
@@ -496,11 +497,11 @@ class AlertService {
                 new Notification(
                     "Alert Update",
                     `A ${rendered.name} has been ${actionStr}.${meta ? `<br><br>${meta}` : ''}`,
-                    rendered.notif.icon,
+                    notifConfig.icon,
                     rendered.color,
                     8000,
                     actions,
-                    rendered.notif.soundFile
+                    notifConfig.soundFile
                 );
             }
         }

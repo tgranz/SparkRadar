@@ -10,6 +10,22 @@ import { createSplitToolbar } from './toolbars/split_toolbar.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
+// Tilt codes per base product — must stay in sync with radar_picker.js productEntries.
+const TILT_CODES = {
+    'N_B': ['0', 'A', '1', '2', 'B', '3'],
+    'N_G': ['0', 'A', '1'],
+    'N_C': ['0', 'A', '1', '2', 'B', '3'],
+    'N_X': ['0', 'A', '1', '2', 'B', '3'],
+    'N_K': ['0', 'A', '1', '2', 'B', '3'],
+    'N_H': ['0', 'A', '1', '2', 'B', '3'],
+    'N_S': ['0', '1', '2', '3'],
+};
+
+// Approximate VCP elevation angle (degrees) for each tilt code.
+const TILT_ELEVATION_DEG = {
+    '0': 0.5, 'A': 0.9, '1': 1.3, '2': 1.8, 'B': 2.4, '3': 3.1,
+};
+
 export default class CrossSection {
     constructor(map, callbacks = {}) {
         this.map = map;
@@ -25,6 +41,7 @@ export default class CrossSection {
         this.currentStation = null;
         this.tiltData = {};
         this.tiltBounds = {};
+        this.tiltCodes = [];
 
         this.lineCanvasMarker = null;
         this.lineMarkerResizeHandler = null;
@@ -79,6 +96,7 @@ export default class CrossSection {
 
         this.tiltData = {};
         this.tiltBounds = {};
+        this.tiltCodes = [];
         this.gateValues = [];
 
         // Show VCP display
@@ -222,12 +240,23 @@ export default class CrossSection {
         this.splitPane = null;
     }
 
+    _normalizeProductBase(product) {
+        for (const [baseCode, tilts] of Object.entries(TILT_CODES)) {
+            for (const tilt of tilts) {
+                if (this.map._buildTiltedProduct(baseCode, tilt) === product) {
+                    return baseCode;
+                }
+            }
+        }
+        return null;
+    }
+
     async _loadAllTilts(station, product) {
         const radar = this.map.radar;
         if (!radar) return;
 
-        const productTypeMatch = String(product || '').toUpperCase().match(/^N\d([A-Z])$/);
-        if (['DTA', 'DAA', 'N0S'].includes(product)) {
+        const baseCode = this._normalizeProductBase(product);
+        if (!baseCode) {
             const empty = document.createElement('div');
             empty.textContent = 'Cross section unavailable (product does not support tilts)';
             empty.style.color = '#ff2121';
@@ -235,21 +264,24 @@ export default class CrossSection {
             this.graphHost.appendChild(empty);
             return;
         }
-        const productType = productTypeMatch[1];
 
-        for (const tiltIndex of [0, 1, 2, 3]) {
+        const tilts = TILT_CODES[baseCode];
+        this.tiltCodes = tilts;
+
+        for (let i = 0; i < tilts.length; i++) {
+            const tiltCode = tilts[i];
+            const tiltedProduct = this.map._buildTiltedProduct(baseCode, tiltCode);
             try {
-                const tiltedProduct = `N${tiltIndex}${productType}`;
                 const radarResult = await radar.getRadarLayer(station, tiltedProduct, {
                     includeGeojson: false,
                 });
 
                 if (radarResult?.meshData instanceof Float32Array) {
-                    this.tiltData[tiltIndex] = radarResult.meshData;
-                    this.tiltBounds[tiltIndex] = radarResult.bounds;
+                    this.tiltData[i] = radarResult.meshData;
+                    this.tiltBounds[i] = radarResult.bounds;
                 }
             } catch (error) {
-                console.warn(`[CrossSection] Failed to load tilt ${tiltIndex}:`, error);
+                console.warn(`[CrossSection] Failed to load tilt ${tiltCode} (${tiltedProduct}):`, error);
             }
         }
     }
@@ -370,20 +402,11 @@ export default class CrossSection {
 
     _sendTiltsToWorker() {
         if (!this.worker) return;
+        const count = this.tiltCodes.length;
         this.worker.postMessage({
             type: 'loadTilts',
-            tiltMeshes: [
-                this.tiltData[0] ?? null,
-                this.tiltData[1] ?? null,
-                this.tiltData[2] ?? null,
-                this.tiltData[3] ?? null,
-            ],
-            tiltBounds: [
-                this.tiltBounds[0] ?? null,
-                this.tiltBounds[1] ?? null,
-                this.tiltBounds[2] ?? null,
-                this.tiltBounds[3] ?? null,
-            ],
+            tiltMeshes: Array.from({ length: count }, (_, i) => this.tiltData[i] ?? null),
+            tiltBounds: Array.from({ length: count }, (_, i) => this.tiltBounds[i] ?? null),
         });
     }
 
@@ -412,7 +435,8 @@ export default class CrossSection {
     }
 
     _getReferenceMeshData() {
-        for (let tilt = 0; tilt < 4; tilt++) {
+        const count = this.tiltCodes.length || 4;
+        for (let tilt = 0; tilt < count; tilt++) {
             const meshData = this.tiltData[tilt];
             if (meshData instanceof Float32Array && meshData.length >= 9) {
                 return meshData;
@@ -542,7 +566,7 @@ export default class CrossSection {
         axisY.setAttribute('stroke-width', '2');
         svg.appendChild(axisY);
 
-        const rowCount = 4;
+        const rowCount = this.tiltCodes.length || 4;
         const colCount = Math.max(1, this.gateValues.length);
         const cellWidth = plotWidth / colCount;
         const paletteStops = this._getPaletteStopsForCurrentProduct();
@@ -625,7 +649,7 @@ export default class CrossSection {
                 : xLeft + cellWidth;
             const nextSampleIdx = Math.min(sampleIdx + 1, this.gateValues.length - 1);
 
-            for (let tilt = 0; tilt < 4; tilt++) {
+            for (let tilt = 0; tilt < rowCount; tilt++) {
                 const value = this.gateValues[sampleIdx]?.tilts?.[tilt];
                 if (!Number.isFinite(value)) continue;
 
@@ -674,8 +698,9 @@ export default class CrossSection {
         this.graphHost.appendChild(svg);
     }
 
-    _getTiltElevationAngle(tilt) {
-        return [0.5, 1.3, 2.4, 3.1][tilt] ?? 0.5;
+    _getTiltElevationAngle(tiltIndex) {
+        const code = this.tiltCodes[tiltIndex];
+        return (code != null ? TILT_ELEVATION_DEG[code] : null) ?? 0.5;
     }
 
     _getRadarSiteCoordinates() {

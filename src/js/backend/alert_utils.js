@@ -17,8 +17,12 @@ export function getAlertSettings(alertName) {
                     enabled: typeof configuredValue.enabled === 'boolean' ? configuredValue.enabled : true,
                     // Older saved configs may not include notify; default to true to preserve behavior.
                     notify: typeof configuredValue.notify === 'boolean' ? configuredValue.notify : true,
+                    updnotify: typeof configuredValue.updnotify === 'boolean'
+                        ? configuredValue.updnotify
+                        : (typeof configuredValue.notify === 'boolean' ? configuredValue.notify : true),
                     color: configuredValue.color || configuredValue.fillColor || configuredValue.borderColor || defaultColor,
-                    sound: configuredValue.sound || null
+                    sound: configuredValue.sound || 'none',
+                    updsound: configuredValue.updsound || 'none'
                 };
             }
 
@@ -27,8 +31,10 @@ export function getAlertSettings(alertName) {
             return {
                 enabled,
                 notify: enabled,
+                updnotify: enabled,
                 color: defaultColor,
-                sound: null
+                sound: 'none',
+                updsound: 'none'
             };
         }
         
@@ -36,11 +42,20 @@ export function getAlertSettings(alertName) {
         return {
             enabled: true,
             notify: true,
+            updnotify: true,
             color: defaultColor,
-            sound: null
+            sound: 'none',
+            updsound: 'none'
         };
     } catch (error) {
-        return { enabled: true, notify: true, color: null, sound: null };
+        return {
+            enabled: true,
+            notify: true,
+            updnotify: true,
+            color: null,
+            sound: 'none',
+            updsound: 'none'
+        };
     }
 }
 
@@ -217,7 +232,12 @@ export function renderAlert(alert) {
         notif: {
             icon: icon,
             enabled: alertSettings.notify,
-            soundFile: alertSettings.sound || null
+            soundFile: alertSettings.sound || 'none'
+        },
+        updnotif: {
+            icon: icon,
+            enabled: alertSettings.updnotify,
+            soundFile: alertSettings.updsound || 'none'
         },
         props: {
             is_pds: is_pds,

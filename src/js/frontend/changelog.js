@@ -1,5 +1,35 @@
 const entries = [
     {
+        version : "1.7.0",
+        date: "April 27, 2026",
+        changes: [
+            {
+                text: "Velocity dealiasing for Level-II velocity based on AtticRadar's region-based algorithm. Can be turned on and off in settings > radar.",
+                type: "new"
+            },
+            {
+                text: "Traffic cameras: Only available in Kansas currently with more states coming soon. Thanks @cool123bmd for the camera data.",
+                type: "new"
+            },
+            {
+                text: "Alert update notifications and new alert notifications can now be customized separately.",
+                type: "new"
+            },
+            {
+                text: "More tilt options for L3 products. This is also reflected in cross-section.",
+                type: "enhancement"
+            },
+            {
+                text: "Inspector tool updates with map movements rather than every 500ms.",
+                type: "enhancement"
+            },
+            {
+                text: "Switch to improved gap detection algorithm for Level-II chunks to find the latest rolling volume scan ID.",
+                type: "bugfix"
+            }
+        ]
+    },
+    {
         version : "1.6.3",
         date: "April 24, 2026",
         changes: [

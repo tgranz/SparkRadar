@@ -16,6 +16,7 @@ const productLabels = {
     'HHC': 'Hybrid Hydrometeor Classification',
     'N_X': 'Differential Reflectivity',
     'N_S': 'Storm Relative Velocity',
+    'N_U': 'Storm Relative Velocity',
     'DAA': '1-hr Precipitation Accumulation',
     'DTA': 'Storm Total Accumulation',
     'EET': 'Enhanced Echo Tops',
@@ -30,18 +31,18 @@ const productLabels = {
 
 const productEntries = [
     { type: 'header', label: 'Standard Products (Level III)' },
-    { type: 'item', code: 'N_B', hasTiltOptions: true },
-    { type: 'item', code: 'N_G', hasTiltOptions: true },
-    { type: 'item', code: 'N_C', hasTiltOptions: true },
-    { type: 'item', code: 'N_X', hasTiltOptions: true },
-    { type: 'item', code: 'N_K', hasTiltOptions: true },
-    { type: 'item', code: 'N_H', hasTiltOptions: true },
-    { type: 'item', code: 'HHC', hasTiltOptions: false },
-    { type: 'item', code: 'N_S', hasTiltOptions: false },
-    { type: 'item', code: 'DAA', hasTiltOptions: false },
-    { type: 'item', code: 'DTA', hasTiltOptions: false },
-    //{ type: 'item', code: 'EET', hasTiltOptions: false },
-    //{ type: 'item', code: 'NVL', hasTiltOptions: false },
+    { type: 'item', code: 'N_B', tilts: ['0', 'A', '1', '2', 'B', '3'] },
+    { type: 'item', code: 'N_G', tilts: ['0', 'A', '1'] },
+    { type: 'item', code: 'N_C', tilts: ['0', 'A', '1', '2', 'B', '3'] },
+    { type: 'item', code: 'N_X', tilts: ['0', 'A', '1', '2', 'B', '3'] },
+    { type: 'item', code: 'N_K', tilts: ['0', 'A', '1', '2', 'B', '3'] },
+    { type: 'item', code: 'N_H', tilts: ['0', '1', '2', '3'] },
+    { type: 'item', code: 'N_S', tilts: ['0', '2', '3'] },
+    { type: 'item', code: 'HHC', tilts: [] },
+    { type: 'item', code: 'DAA', tilts: [] },
+    { type: 'item', code: 'DTA', tilts: [] },
+    //{ type: 'item', code: 'NST', tilts: [] },
+    //{ type: 'item', code: 'NMD', tilts: [] },
     { type: 'header', label: 'Super-Res Products (Level II, BETA)' },
     { type: 'item', code: 'REF', hasTiltOptions: false },
     { type: 'item', code: 'VEL', hasTiltOptions: false },
@@ -201,20 +202,21 @@ class RadarPicker {
             }
 
             const productItem = document.createElement('div');
+            const hasTilts = Array.isArray(entry.tilts) && entry.tilts.length > 1;
 
-            if (entry.hasTiltOptions) {
+            if (hasTilts) {
                 const productName = document.createElement('p');
                 productName.textContent = productLabels[entry.code] || entry.code;
                 productName.style.cursor = 'pointer';
                 productItem.appendChild(productName);
 
                 const tiltSelector = document.createElement('select');
-                tiltSelector.innerHTML = `
-                    <option value="0" selected>Tilt 1</option>
-                    <option value="1">Tilt 2</option>
-                    <option value="2">Tilt 3</option>
-                    <option value="3">Tilt 4</option>
-                `;
+                entry.tilts.forEach((tilt, i) => {
+                    const option = document.createElement('option');
+                    option.value = tilt;
+                    option.textContent = `Tilt ${i + 1}`;
+                    tiltSelector.appendChild(option);
+                });
 
                 tiltSelector.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -222,18 +224,17 @@ class RadarPicker {
 
                 tiltSelector.addEventListener('change', (e) => {
                     e.stopPropagation();
-                    const selectedTilt = Number(tiltSelector.value);
                     this.setCurrentProduct(entry.code);
                     if (typeof this.onChangeProduct === 'function') {
-                        this.onChangeProduct(entry.code, selectedTilt || 0);
+                        this.onChangeProduct(entry.code, tiltSelector.value);
                     }
                 });
 
                 productName.addEventListener('click', () => {
-                    tiltSelector.value = '0';
+                    tiltSelector.value = entry.tilts[0];
                     this.setCurrentProduct(entry.code);
                     if (typeof this.onChangeProduct === 'function') {
-                        this.onChangeProduct(entry.code, 0);
+                        this.onChangeProduct(entry.code, entry.tilts[0]);
                     }
                 });
 
@@ -245,7 +246,7 @@ class RadarPicker {
                 productItem.addEventListener('click', () => {
                     this.setCurrentProduct(entry.code);
                     if (typeof this.onChangeProduct === 'function') {
-                        this.onChangeProduct(entry.code, 0);
+                        this.onChangeProduct(entry.code, entry.tilts?.[0] ?? 0);
                     }
                 });
             }
@@ -316,7 +317,18 @@ class RadarPicker {
             return;
         }
 
-        const normalizedProduct = String(product).replace(/\d/, '_');
+        // Replace the second letter with an underscore
+        let normalizedProduct = String(product);
+        if (product.substring(1, 2) == 'A' || product.substring(1, 2) == 'B' || !isNaN(product.substring(1, 2))) {
+            normalizedProduct = product.substring(0, 1) + '_' + product.substring(2);
+        } else {
+            normalizedProduct = product;
+        }
+
+        if (normalizedProduct == "D_A") normalizedProduct = "DAA";
+
+        console.log("Using str product:", product, "normalized to:", normalizedProduct);
+
         this.currentProduct.textContent = productLabels[normalizedProduct] || product || 'No product selected';
 
         // No time or tilt for satellite
@@ -332,7 +344,7 @@ class RadarPicker {
             return;
         }
 
-        const normalizedProduct = String(code).replace(/\d/, '_').replace('conus_', '');
+        const normalizedProduct = String(code).replace('conus_', '');
         this.currentProductCode.textContent = `(${normalizedProduct})`;
     }
 

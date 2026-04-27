@@ -1,0 +1,2961 @@
+{
+  "generatedAt": "2026-04-27T18:52:19.358Z",
+  "requestDelayMs": 100,
+  "timeoutMs": 10000,
+  "totals": {
+    "checked": 11535,
+    "passed": 11114,
+    "failed": 421,
+    "removed": 421,
+    "strippedVideoStreams": 24787
+  },
+  "failures": [
+    {
+      "state": "Alabama",
+      "index": 87,
+      "name": "AL 79 Westchester Dr - Alabama - Jefferson",
+      "static": "https://api.algotraffic.com/v3/Cameras/1469/snapshot.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "California",
+      "index": 697,
+      "name": "I-10 : (385) Main Street - California - Riverside",
+      "static": "https://cwwp2.dot.ca.gov/data/d8/cctv/image/i10385mainstreet/i10385mainstreet.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 762,
+      "name": "I-10 : (TPAS) Wildwood Rest Area - California - San Bernardino",
+      "static": "https://cwwp2.dot.ca.gov/data/d8/cctv/image/i10tpaswildwoodrestarea/i10tpaswildwoodrestarea.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1287,
+      "name": "I-5 : SB Main & Buffalo (521) - California - Alameda",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/i5sbmainbuffalo521/i5sbmainbuffalo521.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1314,
+      "name": "I-605 : Katella - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/i605katella/i605katella.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1841,
+      "name": "SR-60 : (581) Jack Rabbit Trail - California - Riverside",
+      "static": "https://cwwp2.dot.ca.gov/data/d8/cctv/image/sr60581jackrabbittrail/sr60581jackrabbittrail.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1903,
+      "name": "SR-73 : SOF Aliso Creek Road - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr73sofalisocreekroad/sr73sofalisocreekroad.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1908,
+      "name": "SR-73 : South of Newport Coast Drive A - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr73southofnewportcoastdrivea/sr73southofnewportcoastdrivea.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1921,
+      "name": "SR-90 : Leslie St NW Corner - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr90lesliestnwcorner/sr90lesliestnwcorner.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1975,
+      "name": "SR-91 : Brookhurst Street - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr91brookhurststreet/sr91brookhurststreet.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1979,
+      "name": "SR-91 : Gilbert Street - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr91gilbertstreet/sr91gilbertstreet.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1981,
+      "name": "SR-91 : Knott - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr91knott/sr91knott.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1984,
+      "name": "SR-91 : Lemon Street - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr91lemonstreet/sr91lemonstreet.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1987,
+      "name": "SR-91 : SR-55 - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr91sr55/sr91sr55.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "California",
+      "index": 1991,
+      "name": "SR-91 : West of SR-57 - California - Orange",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr91westofsr57/sr91westofsr57.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Colorado",
+      "index": 219,
+      "name": "Highlands Ranch Pkwy MP 003.00 WB at Lucent Blvd: Looking West - Colorado - other",
+      "static": "https://cocam.carsprogram.org/Douglas/48_HRP_Lucent-cotripWest-DO-NOT-DELETE.jpg?1728089220000",
+      "reason": "Request timeout"
+    },
+    {
+      "state": "Idaho",
+      "index": 0,
+      "name": "I-90 at MP 299.4: Idaho Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Idaho.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 121,
+      "name": "CCTV05070",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_05_65_1359.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 150,
+      "name": "CCTV05121",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_05_64_0054-1.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 198,
+      "name": "CCTV06061",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_75_1725.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 199,
+      "name": "CCTV06062",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_71_0770.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 218,
+      "name": "CCTV07010",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_07_75_1140.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 219,
+      "name": "CCTV07012",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_07_75_1120.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 299,
+      "name": "I-471 at Grand Ave - Kentucky - Campbell",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_471_0027.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 319,
+      "name": "I-64 at I-265 in Ind.",
+      "static": "http://www.trimarc.org/images/snapshots/CCTV027.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 320,
+      "name": "I-64 at Ind. 150",
+      "static": "http://pws.trafficwise.org/pullover/172_64_204_10.jpg",
+      "reason": "Invalid content-type: text/html"
+    },
+    {
+      "state": "Kentucky",
+      "index": 323,
+      "name": "I-64 at New Albany, Ind.",
+      "static": "http://pws.trafficwise.org/pullover/172_64_234_10.jpg",
+      "reason": "Invalid content-type: text/html"
+    },
+    {
+      "state": "Kentucky",
+      "index": 340,
+      "name": "I-64 near I-65 - Kentucky - Jefferson",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_05_64_0054-1.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 351,
+      "name": "I-65 at Eastern Ave. Ind. Exit 2 Indiana",
+      "static": "http://www.trimarc.org/images/snapshots/IND_CCTV008.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 358,
+      "name": "I-65 at Sellersburg, Ind.(Exit 9 - SR 311)",
+      "static": "http://pws.trafficwise.org/pullover/172_65_90_10.jpg",
+      "reason": "Invalid content-type: text/html"
+    },
+    {
+      "state": "Kentucky",
+      "index": 359,
+      "name": "I-65 at SR 60 Exit 7 Indiana",
+      "static": "http://www.trimarc.org/images/snapshots/IND_CCTV005.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 361,
+      "name": "I-65 just South of I-265 Exit 6 Indiana",
+      "static": "http://pws.trafficwise.org/pullover/172_65_56_11.jpg",
+      "reason": "Invalid content-type: text/html"
+    },
+    {
+      "state": "Kentucky",
+      "index": 374,
+      "name": "I-65 NB @ MP 73.8 - Kentucky - Hart",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_04_65_0738.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 383,
+      "name": "I-65 over Market St. Exit 0 Indiana",
+      "static": "http://pws.trafficwise.org/pullover/172_65_1_10.jpg",
+      "reason": "Invalid content-type: text/html"
+    },
+    {
+      "state": "Kentucky",
+      "index": 403,
+      "name": "I-71/I-75 - Kentucky - Boone",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_71_0770.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 416,
+      "name": "I-71/I-75 KY Split - Kentucky - Boone",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_75_1725.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 428,
+      "name": "I-75 NB @ Paris Pike - Kentucky - Fayette",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_07_75_1134.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 429,
+      "name": "I-75 NB @ Russell Cave - Kentucky - Fayette",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_07_75_1140.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 433,
+      "name": "I-75 SB @ Bryan Station - Kentucky - Fayette",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_07_75_1120.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 441,
+      "name": "KY22 East at I-265 - Kentucky - Jefferson",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_05_ADMS112_KY22-EB.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 442,
+      "name": "KY22 West at I-265 - Kentucky - Jefferson",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_05_ADMS111_KY22-WB.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 446,
+      "name": "KY80 WB @ MP 29.0 - Kentucky - Pulaski",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_08_KY80_0290.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Kentucky",
+      "index": 463,
+      "name": "Sherman Minton Br (Indiana side)",
+      "static": "http://pws.trafficwise.org/pullover/172_64_237_11.jpg",
+      "reason": "Invalid content-type: text/html"
+    },
+    {
+      "state": "Michigan",
+      "index": 8,
+      "name": "@ 107th Engineers Memorial Highway",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2063.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 16,
+      "name": "@ 28th Street",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/729.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 18,
+      "name": "@ 3 Mile Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2644.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 52,
+      "name": "@ Alger/Schoolcraft Co Line",
+      "static": "https://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2070.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 54,
+      "name": "@ Ames-Dexter",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2642.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 55,
+      "name": "@ Anderson Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2334.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 61,
+      "name": "@ Baraga Marquette Co Rd Imperial Heights Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/708.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 66,
+      "name": "@ Bear River Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2342.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 70,
+      "name": "@ Beitner",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2643.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 73,
+      "name": "@ Betsie River Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2340.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 83,
+      "name": "@ Burgess Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/719.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 91,
+      "name": "@ C-58 (Main St/Afton Rd)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/725.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 99,
+      "name": "@ Center",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2328.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 102,
+      "name": "@ Charlevoix",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2641.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 112,
+      "name": "@ Coleman Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/726.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 116,
+      "name": "@ County Line Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/727.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 117,
+      "name": "@ County Park Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2057.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 118,
+      "name": "@ County Road 442",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/702.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 119,
+      "name": "@ County Road 486",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2343.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 120,
+      "name": "@ CR 381",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2066.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 127,
+      "name": "@ Delta/Menominee County Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/742.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 129,
+      "name": "@ Dickinson",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2344.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 144,
+      "name": "@ E 638 Hwy",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/734.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 188,
+      "name": "@ FFH 16",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/705.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 193,
+      "name": "@ Forest Lake Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/700.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 219,
+      "name": "@ Grayling Rest Area",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/721.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 222,
+      "name": "@ Greenwald Road, West of M-117",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/703.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 237,
+      "name": "@ Houghton/Baraga County Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/749.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 238,
+      "name": "@ Houghton/Ontonagon County Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/748.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 239,
+      "name": "@ Houghton/Ontonagon County Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/739.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 256,
+      "name": "@ I-75",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/752.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 316,
+      "name": "@ Levering Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2337.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 323,
+      "name": "@ Luce/Chippewa Co Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2067.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 324,
+      "name": "@ Lukes Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2055.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 335,
+      "name": "@ M-115",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/714.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 336,
+      "name": "@ M-129",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2065.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 338,
+      "name": "@ M-134",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2071.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 344,
+      "name": "@ M-179",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2326.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 349,
+      "name": "@ M-26",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2068.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 350,
+      "name": "@ M-28",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/737.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 353,
+      "name": "@ M-32 (N Jct)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/731.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 357,
+      "name": "@ M-37",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/728.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 377,
+      "name": "@ M-55",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2636.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 378,
+      "name": "@ M-55 (Exit 194)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/722.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 379,
+      "name": "@ M-553",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/706.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 386,
+      "name": "@ M-61",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/cctv/I75_M61.jpeg?",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 389,
+      "name": "@ M-65 (E Jct)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/733.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 390,
+      "name": "@ M-65 (N Jct)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/735.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 392,
+      "name": "@ M-72 (S Jct)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/732.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 393,
+      "name": "@ M-77",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/747.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 400,
+      "name": "@ M-84",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/cctv/I75_M84.jpeg?",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 402,
+      "name": "@ M-88",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/730.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 407,
+      "name": "@ Mackinaw Highway (Exit 337)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/724.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 414,
+      "name": "@ Marlette Road (Exit 270)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/720.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 415,
+      "name": "@ Marquette/Alger County Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/746.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 416,
+      "name": "@ Marquette/Alger County Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/745.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 417,
+      "name": "@ Marquette/Dickinson County Line",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/741.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 420,
+      "name": "@ MDOT Roadside Park",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/707.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 467,
+      "name": "@ No. 43.75 Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2056.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 469,
+      "name": "@ North River Downs",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2637.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 470,
+      "name": "@ Northeast of the Escanaba River",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/704.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 491,
+      "name": "@ Phoenix Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2332.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 498,
+      "name": "@ Poyhonen Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/712.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 499,
+      "name": "@ Quimby",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2325.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 502,
+      "name": "@ Rapid River",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/743.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 509,
+      "name": "@ River Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/736.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 553,
+      "name": "@ Seney Rest Area",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/710.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 560,
+      "name": "@ South of Castle Rock Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/711.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 561,
+      "name": "@ South of M-48 overpass",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/709.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 568,
+      "name": "@ Stiles Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/716.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 569,
+      "name": "@ Store St",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/740.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 571,
+      "name": "@ Sunset Trail",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2341.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 572,
+      "name": "@ Tannery Rd",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/751.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 579,
+      "name": "@ Trenary",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/744.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 589,
+      "name": "@ US-10 (Exit 153)",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/717.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 603,
+      "name": "@ US-45",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2069.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 604,
+      "name": "@ US-45",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2064.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 605,
+      "name": "@ US-45/M-26",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/738.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 645,
+      "name": "@ Washington",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2330.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 652,
+      "name": "@ Weigh Station",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2335.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 659,
+      "name": "@ Wildwood Ln",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/701.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 661,
+      "name": "@ Williamsburg Road",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/718.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Michigan",
+      "index": 663,
+      "name": "@ Wilson",
+      "static": "http://mdotcf.state.mi.us/public/docs/drive/camfiles/rwis/2324.jpg",
+      "reason": "HTTP 520"
+    },
+    {
+      "state": "Nebraska",
+      "index": 6,
+      "name": "I-480: Leavenworth St",
+      "static": "https://dot511.nebraska.gov/images/vid-I480atLeavenworth.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 11,
+      "name": "I-680: Blair High Road",
+      "static": "https://dot511.nebraska.gov/images/vid-002680007-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 18,
+      "name": "I-680: Omaha",
+      "static": "https://dot511.nebraska.gov/images/vid-002680.15-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 22,
+      "name": "I-80: 13th St",
+      "static": "https://dot511.nebraska.gov/images/vid-00208045415-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 24,
+      "name": "I-80: 42nd St in Omaha",
+      "static": "https://dot511.nebraska.gov/images/vid-00208045178-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 27,
+      "name": "I-80: 84th St in Omaha",
+      "static": "https://dot511.nebraska.gov/images/vid-002080448-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 51,
+      "name": "I-80: I 80 at 412",
+      "static": "https://dot511.nebraska.gov/images/vid-001080413-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 54,
+      "name": "I-80: I 80 at 84th St",
+      "static": "https://dot511.nebraska.gov/images/vid-001080408-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 68,
+      "name": "I-80: L Street in Omaha",
+      "static": "https://dot511.nebraska.gov/images/vid-002080444-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 76,
+      "name": "I-80: North of I in Omaha",
+      "static": "https://dot511.nebraska.gov/images/vid-002080445-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 90,
+      "name": "NE 370: 174 St",
+      "static": "https://dot511.nebraska.gov/images/vid-00237027200-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 93,
+      "name": "NE 50: Manley",
+      "static": "https://dot511.nebraska.gov/images/vid-002050070-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 95,
+      "name": "US 30: Blair Roundabout",
+      "static": "https://dot511.nebraska.gov/images/vid-00203044650-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 98,
+      "name": "US 6: 192nd St",
+      "static": "https://dot511.nebraska.gov/images/vid-002006358-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 103,
+      "name": "US 6: W Dodge at 128th",
+      "static": "https://dot511.nebraska.gov/images/vid-00200636341-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 106,
+      "name": "US 75: Bellevue",
+      "static": "https://dot511.nebraska.gov/images/VID-00207508196-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 115,
+      "name": "US 75: US 34 and NE 66 at Plattsmouth",
+      "static": "https://dot511.nebraska.gov/images/vid-00203437955-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Nebraska",
+      "index": 117,
+      "name": "US 77: Hwy 77 at Warlick",
+      "static": "https://dot511.nebraska.gov/images/vid-001077058-00.jpg?1736678100000",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 160,
+      "name": "Fields Ertel Rd & Kings Auto Mall - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/artimis/FEMM176.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 283,
+      "name": "I-471 at Grand Ave - Ohio - other",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_471_0027.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 284,
+      "name": "I-471 NB just N of I-275 - Ohio - other",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_471_0006.jpg",
+      "reason": "fetch failed"
+    },
+    {
+      "state": "Ohio",
+      "index": 299,
+      "name": "I-475 at SR-25 (Signals) - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/toledo/I-475_at_SR-25_2.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 303,
+      "name": "I-475 at US-23 Split - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/toledo/I-475_at_US-23_Split.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 379,
+      "name": "I-70 at MM 153, Looking East - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/D05/D05_026_1.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 418,
+      "name": "I-70 EB Licking county rest area - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/rest_area/I-70 EB at MM 130 Licking County PTZ.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 422,
+      "name": "I-70 WB Madison county rest area - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/Rest Area- Madison County I-70 WB - Camera 4.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 425,
+      "name": "I-70/I-71/I-670 Rhodes Tower (Northeast) - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/CMH/CMH128-L.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 426,
+      "name": "I-70/I-71/I-670 Rhodes Tower (Southeast) - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/CMH/CMH126-L.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 490,
+      "name": "I-71 at SR-435/US-35 - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/CMH/CMH71-35.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 521,
+      "name": "I-71/I-75 - Ohio - other",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_71_0770.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 534,
+      "name": "I-71/I-75 KY Split - Ohio - other",
+      "static": "https://www.trimarc.org/images/milestone/CCTV_06_75_1725.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 592,
+      "name": "I-75 at N of Towne St - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/artimis/CCTV011a-L.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 632,
+      "name": "I-75 at SR-64/SR-105 (signals) lower camera - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/toledo/I-75_at_Bowling_Green_2.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 646,
+      "name": "I-75 at US-33 - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/Dayton/CCTV1067.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 762,
+      "name": "I-90 at Kenilworth Ave - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/CLE/CLE128.jpg",
+      "reason": "fetch failed"
+    },
+    {
+      "state": "Ohio",
+      "index": 771,
+      "name": "I-90 at SR-252 / Columbia Rd - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/CLE/CLE104-L.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 863,
+      "name": "SR-2 South of Thomas A. Edison Memorial Bridge - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/toledo/SR2-WB-Approach.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 866,
+      "name": "SR-235 at Dayton Yellow Springs Rd - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/artimis/SR-235_Dayton_Yellow_Springs.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 923,
+      "name": "SR-725 at Lakeman Dr - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/artimis/SR-725_Lakeman.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 967,
+      "name": "US-20 at Parmly Rd - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/CLE/US-20_at_Parmly_Rd.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 1051,
+      "name": "US-35 at Factory Rd - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/artimis/US-35_Factory_Rd_Quad.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 1053,
+      "name": "US-35 at Orchard Lane - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/artimis/US-35_Orchard_Ln.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 1066,
+      "name": "US-35 at US-62 - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us/images/CMH/CCTV2144.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 1068,
+      "name": "US-35 at West of Orchard Ln - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/artimis/US-35_W_of_Orchard_Ln.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Ohio",
+      "index": 1074,
+      "name": "US-40 at US-127 - Ohio - other",
+      "static": "https://itscameras.dot.state.oh.us:443/images/Artimis/CCTV4406.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Oregon",
+      "index": 512,
+      "name": "Oregon TripCheck Cameras Camera",
+      "static": "https://tripcheck.com/RoadCams/cams/I-84 SE at MP13.03_pid4229.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 517,
+      "name": "2nd / Monroe (Spokane)",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv028.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 564,
+      "name": "3rd / Browne (Spokane)",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv027.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 565,
+      "name": "3rd / Maple (Spokane)",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv030.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 2667,
+      "name": "Colville Municipal Airport",
+      "static": "https://images.wsdot.wa.gov/airports/colville.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 3146,
+      "name": "Ed Carlson Memorial – S Lewis County Airport South",
+      "static": "https://images.wsdot.wa.gov/airports/toledosouth.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 5996,
+      "name": "I-10 : (385) Main Street",
+      "static": "https://cwwp2.dot.ca.gov/data/d8/cctv/image/i10385mainstreet/i10385mainstreet.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 6043,
+      "name": "I-10 : (TPAS) Wildwood Rest Area",
+      "static": "https://cwwp2.dot.ca.gov/data/d8/cctv/image/i10tpaswildwoodrestarea/i10tpaswildwoodrestarea.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 6049,
+      "name": "I-10 @ E of Steins",
+      "static": "http://ss.nmroads.com/snapshots/i10steinseast.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 6286,
+      "name": "I-10 Riviere Du Chien Rd",
+      "static": "https://api.algotraffic.com/v3/Cameras/1158/snapshot.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 6836,
+      "name": "I-20/59 Rest Area WB",
+      "static": "https://api.algotraffic.com/v3/Cameras/1830/snapshot.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 8161,
+      "name": "I-40 @ Rio Puerco",
+      "static": "http://ss.nmroads.com/snapshots/i-40_riopuerco.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 8355,
+      "name": "I-405 : Harbor Off Ramp",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/i405harborofframp/i405harborofframp.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 8358,
+      "name": "I-405 : North of Bristol Street",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/i405northofbristolstreet/i405northofbristolstreet.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 8370,
+      "name": "I-405 : Ward",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/i405ward/i405ward.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 8388,
+      "name": "I-405 at MP 13.3: Main St",
+      "static": "https://images.wsdot.wa.gov/nw/405vc01331.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 8408,
+      "name": "I-405 at MP 18: NE 85th St",
+      "static": "https://images.wsdot.wa.gov/nw/405vc01801.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 8409,
+      "name": "I-405 at MP 18: NE 85th, SE Quad",
+      "static": "https://images.wsdot.wa.gov/nw/405vc01806.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 8412,
+      "name": "I-405 at MP 18.2: NE 85th, NW Quad",
+      "static": "https://images.wsdot.wa.gov/nw/405vc01819.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 9078,
+      "name": "I-5 : (217) Stonehill Drive/ Capistrano",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/i5217stonehilldrivecapistrano/i5217stonehilldrivecapistrano.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 9129,
+      "name": "I-5 : (704)  S/O Wagner",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/i5704sowagner/i5704sowagner.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 9225,
+      "name": "I-5 at MP 150.3: S 216th St",
+      "static": "https://images.wsdot.wa.gov/nw/005vc15036.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 9371,
+      "name": "I-5 at MP 198.4: SR 529 Interchange",
+      "static": "https://images.wsdot.wa.gov/nw/005vc19843.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 9991,
+      "name": "I-65 EXIT 168 (US82-S. Blvd) M",
+      "static": "https://api.algotraffic.com/v3/Cameras/1300/snapshot.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 9992,
+      "name": "I-65 I-10 Interchange",
+      "static": "https://api.algotraffic.com/v3/Cameras/1169/snapshot.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 9993,
+      "name": "I-65 MP179",
+      "static": "https://api.algotraffic.com/v3/Cameras/1254/snapshot.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11281,
+      "name": "I-90 at MP 272.2: SR-902 Interchange",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv023.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11282,
+      "name": "I-90 at MP 272.6: SR 902 Interchange #2",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-SR902_2.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11283,
+      "name": "I-90 at MP 274: Thomas Mallen Rd.",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv022.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11284,
+      "name": "I-90 at MP 275.8: Cheatham Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Cheatham.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11285,
+      "name": "I-90 at MP 276.2: Geiger Rd.",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv021.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11286,
+      "name": "I-90 at MP 277.5: US 2 Interchange",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV001.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11287,
+      "name": "I-90 at MP 277.5: US 2 Interchange",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv020.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11288,
+      "name": "I-90 at MP 278.9: Finch Arboretum",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv019.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11289,
+      "name": "I-90 at MP 279.4: US 195 Interchange",
+      "static": "https://images.wsdot.wa.gov/Spokane/i90/cctv018.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11290,
+      "name": "I-90 at MP 279.8: Maple St",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Maple.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11291,
+      "name": "I-90 at MP 280.9: Jefferson",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv017.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11292,
+      "name": "I-90 at MP 281.2: Division #2",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv024.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11293,
+      "name": "I-90 at MP 282: Arthur St",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV003.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11294,
+      "name": "I-90 at MP 282.2: Division #1",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv002.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11295,
+      "name": "I-90 at MP 282.2: Hamilton St",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV004.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11296,
+      "name": "I-90 at MP 283.7: Freya St",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV006.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11297,
+      "name": "I-90 at MP 284.5: Fancher Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV007.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11298,
+      "name": "I-90 at MP 285.2: Havana",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV005.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11299,
+      "name": "I-90 at MP 285.5: Sprague Ave",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV008.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11300,
+      "name": "I-90 at MP 286.2: Broadway Ave",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV009.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11301,
+      "name": "I-90 at MP 287.1: Park Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV010.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11302,
+      "name": "I-90 at MP 287.8: Argonne Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/CCTV011.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11303,
+      "name": "I-90 at MP 288.8: University",
+      "static": "https://images.wsdot.wa.gov/Spokane/i90/cctv013.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11304,
+      "name": "I-90 at MP 290.1: Pines Rd",
+      "static": "https://images.wsdot.wa.gov/Spokane/i90/cctv014.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11305,
+      "name": "I-90 at MP 291: Evergreen",
+      "static": "https://images.wsdot.wa.gov/Spokane/i90/cctv015.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11306,
+      "name": "I-90 at MP 291.9: Sullivan",
+      "static": "https://images.wsdot.wa.gov/Spokane/i90/cctv016.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11307,
+      "name": "I-90 at MP 293: Flora Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Flora.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11308,
+      "name": "I-90 at MP 293.9: Barker Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/i-90-barker.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11309,
+      "name": "I-90 at MP 294.6: Appleway Ave",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Appleway.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11318,
+      "name": "I-90 at MP 296.2: Liberty Lake Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Liberty-Lake.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11319,
+      "name": "I-90 at MP 296.8: Harvard Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Harvard.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 11320,
+      "name": "I-90 at MP 298.2: Starr Rd",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/I-90-Starr.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 14544,
+      "name": "Methow Valley State Airport Northwest",
+      "static": "https://images.wsdot.wa.gov/airports/methownw.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 14546,
+      "name": "Methow Valley State Airport Southeast",
+      "static": "https://images.wsdot.wa.gov/airports/methowse.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 14547,
+      "name": "Methow Valley State Airport West",
+      "static": "https://images.wsdot.wa.gov/airports/methoww.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 17080,
+      "name": "SR 167 at MP 10.6: Stewart Rd, NB Ramp",
+      "static": "https://images.wsdot.wa.gov/nw/167vc01067.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 17081,
+      "name": "SR 167 at MP 10.8: Stewart Rd",
+      "static": "https://images.wsdot.wa.gov/nw/167vc01087.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 17244,
+      "name": "SR 290 at MP .7: Hamilton",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv026.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 17985,
+      "name": "SR-60 : (581) Jack Rabbit Trail",
+      "static": "https://cwwp2.dot.ca.gov/data/d8/cctv/image/sr60581jackrabbittrail/sr60581jackrabbittrail.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 18037,
+      "name": "SR-73 : (342) North of Toll Plaza B/ Bommer Canyon",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr73342northoftollplazabbommercanyon/sr73342northoftollplazabbommercanyon.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 18104,
+      "name": "SR-91 : (3) West of SR-57",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr913westofsr57/sr913westofsr57.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 18118,
+      "name": "SR-91 : (5) SR-55",
+      "static": "https://cwwp2.dot.ca.gov/data/d12/cctv/image/sr915sr55/sr915sr55.jpg",
+      "reason": "HTTP 500"
+    },
+    {
+      "state": "Unknown",
+      "index": 18449,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3829_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18455,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3836_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18458,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3842_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18459,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3843_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18461,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3848_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18462,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3850_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18463,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3851_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18467,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3857_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18468,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-3858_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18471,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7339_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18472,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-3861_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18475,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3863_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18478,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3866_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18481,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3869_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18487,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3875_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18490,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3878_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18493,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3882_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18494,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3883_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18501,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3893_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18502,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3894_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18504,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3896_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18507,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3899_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18508,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3901_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18510,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7343_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18516,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7333_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18526,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4148_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18527,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7360_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18530,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4212_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18535,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4216_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18550,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4243_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18553,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4278_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18562,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7365_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18566,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4297_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18567,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4298_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18573,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4306_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18574,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4307_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18604,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-6909_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18618,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7905_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18629,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-6932_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18638,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-6951_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18646,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-6961_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18653,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-6977_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18661,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-6996_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18690,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8216_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18691,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7884_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18703,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7927_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18708,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8075_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18713,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7937_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18906,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3829_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18913,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3836_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18920,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3842_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18921,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3843_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18924,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3848_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18926,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3850_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18927,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3851_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18936,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3857_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18944,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-3858_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18950,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7339_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18951,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-3861_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18954,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3863_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18957,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3866_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18960,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3869_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18966,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3875_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18969,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3878_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18973,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3882_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18974,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3883_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18985,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3893_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18986,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3894_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18988,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3896_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18991,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3899_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 18993,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-3901_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19005,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7343_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19017,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11321_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19026,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11338_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19032,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7333_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19043,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-11350_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19044,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11351_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19057,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4148_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19058,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7360_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19066,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4212_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19071,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4216_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19075,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11134_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19080,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4243_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19084,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4278_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19099,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7365_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19105,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4297_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19117,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4298_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19126,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4306_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19127,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4307_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19160,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4654_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19175,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-10786_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19176,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-10826_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19180,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4526_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19182,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11867_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19183,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-10891_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19185,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9506_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19192,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-10766_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19204,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-26_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19241,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9354_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19243,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10698_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19285,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-7937_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19349,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11551_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19381,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11603_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19399,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-11561_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19418,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-11537_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19458,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10677_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19459,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10678_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19674,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-5_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19685,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-56_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19686,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-58_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19688,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-61_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19689,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-62_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19690,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-63_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19691,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-64_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19693,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-66_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19694,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-67_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19714,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-106_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19736,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10741_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19744,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10736_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19817,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10666_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19821,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10655_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19824,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10684_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19826,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-227_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19841,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-93_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19875,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-1265_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19877,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9262_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19884,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-1275_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19902,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9607_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19926,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-1317_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19930,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4850_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19931,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-8372_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19948,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4838_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19963,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4829_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19968,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4822_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19972,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4818_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 19983,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8391_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20001,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8230_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20040,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8326_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20046,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9639_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20050,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8335_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20053,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8337_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20065,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8348_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20091,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8375_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20114,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8240_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20145,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8270_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20151,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8275_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20162,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8285_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20170,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-62_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20179,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8302_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20184,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-8307_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20214,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10741_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20222,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-10736_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20257,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9636_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20264,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-93_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20285,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-9612_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20298,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-1085_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20303,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-1093_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20304,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9635_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20315,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-1105_l.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20318,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-9567_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20319,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-1109_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20328,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-9199_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20331,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-1149_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20336,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-9209_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20427,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-10407_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20428,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-10436_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20430,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4850_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20431,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI//chan-8372_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 20441,
+      "name": "Traffic Camera Static Test Camera",
+      "static": "https://images-dis.divas.cloud/DGI/chan-4838_h.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21306,
+      "name": "US 2 at MP 295.6: Farwell Rd",
+      "static": "https://images.wsdot.wa.gov/Spokane/i90/ccTV012.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21448,
+      "name": "US 395 at MP 270.1: Laurier (1)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21449,
+      "name": "US 395 at MP 270.1: Laurier (2)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium1.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21450,
+      "name": "US 395 at MP 270.1: Laurier (3)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium2.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21451,
+      "name": "US 395 at MP 270.1: Laurier (4)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium3.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21452,
+      "name": "US 395 at MP 270.1: Laurier (5)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium4.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21453,
+      "name": "US 395 at MP 270.1: Laurier (6)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium5.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21454,
+      "name": "US 395 at MP 270.1: Laurier (7)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium6.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 21455,
+      "name": "US 395 at MP 270.1: Laurier (8)",
+      "static": "https://images.wsdot.wa.gov/rweather/laurier_medium7.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 23411,
+      "name": "Wilbur Municipal Airport Fuel Island",
+      "static": "https://images.wsdot.wa.gov/airports/wilburFI.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 23412,
+      "name": "Wilbur Municipal Airport Northeast",
+      "static": "https://images.wsdot.wa.gov/airports/wilburNE.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Unknown",
+      "index": 23413,
+      "name": "Wilbur Municipal Airport Southeast",
+      "static": "https://images.wsdot.wa.gov/airports/wilburSE.jpg",
+      "reason": "HTTP 404"
+    },
+    {
+      "state": "Washington",
+      "index": 2,
+      "name": "3rd / Washington (Spokane)",
+      "static": "https://images.wsdot.wa.gov/spokane/i90/cctv029.jpg",
+      "reason": "HTTP 404"
+    }
+  ]
+}

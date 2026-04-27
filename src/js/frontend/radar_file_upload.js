@@ -86,6 +86,7 @@ export const openRadarFileUploadDialog = ({
         rawData,
         fileName: selectedFile.name,
         level: selectedLevel,
+        isUploadedArchive: true,
       };
       const station = inferStationFromUploadedFileName(selectedFile.name, getMainStation());
 
@@ -109,6 +110,8 @@ export const openRadarFileUploadDialog = ({
       await setRadar(station, product, 'main', {
         rawData,
         fileName: selectedFile.name,
+        localFileLevel: selectedLevel,
+        isUploadedArchive: true,
         gate_limit: -30,
       });
 

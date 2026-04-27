@@ -155,6 +155,18 @@ menu.innerHTML = `
             Miscellaneous
         </div>
         <div class="layer-menu-section">
+            <div class="layer-menu-item with-hint">
+                <div>
+                    <h3>Traffic Cameras</h3>
+                    <p class="tag beta">BETA</p>
+                </div>
+                <p class="hint">Provided by the the corresponding state's DOT. Only states that have authorized redistribution of camera feeds will be shown.</p>
+            </div>
+            <div class="layer-menu-item">
+                <input type="checkbox" id="toggle-cameras-layer" class="switch">
+            </div>
+        </div>
+        <div class="layer-menu-section">
             <div class="layer-menu-item">
                 <h3>Surface Fronts</h3>
             </div>
@@ -367,6 +379,7 @@ function initializeLayerToggles(mapInstance) {
                 nwsHailReportsEnabled: settings.nwsHailReportsEnabled !== undefined ? settings.nwsHailReportsEnabled : false,
                 spotterNetworkPositionsEnabled: settings.spotterNetworkPositionsEnabled !== undefined ? settings.spotterNetworkPositionsEnabled : false,
                 spotterNetworkReportsEnabled: settings.spotterNetworkReportsEnabled !== undefined ? settings.spotterNetworkReportsEnabled : false,
+                trafficCamerasEnabled: settings.trafficCamerasEnabled !== undefined ? settings.trafficCamerasEnabled : false,
                 metarStationsEnabled: settings.metarStationsEnabled !== undefined ? settings.metarStationsEnabled : false,
                 wildfiresEnabled: settings.wildfiresEnabled !== undefined ? settings.wildfiresEnabled : false,
                 outlookDay: settings.outlookDay || getFirstEnabledOutlookDay(outlookProducts) || null,
@@ -386,6 +399,7 @@ function initializeLayerToggles(mapInstance) {
                 nwsHailReportsEnabled: false,
                 spotterNetworkPositionsEnabled: false,
                 spotterNetworkReportsEnabled: false,
+                trafficCamerasEnabled: false,
                 metarStationsEnabled: false,
                 wildfiresEnabled: false,
                 outlookDay: null,
@@ -445,6 +459,7 @@ function initializeLayerToggles(mapInstance) {
     const nwsHailReportsCheckbox = document.getElementById('toggle-nws-hail-reports-layer');
     const spotterNetworkPositionsCheckbox = document.getElementById('toggle-spotter-network-positions-layer');
     const spotterNetworkReportsCheckbox = document.getElementById('toggle-spotter-network-reports-layer');
+    const camerasCheckbox = document.getElementById('toggle-cameras-layer');
     const metarsCheckbox = document.getElementById('toggle-metars-layer');
     const wildfiresCheckbox = document.getElementById('toggle-wildfires-layer');
     const connectionStatusElement = document.getElementById('alerts-connection-status');
@@ -502,6 +517,9 @@ function initializeLayerToggles(mapInstance) {
     }
     if (spotterNetworkReportsCheckbox) {
         spotterNetworkReportsCheckbox.checked = settings.spotterNetworkReportsEnabled;
+    }
+    if (camerasCheckbox) {
+        camerasCheckbox.checked = settings.trafficCamerasEnabled;
     }
     if (metarsCheckbox) {
         metarsCheckbox.checked = settings.metarStationsEnabled;
@@ -882,6 +900,26 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    if (camerasCheckbox) {
+        camerasCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings.trafficCamerasEnabled = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            if (isChecked) {
+                mapInstance.layers.displayTrafficCameras();
+                mapInstance.layers.fetchTrafficCameras();
+            } else {
+                mapInstance.layers.displayTrafficCameras();
+            }
+        });
+    }
+
     if (metarsCheckbox) {
         metarsCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
@@ -955,6 +993,9 @@ function initializeLayerToggles(mapInstance) {
         if (spotterNetworkReportsCheckbox && spotterNetworkReportsCheckbox.checked) {
             mapInstance.layers.fetchSpotterNetworkReports();
         }
+        if (camerasCheckbox && camerasCheckbox.checked) {
+            mapInstance.layers.fetchTrafficCameras();
+        }
         if (metarsCheckbox && metarsCheckbox.checked) {
             mapInstance.layers.fetchMetarStations();
         }
@@ -982,6 +1023,7 @@ function renderOrderPanel(panel, mapInstance) {
         'signatures': { type: 'icon' , value: 'ti ti-cloud-storm' },
         'spotterNetworkPositions': { type: 'image' , value: 'https://i.ibb.co/Md3GvZm/IMG-1278.webp' },
         'spotterNetworkReports': { type: 'icon' , value: 'ti ti-map-pin' },
+        'trafficCameras': { type: 'icon' , value: 'ti ti-camera' },
         'nwsStormReports': { type: 'icon' , value: 'ti ti-map-pin' },
         'metarStations': { type: 'icon' , value: 'ti ti-temperature' },
         'surfaceAnalysis': { type: 'icon' , value: 'ti ti-wind' },

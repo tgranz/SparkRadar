@@ -7,6 +7,7 @@ export default class NEXRADStatus {
         this.currentVolumeId = null;
         this.maxChunks = null;
         this.latestChunkUrl = null;
+        this.currentGapRange = null;
 
         const html = `
             <div style="padding: 12px; color: white; display: flex; flex-direction: column; gap: 12px; height: calc(100% - 24px);">
@@ -50,7 +51,7 @@ export default class NEXRADStatus {
 
         this._startPolling();
         this._renderStatusLine();
-        this._refreshChunkDenominator();
+        this._refreshStatusSnapshot();
     }
 
     _normalizeStation(value) {
@@ -91,20 +92,35 @@ export default class NEXRADStatus {
         };
     }
 
-    async _fetchChunkDenominator(station) {
-        const response = await fetch(`https://chunks.sparkradar.app/latest?station=${station}`, { cache: 'no-store' });
-        if (!response.ok) {
-            throw new Error(`Status fetch failed (${response.status})`);
+    _getChunkLoader() {
+        const radar = window.radarInstance;
+        if (!radar || !radar.level2ChunkLoader) {
+            return null;
+        }
+        return radar.level2ChunkLoader;
+    }
+
+    _readChunkLoaderStatus(station) {
+        const chunkLoader = this._getChunkLoader();
+        if (!chunkLoader) {
+            return null;
         }
 
-        const data = await response.json();
-        const stationData = data?.[station] || {};
-        const latestVolumeId = stationData.latest_volume_id ?? null;
-        const maxChunks = Number(data?.chunk_id ?? stationData.chunk_id);
+        const activeStation = this._normalizeStation(chunkLoader.station || station);
+        const liveChunkURLs = chunkLoader.getChunkURLs(false);
+        const combinedChunkURLs = chunkLoader.getChunkURLs(true);
+        const liveCount = Array.isArray(liveChunkURLs) ? liveChunkURLs.length : 0;
+        const combinedCount = Array.isArray(combinedChunkURLs) ? combinedChunkURLs.length : 0;
 
         return {
-            latestVolumeId,
-            maxChunks: Number.isFinite(maxChunks) ? maxChunks : null,
+            station: activeStation,
+            latestVolumeId: chunkLoader.getCurrentVolumeId() || chunkLoader.latestVolumeId || null,
+            currentChunkCount: liveCount,
+            maxChunks: combinedCount > 0 ? combinedCount : null,
+            latestChunkUrl: chunkLoader.getLatestChunkURL(),
+            gapStart: chunkLoader.gapStart || null,
+            gapEnd: chunkLoader.gapEnd || null,
+            isStreaming: chunkLoader.isStreaming === true,
         };
     }
 
@@ -157,11 +173,12 @@ export default class NEXRADStatus {
         this.currentVolumeId = parsed.volumeId;
         this.currentChunkNumber = parsed.chunkNumber;
         this.latestChunkUrl = detail.chunkUrl || null;
+        this._refreshStatusSnapshot();
         this._renderStatusLine();
         this._renderProgress();
     }
 
-    async _refreshChunkDenominator() {
+    _refreshStatusSnapshot() {
         const station = this._getActiveStation();
         const stationChanged = this.currentStation !== station;
         this.currentStation = station;
@@ -170,28 +187,44 @@ export default class NEXRADStatus {
             this.currentChunkNumber = null;
             this.currentVolumeId = null;
             this.latestChunkUrl = null;
+            this.currentGapRange = null;
         }
 
         this._renderStatusLine();
 
-        try {
-            const payload = await this._fetchChunkDenominator(station);
-            this.maxChunks = payload.maxChunks;
-            if (!this.currentVolumeId && payload.latestVolumeId != null) {
-                this.currentVolumeId = payload.latestVolumeId;
-            }
-            this._renderStatusLine();
-            this._renderProgress();
-        } catch (error) {
-            console.error('[NEXRADStatus] Failed to fetch status:', error);
-            this._renderError(error);
+        const snapshot = this._readChunkLoaderStatus(station);
+        if (!snapshot) {
+            this._renderError(new Error('Chunk loader is not available. Start a live Level-II product to view status.'));
+            return;
         }
+
+        this.maxChunks = snapshot.maxChunks;
+        if (Number.isFinite(snapshot.currentChunkCount) && snapshot.currentChunkCount > 0) {
+            this.currentChunkNumber = snapshot.currentChunkCount;
+        }
+        if (snapshot.latestVolumeId != null) {
+            this.currentVolumeId = snapshot.latestVolumeId;
+        }
+        if (snapshot.latestChunkUrl) {
+            this.latestChunkUrl = snapshot.latestChunkUrl;
+        }
+
+        if (snapshot.gapStart && snapshot.gapEnd) {
+            this.currentGapRange = `${snapshot.gapStart} -> ${snapshot.gapEnd}`;
+        } else if (snapshot.gapStart) {
+            this.currentGapRange = `${snapshot.gapStart} -> ...`;
+        } else {
+            this.currentGapRange = null;
+        }
+
+        this._renderStatusLine();
+        this._renderProgress();
     }
 
     _startPolling() {
         this._stopPolling();
         this.pollInterval = setInterval(() => {
-            this._refreshChunkDenominator();
+            this._refreshStatusSnapshot();
         }, 5000);
     }
 

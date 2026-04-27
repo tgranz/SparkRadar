@@ -201,6 +201,7 @@ export function isRadarRelatedLayerId(layerId = '') {
         || layerId.startsWith('spotter-network-position-')
         || layerId.startsWith('spotter-network-report-')
         || layerId.startsWith('wildfire-')
+        || layerId.startsWith('traffic-camera-')
         || layerId.startsWith('nws-storm-report-')
         || layerId.startsWith('metar-station-')
         || layerId.startsWith('outlook-layer')
@@ -402,7 +403,7 @@ export function pointInPolygon(point, rings) {
 // ─── Layer Ordering ──────────────────────────────────────────────────────────
 
 export const DEFAULT_LAYER_ORDER = [
-    'signatures', 'labels', 'metarStations', 'nwsStormReports', 'spotterNetworkReports', 'wildfires', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
+    'signatures', 'labels', 'metarStations', 'trafficCameras', 'nwsStormReports', 'spotterNetworkReports', 'wildfires', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
 ];
 
 export const LAYER_ORDER_LABELS = {
@@ -416,6 +417,7 @@ export const LAYER_ORDER_LABELS = {
     spotterNetworkPositions:'Spotter Network Positions',
     spotterNetworkReports: 'Spotter Network Reports',
     wildfires:             'Wildfires',
+    trafficCameras:        'Traffic Cameras',
     nwsStormReports:       'NWS Storm Reports',
     metarStations:         'METAR Stations',
     outlook:               'SPC Outlook',
@@ -468,6 +470,7 @@ function _getGroupLayerIds(map, group, target) {
             case 'spotterNetworkPositions': return id.startsWith('spotter-network-position-');
             case 'spotterNetworkReports': return id.startsWith('spotter-network-report-');
             case 'wildfires':           return id.startsWith('wildfire-');
+            case 'trafficCameras':      return id.startsWith('traffic-camera-');
             case 'nwsStormReports':     return id.startsWith('nws-storm-report-');
             case 'metarStations':       return id.startsWith('metar-station-');
             case 'outlook':             return id.startsWith('outlook-layer');

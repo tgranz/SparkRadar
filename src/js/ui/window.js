@@ -97,6 +97,12 @@ export default class Window {
         }
 
         this._animateOpen();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'q') {
+                this.destroy();
+            }
+        });
     }
 
     bringToFront() {

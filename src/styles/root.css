@@ -25,9 +25,21 @@ p {
   margin: 0;
 }
 
+span.highlight {
+  /* in SPC watch text for PDS text */
+  color: #ff00ff;
+  font-weight: bold;
+}
+
 * {
   scrollbar-width: none;
   font-family: 'Onest', sans-serif;
+}
+
+option {
+  font-family: 'Onest', sans-serif;
+  color: white;
+  background: black;
 }
 
 /* Remove tap highlight on mobile */

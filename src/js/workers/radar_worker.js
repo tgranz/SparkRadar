@@ -1,6 +1,7 @@
 import { Buffer } from 'buffer';
 import { Level2Radar } from '../../parse/level2/src/index.js';
 import nexradLevel3Data from '../../parse/level3/src/browser.js';
+import { dealiasVelocityRadials } from '../../parse/dealias.js';
 
 const LEVEL3_PARSE_MODE = 'fast';
 
@@ -173,6 +174,72 @@ const processRadarData = (radar, radarLocation, extent, layer, options = {}) => 
     const builder = createMeshBuilder(includeGeojson);
     const scanIsPartial = Boolean(radar?.hasGaps || radar?.isTruncated);
     const headers = radar.getHeader();
+
+    const shouldDealiasLevel2Velocity = layer === 'VEL' && options?.enableVelocityDealias !== false;
+
+    if (shouldDealiasLevel2Velocity) {
+        try {
+            console.log('Applying velocity dealiasing to Level-II velocity data...');
+            const beforeRows = radarData.map((radial) => {
+                if (!radial || !Array.isArray(radial.moment_data)) return null;
+                return radial.moment_data.slice();
+            });
+            const dealiasDebug = {};
+            const firstNyquist = Number(headers?.[0]?.radial?.nyquist_velocity);
+            radarData = dealiasVelocityRadials(radarData, {
+                nyquistVelocity: Number.isFinite(firstNyquist) && firstNyquist > 0 ? firstNyquist : undefined,
+				headers,
+                debugStats: dealiasDebug
+            });
+
+            let finiteBefore = 0;
+            let changedGates = 0;
+            let maxAbsDelta = 0;
+            for (let i = 0; i < radarData.length; i++) {
+                const radial = radarData[i];
+                const before = beforeRows[i];
+                if (!radial || !Array.isArray(radial.moment_data) || !Array.isArray(before)) {
+                    continue;
+                }
+                const gateCount = Math.min(before.length, radial.moment_data.length);
+                for (let g = 0; g < gateCount; g++) {
+                    const oldVal = before[g];
+                    const newVal = radial.moment_data[g];
+                    if (!Number.isFinite(oldVal) || !Number.isFinite(newVal)) {
+                        continue;
+                    }
+                    finiteBefore += 1;
+                    const delta = newVal - oldVal;
+                    if (delta !== 0) {
+                        changedGates += 1;
+                        const absDelta = Math.abs(delta);
+                        if (absDelta > maxAbsDelta) {
+                            maxAbsDelta = absDelta;
+                        }
+                    }
+                }
+            }
+
+            console.log(
+                `[dealias] L2 VEL changed ${changedGates}/${finiteBefore} finite gates; max |delta|=${maxAbsDelta.toFixed(3)} m/s`
+            );
+            console.log(
+                `[dealias] rotation protection marked ${dealiasDebug.rotationProtectedGateCount || 0} gates; expanded mask covers ${dealiasDebug.rotationProtectedExpandedGateCount || 0} gates`
+            );
+            console.log(
+                `[dealias] local rotation-zone unwrap adjusted ${dealiasDebug.rotationLocalAdjustedGateCount || 0} gates`
+            );
+            console.log(
+                `[dealias] local rotation-zone double-wrap candidates ${dealiasDebug.rotationLocalDoubleWrapCandidateCount || 0}`
+            );
+            console.log(
+                `[dealias] local rotation-zone solved ${dealiasDebug.rotationLocalSolvedSegmentCount || 0} segments across ${dealiasDebug.rotationLocalSolvedRayCount || 0} radials`
+            );
+            console.log('Velocity dealiasing completed successfully.');
+        } catch (error) {
+            console.error('Velocity dealiasing failed for Level-II velocity data:', error);
+        }
+    }
 
     const forwardDelta = (fromAz, toAz) => {
         if (!Number.isFinite(fromAz) || !Number.isFinite(toAz)) return 1;

@@ -899,6 +899,36 @@ function generateSpotterNetworkSettings(container, settingsInstance) {
         highAccuracyHelp.textContent = 'Turn on to enable precision location reporting (lat/lon to 6 digits), or disable for coarse reporting (lat/lon to 1 digit, more privacy).';
         highAccuracyControl.appendChild(highAccuracyHelp);
         container.appendChild(highAccuracyControl);
+
+        // Link to Spotter Network reporting page
+        // https://www.spotternetwork.org/report/severe
+
+        const snLinkSettingHeader = document.createElement('h3');
+        snLinkSettingHeader.textContent = 'Submit Report';
+        snLinkSettingHeader.classList.add('settings-subheader');
+        snLinkSettingHeader.style.marginTop = '20px';
+        container.appendChild(snLinkSettingHeader);
+
+        const snLinkControl = document.createElement('div');
+        snLinkControl.className = 'settings-control';
+        const snLinkHeader = document.createElement('div');
+        snLinkHeader.className = 'settings-control-header';
+        const snLinkLabel = document.createElement('label');
+        snLinkLabel.textContent = 'Submit Report';
+        const snLinkButton = document.createElement('button');
+        snLinkButton.innerHTML = 'Open reporting page';
+        snLinkButton.style.cssText = 'width: auto; font-size: 0.85em; padding: 5px 10px;';
+        snLinkButton.addEventListener('click', () => {
+            window.open('https://www.spotternetwork.org/report/severe', '_blank');
+        });
+        snLinkHeader.appendChild(snLinkLabel);
+        snLinkHeader.appendChild(snLinkButton);
+        snLinkControl.appendChild(snLinkHeader);
+        const snLinkHelp = document.createElement('p');
+        snLinkHelp.className = 'settings-control-help';
+        snLinkHelp.textContent = 'Open the Spotter Netwok page to submit a severe weather report.';
+        snLinkControl.appendChild(snLinkHelp);
+        container.appendChild(snLinkControl);
     } else {
         const usernameControl = document.createElement('div');
         usernameControl.className = 'settings-control';
@@ -1126,31 +1156,10 @@ function generateAlertSettings(settingsInstance, container) {
             control.appendChild(topRow);
 
             if (!isVisualCategory) {
-                const bottomRow = document.createElement('div');
-                bottomRow.className = 'alert-setting-bottom';
-                bottomRow.style.maxWidth = '100%';
+                const newBottomRow = document.createElement('div');
+                newBottomRow.className = 'alert-setting-bottom';
+                newBottomRow.style.maxWidth = '100%';
 
-                // Notification toggle
-                const notifyCheckbox = document.createElement('input');
-                notifyCheckbox.type = 'checkbox';
-                notifyCheckbox.id = `${settingKey}-notify`;
-                notifyCheckbox.checked = alertSettings.notify;
-                notifyCheckbox.title = `Send notifications when a new ${alertType} is issued`;
-                notifyCheckbox.classList.add('switch');
-                notifyCheckbox.addEventListener('change', () => {
-                    const current = settingsInstance.getSetting(settingKey);
-                    settingsInstance.setSetting(settingKey, { ...current, notify: notifyCheckbox.checked });
-                });
-
-                const notificationGroup = createControlGroup('Notifications');
-                notificationGroup.appendChild(notifyCheckbox);
-                bottomRow.appendChild(notificationGroup);
-
-                // Notification sound picker
-                const soundSelect = document.createElement('select');
-                soundSelect.id = `${settingKey}-sound`;
-                soundSelect.title = `Select notification sound for new ${alertType}s`;
-                soundSelect.className = 'alert-setting-sound';
                 const sounds = [
                     { name: 'Silent', value: 'none' },
                     { name: 'Default', value: 'warning.mp3' },
@@ -1164,11 +1173,33 @@ function generateAlertSettings(settingsInstance, container) {
                     { name: 'Ryan Hall - Tornado Warning', value: 'ryanhall_tor.mp3' },
                     { name: 'Ryan Hall - Severe Thunderstorm Warning', value: 'ryanhall_svr.mp3' },
                 ];
+
+                // Notification toggle - NEW
+                const notifyCheckbox = document.createElement('input');
+                notifyCheckbox.type = 'checkbox';
+                notifyCheckbox.id = `${settingKey}-notify`;
+                notifyCheckbox.checked = alertSettings.notify !== false;
+                notifyCheckbox.title = `Send notifications when a new ${alertType} is issued`;
+                notifyCheckbox.classList.add('switch');
+                notifyCheckbox.addEventListener('change', () => {
+                    const current = settingsInstance.getSetting(settingKey);
+                    settingsInstance.setSetting(settingKey, { ...current, notify: notifyCheckbox.checked });
+                });
+
+                const notificationGroup = createControlGroup('Notifications');
+                notificationGroup.appendChild(notifyCheckbox);
+                newBottomRow.appendChild(notificationGroup);
+
+                // Notification sound picker
+                const soundSelect = document.createElement('select');
+                soundSelect.id = `${settingKey}-sound`;
+                soundSelect.title = `Select notification sound for new ${alertType}s`;
+                soundSelect.className = 'alert-setting-sound';
                 sounds.forEach((sound) => {
                     const option = document.createElement('option');
                     option.value = sound.value;
                     option.textContent = sound.name;
-                    if (alertSettings.sound === sound.value) {
+                    if ((alertSettings.sound || 'none') === sound.value) {
                         option.selected = true;
                     }
                     soundSelect.appendChild(option);
@@ -1190,9 +1221,64 @@ function generateAlertSettings(settingsInstance, container) {
                 const soundGroup = createControlGroup('Sound');
                 soundGroup.appendChild(soundSelect);
                 soundGroup.appendChild(previewButton);
-                bottomRow.appendChild(soundGroup);
+                newBottomRow.appendChild(soundGroup);
 
-                control.appendChild(bottomRow);
+                control.appendChild(newBottomRow);
+
+                const updateBottomRow = document.createElement('div');
+                updateBottomRow.className = 'alert-setting-bottom';
+                updateBottomRow.style.maxWidth = '100%';
+
+                // Notification toggle - UPDATE
+                const updateNotifyCheckbox = document.createElement('input');
+                updateNotifyCheckbox.type = 'checkbox';
+                updateNotifyCheckbox.id = `${settingKey}-upd-notify`;
+                updateNotifyCheckbox.checked = alertSettings.updnotify ?? (alertSettings.notify !== false);
+                updateNotifyCheckbox.title = `Send notifications when ${alertType}s are updated`;
+                updateNotifyCheckbox.classList.add('switch');
+                updateNotifyCheckbox.addEventListener('change', () => {
+                    const current = settingsInstance.getSetting(settingKey);
+                    settingsInstance.setSetting(settingKey, { ...current, updnotify: updateNotifyCheckbox.checked });
+                });
+
+                const updateNotificationGroup = createControlGroup('Update Notifications');
+                updateNotificationGroup.appendChild(updateNotifyCheckbox);
+                updateBottomRow.appendChild(updateNotificationGroup);
+
+                // Notification sound picker
+                const updateSoundSelect = document.createElement('select');
+                updateSoundSelect.id = `${settingKey}-upd-sound`;
+                updateSoundSelect.title = `Select notification sound for updated ${alertType}s`;
+                updateSoundSelect.className = 'alert-setting-sound';
+                sounds.forEach((sound) => {
+                    const option = document.createElement('option');
+                    option.value = sound.value;
+                    option.textContent = sound.name;
+                    if ((alertSettings.updsound || 'none') === sound.value) {
+                        option.selected = true;
+                    }
+                    updateSoundSelect.appendChild(option);
+                });
+                updateSoundSelect.addEventListener('change', () => {
+                    const current = settingsInstance.getSetting(settingKey);
+                    settingsInstance.setSetting(settingKey, { ...current, updsound: updateSoundSelect.value });
+                });
+
+                const updatePreviewButton = document.createElement('button');
+                updatePreviewButton.type = 'button';
+                updatePreviewButton.className = 'alert-setting-preview';
+                updatePreviewButton.innerHTML = '<i class="ti ti-volume"></i>';
+                updatePreviewButton.title = `Preview selected update sound for ${alertType}`;
+                updatePreviewButton.addEventListener('click', () => {
+                    previewNotificationSound(updateSoundSelect.value);
+                });
+
+                const updateSoundGroup = createControlGroup('Sound');
+                updateSoundGroup.appendChild(updateSoundSelect);
+                updateSoundGroup.appendChild(updatePreviewButton);
+                updateBottomRow.appendChild(updateSoundGroup);
+
+                control.appendChild(updateBottomRow);
             }
 
             container.appendChild(control);
@@ -1209,6 +1295,9 @@ export default class Settings {
             alertDefaults[key] = {
                 enabled: true,
                 notify: true,
+                updnotify: true,
+                sound: 'none',
+                updsound: 'none',
                 color: colors.color
             };
         });
@@ -1225,6 +1314,7 @@ export default class Settings {
             weatherPrecipUnit: 'IN',
             weatherDistanceUnit: 'MI',
             reflectivityGateFilter: -10,
+            enableVelocityDealias: true,
             enableSplitCursorMarker: true,
             enableRightClickMenu: true,
             vcpDisplayFormat: 'descriptive',
@@ -1279,6 +1369,18 @@ export default class Settings {
                 if (!value || typeof value !== 'object') return;
                 if (!value.color && (value.fillColor || value.borderColor)) {
                     value.color = value.fillColor || value.borderColor;
+                }
+                if (typeof value.notify !== 'boolean') {
+                    value.notify = true;
+                }
+                if (typeof value.updnotify !== 'boolean') {
+                    value.updnotify = value.notify;
+                }
+                if (typeof value.sound !== 'string') {
+                    value.sound = 'none';
+                }
+                if (typeof value.updsound !== 'string') {
+                    value.updsound = 'none';
                 }
                 if (Object.prototype.hasOwnProperty.call(value, 'fillColor')) {
                     delete value.fillColor;
@@ -1443,6 +1545,27 @@ export default class Settings {
 
         this.settings.enableErrorNotifications = this.settings.enableErrorNotifications !== false;
         this.settings.alertFlashNewlyIssued = this.settings.alertFlashNewlyIssued !== false;
+        this.settings.enableVelocityDealias = this.settings.enableVelocityDealias !== false;
+
+        Object.keys(this.settings).forEach((key) => {
+            if (!key.startsWith('alert_')) return;
+
+            const value = this.settings[key];
+            if (!value || typeof value !== 'object') return;
+
+            if (typeof value.notify !== 'boolean') {
+                value.notify = true;
+            }
+            if (typeof value.updnotify !== 'boolean') {
+                value.updnotify = value.notify;
+            }
+            if (typeof value.sound !== 'string') {
+                value.sound = 'none';
+            }
+            if (typeof value.updsound !== 'string') {
+                value.updsound = 'none';
+            }
+        });
 
         const flashNewlyIssuedSeconds = Number(this.settings.alertFlashNewlyIssuedTime);
         if (![10, 30, 60].includes(flashNewlyIssuedSeconds)) {

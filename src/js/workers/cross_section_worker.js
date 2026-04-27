@@ -10,8 +10,8 @@
  * See LICENSE for more.
  */
 
-let tiltMeshes = [null, null, null, null];
-let tiltBounds = [null, null, null, null];
+let tiltMeshes = [];
+let tiltBounds = [];
 
 /**
  * Zero-allocation point-in-quad test via ray casting.
@@ -70,9 +70,10 @@ self.onmessage = (event) => {
 
         for (let s = 0; s < samples.length; s++) {
             const { lat, lng } = samples[s];
-            const tilts = [null, null, null, null];
+            const tiltCount = tiltMeshes.length;
+            const tilts = new Array(tiltCount).fill(null);
 
-            for (let t = 0; t < 4; t++) {
+            for (let t = 0; t < tiltCount; t++) {
                 const mesh = tiltMeshes[t];
                 const bounds = tiltBounds[t];
                 if (mesh && bounds) {

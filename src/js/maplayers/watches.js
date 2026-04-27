@@ -232,8 +232,8 @@ class WatchLayer {
             const props = watch.properties || {};
             const label = colors.name;
             const number = Number.isFinite(props.number) ? ` #${props.number}` : '';
-            const pds = props.is_pds ? ' (PDS)' : '';
-            const title = `${label}${number}${pds}`;
+            const pds = props.is_pds || false;
+            const title = `${label}${number}`;
             const issued = props.issue ? `Issued: ${alertIssued}` : '';
             const expiry = props.expire ? `Expires ${alertExpiry}` : '';
             const meta = expiry;
@@ -242,7 +242,7 @@ class WatchLayer {
                 <div class="popup-item" data-type="watch" data-index="${index}" style="cursor: pointer;">
                     <span class="popup-dot" style="background: ${colors.outline}"></span>
                     <div>
-                        <div class="popup-item-title">${title}</div>
+                        <div class="popup-item-title">${pds ? '<b style="color:#ff00ff;">PDS</b> ' : ''}${title}</div>
                         ${meta ? `<div class=\"popup-meta\">${meta}</div>` : ''}
                     </div>
                 </div>
@@ -262,8 +262,8 @@ class WatchLayer {
         const props = watch.properties || {};
         const label = colors.name;
         const number = Number.isFinite(props.number) ? ` #${props.number}` : '';
-        const pds = props.is_pds ? ' (PDS)' : '';
-        const title = `${label}${number}${pds}`;
+        const pds = props.is_pds || false;
+        const title = `${label}${number}`;
         const watchNumber = Number.isFinite(props.number) ? String(props.number).padStart(4, '0') : null;
         
         const formatDate = (dateStr) => {
@@ -280,7 +280,7 @@ class WatchLayer {
 
         const buildWatchHtml = (preText = '') => `
             <div style="margin-bottom: 20px; padding: 15px; background: ${colors.outline}30; border-left: 4px solid ${colors.outline}; border-radius: 10px;">
-                <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.outline};">${props.is_pds ? 'PDS ' : ''}${title}</h3>
+                <h3 style="margin: 0 0 10px 0; text-align: left; color: ${colors.outline};">${props.is_pds ? '<b style="color:#ff00ff;">PDS</b> ' : ''}${title}</h3>
                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 10px; font-size: 0.9em;">
                     <strong>Issued:</strong> <span>${formatDate(props.issue)}</span>
                     <strong>Expires:</strong> <span>${formatDate(props.expire)}</span>

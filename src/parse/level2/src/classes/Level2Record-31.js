@@ -193,7 +193,8 @@ const parseRadialData = (raf) => ({
 	unambiguous_range: raf.readShort() / 10,
 	horizontal_noise_level: raf.readFloat(),
 	vertical_noise_level: raf.readFloat(),
-	nyquist_velocity: raf.readShort(),
+	// Keep units consistent with Message Type 1 parser (m/s).
+	nyquist_velocity: raf.readShort() / 100,
 	radial_flags: raf.readShort(),
 	horizontal_calibration: raf.readFloat(),
 	vertical_calibration: raf.readFloat(),

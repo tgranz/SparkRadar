@@ -228,7 +228,7 @@ class Menu {
 
         const announcement = document.createElement('div');
         announcement.classList.add('menu-announcement');
-        announcement.innerHTML = `<i style="font-size: 1.1em;" class="ti ti-${icon}"></i><p>${announcementData.message}</p>`;
+        announcement.innerHTML = `<i style="font-size: 2em;" class="ti ti-${icon}"></i><p>${announcementData.message}</p>`;
         announcement.style.cssText = `background: ${color}33; color: ${color}; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--roundness); margin-top: 10px; font-size: 0.9em;`;
 
         const menuList = this.menuContent.querySelector('ul');

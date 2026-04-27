@@ -317,7 +317,9 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
       options = {
         ...options,
         rawData: localFileMode[mainOrSplit].rawData,
-        fileName: localFileMode[mainOrSplit].fileName
+        fileName: localFileMode[mainOrSplit].fileName,
+        localFileLevel: localFileMode[mainOrSplit].level,
+        isUploadedArchive: localFileMode[mainOrSplit].isUploadedArchive === true,
       };
     }
 
@@ -335,6 +337,13 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
       if (!suppressLoading) {
         showLoadingAnimation();
       }
+      const configuredGateLimit = Number(window.settingsInstance?.getSetting('reflectivityGateFilter', -10));
+      const effectiveGateLimit = Number.isFinite(options?.gate_limit)
+        ? options.gate_limit
+        : (Number.isFinite(configuredGateLimit) ? configuredGateLimit : -10);
+      const effectiveVelocityDealias = typeof options?.enableVelocityDealias === 'boolean'
+        ? options.enableVelocityDealias
+        : window.settingsInstance?.getSetting('enableVelocityDealias', true) !== false;
       const renderTiming = {
         renderCalledAtMs: getNowEpochMs(),
         fileFetchedAtMs: null,
@@ -345,6 +354,8 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
       const picker = mainOrSplit === 'split' ? map.splitRadarPicker : map.radarPicker;
       const radarResult = await radar.getRadarLayer(station, product, {
         ...options,
+        gate_limit: effectiveGateLimit,
+        enableVelocityDealias: effectiveVelocityDealias,
         includeGeojson: false,
         onMetadata: ({ timeString, timeIso, tilt, vcp }) => {
           if (picker && typeof picker.setTimeAndTilt === 'function') {
@@ -566,6 +577,14 @@ document.addEventListener('settingsChanged', (event) => {
     const vcpElement = document.getElementById('toolbar-vcp');
     if (vcpElement && currentVcp !== null) {
       vcpElement.textContent = formatVcpDisplay(currentVcp);
+    }
+  }
+  if (key === 'enableVelocityDealias') {
+    if (mainRadar?.product === 'VEL') {
+      setRadar(null, null, 'main', { skipLoading: true });
+    }
+    if (map.isSplit() && splitRadar?.product === 'VEL') {
+      setRadar(null, null, 'split', { skipLoading: true });
     }
   }
 });
@@ -867,8 +886,14 @@ fetch('https://api.sparkradar.app/announcement')
             data.color ? data.color : '#27beff',
             10000
           );
+        } else {
+          console.log("Announcement exists but 'showNotification' is false");
         }
+      } else {
+        console.log('Announcement expired and will not be shown');
       }
+    } else {
+      console.log('No announcement data or missing fields in response');
     }
   })
   .catch(() => {

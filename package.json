@@ -7,7 +7,9 @@
     "dev": "vite",
     "host": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:cameras": "node scripts/check_cameras.js",
+    "reassign:camera-states": "node scripts/reassign_camera_states_from_geojson.js"
   },
   "devDependencies": {
     "vite": "^7.3.1"

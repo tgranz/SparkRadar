@@ -2,7 +2,6 @@ export default class Inspector {
     constructor(map) {
         this.map = map;
         this.circles = {}; // { main: element, split: element }
-        this.updateInterval = null;
         this.enabled = false;
     }
 
@@ -331,23 +330,23 @@ export default class Inspector {
             });
         };
         window.addEventListener('resize', resizeHandler);
-        
-        // Update values at regular interval
-        this.updateInterval = setInterval(() => {
-            Object.keys(this.circles).forEach(mapId => {
-                this.updateValue(mapId);
-                this.updateCirclePosition(mapId);
-            });
-        }, 500);
-        
+        this._resizeHandler = resizeHandler;
+
+        // Update value whenever the main map moves or zooms
+        this._mainMoveHandler = () => this.updateValue('main');
+        this.map.map.on('move', this._mainMoveHandler);
+
+        // Update value whenever the split map moves or zooms (if present)
+        if (this.map.dualMap) {
+            this._splitMoveHandler = () => this.updateValue('split');
+            this.map.dualMap.on('move', this._splitMoveHandler);
+        }
+
         // Initial update
         Object.keys(this.circles).forEach(mapId => {
             this.updateCirclePosition(mapId);
             this.updateValue(mapId);
         });
-        
-        // Store handlers for cleanup
-        this._resizeHandler = resizeHandler;
     }
 
     disable() {
@@ -361,16 +360,20 @@ export default class Inspector {
             inspectorButton.classList.remove('selected');
         }
         
-        // Clear interval
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
-        
         // Remove resize listener
         if (this._resizeHandler) {
             window.removeEventListener('resize', this._resizeHandler);
             this._resizeHandler = null;
+        }
+
+        // Remove map move listeners
+        if (this._mainMoveHandler) {
+            this.map.map.off('move', this._mainMoveHandler);
+            this._mainMoveHandler = null;
+        }
+        if (this._splitMoveHandler && this.map.dualMap) {
+            this.map.dualMap.off('move', this._splitMoveHandler);
+            this._splitMoveHandler = null;
         }
         
         // Remove circle elements

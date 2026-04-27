@@ -21,6 +21,7 @@ import SpotterNetworkReportsLayer from "../maplayers/spotter_network_reports.js"
 import MetarStationsLayer from "../maplayers/metar_stations.js";
 import NWSStormReportsLayer from "../maplayers/nws_storm_reports.js";
 import WildfiresLayer from "../maplayers/wildfires.js";
+import TrafficCamerasLayer from "../maplayers/traffic_cameras.js";
 import { applyLayerOrder, DEFAULT_LAYER_ORDER } from "../maplayers/layer_utils.js";
 
 class Layers {
@@ -33,6 +34,7 @@ class Layers {
         this.metarStationHovered = false; // Flag set when hovering over METAR station marker
         this.nwsStormReportHovered = false; // Flag set when hovering over NWS storm report marker
         this.wildfireHovered = false; // Flag set when hovering over wildfire marker
+        this.trafficCameraHovered = false; // Flag set when hovering over traffic camera marker
 
         // Initialize AlertService
         this.alertService = new AlertService();
@@ -50,6 +52,7 @@ class Layers {
         this.metarStationsLayer = new MetarStationsLayer(mapInstance);
         this.nwsStormReportsLayer = new NWSStormReportsLayer(mapInstance);
         this.wildfiresLayer = new WildfiresLayer(mapInstance);
+        this.trafficCamerasLayer = new TrafficCamerasLayer(mapInstance);
 
         // Layer ordering — load from localStorage or use default
         try {
@@ -131,6 +134,10 @@ class Layers {
 
             if (settings.wildfiresEnabled) {
                 this.fetchWildfires();
+            }
+
+            if (settings.trafficCamerasEnabled) {
+                this.fetchTrafficCameras();
             }
 
             if (settings.nwsTornadoReportsEnabled || settings.nwsWindReportsEnabled || settings.nwsHailReportsEnabled) {
@@ -285,7 +292,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.map?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered || this.trafficCameraHovered) {
                 return;
             }
             
@@ -333,7 +340,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.dualMap?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered || this.trafficCameraHovered) {
                 return;
             }
             
@@ -582,6 +589,10 @@ class Layers {
 
     get wildfires() {
         return this.wildfiresLayer.getWildfires();
+    }
+
+    get trafficCameras() {
+        return this.trafficCamerasLayer.getTrafficCameras();
     }
 
     /**
@@ -845,6 +856,13 @@ class Layers {
         }
     }
 
+    displayTrafficCameras() {
+        this.displayTrafficCamerasOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayTrafficCamerasOnMap('dual');
+        }
+    }
+
     displayAlertsOnMap(target = 'main') {
         this.alertLayer.displayAlertsOnMap(target);
     }
@@ -891,6 +909,10 @@ class Layers {
 
     displayWildfiresOnMap(target = 'main') {
         this.wildfiresLayer.displayWildfiresOnMap(target);
+    }
+
+    displayTrafficCamerasOnMap(target = 'main') {
+        this.trafficCamerasLayer.displayTrafficCamerasOnMap(target);
     }
 
     // Display on dual map methods
@@ -942,6 +964,10 @@ class Layers {
         this.displayWildfiresOnMap('dual');
     }
 
+    displayTrafficCamerasOnDualMap() {
+        this.displayTrafficCamerasOnMap('dual');
+    }
+
     // Clear methods - delegate to layer classes
     clearAlerts(target = 'main') {
         this.alertLayer.clearAlerts(target);
@@ -989,6 +1015,10 @@ class Layers {
 
     clearWildfires(target = 'main') {
         this.wildfiresLayer.clearWildfires(target);
+    }
+
+    clearTrafficCameras(target = 'main') {
+        this.trafficCamerasLayer.clearTrafficCameras(target);
     }
 
     // Outlook methods - delegate to OutlookLayer
@@ -1058,6 +1088,13 @@ class Layers {
         const result = await this.wildfiresLayer.fetchWildfires();
         this._setLayerCache('wildfires', result);
         this.displayWildfires();
+        return result;
+    }
+
+    async fetchTrafficCameras() {
+        const result = await this.trafficCamerasLayer.fetchTrafficCameras();
+        this._setLayerCache('trafficCameras', result);
+        this.displayTrafficCameras();
         return result;
     }
 
