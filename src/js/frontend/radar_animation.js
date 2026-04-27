@@ -1,6 +1,7 @@
 import { getPastScans } from '../../parse/fetch.js';
 import Toast from '../ui/toast.js';
 import { showLoadingAnimation, hideLoadingAnimation } from '../ui/loader.js';
+import { buildRadarRenderOptions } from '../utils/entryutils.js';
 
 export default class AnimationController {
     constructor() {
@@ -212,13 +213,14 @@ export default class AnimationController {
         if (frame.loaded) return;
         
         try {
+            const renderOptions = buildRadarRenderOptions(this.currentProduct, {
+                fromUrl: frame.url,
+                includeGeojson: false
+            });
             const result = await this.radar.getRadarLayer(
                 this.currentStation,
                 this.currentProduct,
-                {
-                    fromUrl: frame.url,
-                    includeGeojson: false
-                }
+                renderOptions
             );
             
             if (result?.meshData) {

@@ -30,6 +30,35 @@ export const inferLevelFromProduct = (product) => {
 };
 
 
+// Resolve render options by product type.
+// Gate filtering is reflectivity-only (L2 REF and L3 reflectivity families).
+// Velocity dealiasing is Level-II VEL only.
+export const buildRadarRenderOptions = (product, options = {}) => {
+  const paletteKey = productToPaletteKey(product);
+  const isReflectivityProduct = paletteKey === 'REF';
+  const isLevel2Velocity = inferLevelFromProduct(product) === 'L2' && paletteKey === 'VEL';
+
+  const configuredGateLimit = Number(window.settingsInstance?.getSetting('reflectivityGateFilter', -10));
+  const effectiveGateLimit = isReflectivityProduct
+    ? (Number.isFinite(options?.gate_limit)
+      ? options.gate_limit
+      : (Number.isFinite(configuredGateLimit) ? configuredGateLimit : -10))
+    : null;
+
+  const effectiveVelocityDealias = isLevel2Velocity
+    ? (typeof options?.enableVelocityDealias === 'boolean'
+      ? options.enableVelocityDealias
+      : window.settingsInstance?.getSetting('enableVelocityDealias', true) !== false)
+    : false;
+
+  return {
+    ...options,
+    gate_limit: effectiveGateLimit,
+    enableVelocityDealias: effectiveVelocityDealias,
+  };
+};
+
+
 // Identify if a product supports cross section
 export const isCrossSectionProductSupported = (product) => {
   if (!product) return false;

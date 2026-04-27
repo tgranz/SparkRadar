@@ -39,6 +39,7 @@ import {
   ensureColorbarTooltip,
   hideColorbarTooltip,
   updateColorbarForMap,
+  buildRadarRenderOptions,
   getNowEpochMs,
   logRadarTimingIfComplete,
 } from './js/utils/entryutils.js';
@@ -337,13 +338,7 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
       if (!suppressLoading) {
         showLoadingAnimation();
       }
-      const configuredGateLimit = Number(window.settingsInstance?.getSetting('reflectivityGateFilter', -10));
-      const effectiveGateLimit = Number.isFinite(options?.gate_limit)
-        ? options.gate_limit
-        : (Number.isFinite(configuredGateLimit) ? configuredGateLimit : -10);
-      const effectiveVelocityDealias = typeof options?.enableVelocityDealias === 'boolean'
-        ? options.enableVelocityDealias
-        : window.settingsInstance?.getSetting('enableVelocityDealias', true) !== false;
+      const renderOptions = buildRadarRenderOptions(product, options);
       const renderTiming = {
         renderCalledAtMs: getNowEpochMs(),
         fileFetchedAtMs: null,
@@ -353,9 +348,7 @@ async function setRadar(station=null, product=null, mainOrSplit, options = {}) {
       };
       const picker = mainOrSplit === 'split' ? map.splitRadarPicker : map.radarPicker;
       const radarResult = await radar.getRadarLayer(station, product, {
-        ...options,
-        gate_limit: effectiveGateLimit,
-        enableVelocityDealias: effectiveVelocityDealias,
+        ...renderOptions,
         includeGeojson: false,
         onMetadata: ({ timeString, timeIso, tilt, vcp }) => {
           if (picker && typeof picker.setTimeAndTilt === 'function') {
