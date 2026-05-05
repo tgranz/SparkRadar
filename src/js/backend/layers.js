@@ -22,6 +22,7 @@ import MetarStationsLayer from "../maplayers/metar_stations.js";
 import NWSStormReportsLayer from "../maplayers/nws_storm_reports.js";
 import WildfiresLayer from "../maplayers/wildfires.js";
 import TrafficCamerasLayer from "../maplayers/traffic_cameras.js";
+import WeatherRadiosLayer from "../maplayers/weather_radios.js";
 import { applyLayerOrder, DEFAULT_LAYER_ORDER } from "../maplayers/layer_utils.js";
 
 class Layers {
@@ -35,6 +36,7 @@ class Layers {
         this.nwsStormReportHovered = false; // Flag set when hovering over NWS storm report marker
         this.wildfireHovered = false; // Flag set when hovering over wildfire marker
         this.trafficCameraHovered = false; // Flag set when hovering over traffic camera marker
+        this.weatherRadioHovered = false; // Flag set when hovering over weather radio marker
 
         // Initialize AlertService
         this.alertService = new AlertService();
@@ -53,6 +55,7 @@ class Layers {
         this.nwsStormReportsLayer = new NWSStormReportsLayer(mapInstance);
         this.wildfiresLayer = new WildfiresLayer(mapInstance);
         this.trafficCamerasLayer = new TrafficCamerasLayer(mapInstance);
+        this.weatherRadiosLayer = new WeatherRadiosLayer(mapInstance);
 
         // Layer ordering — load from localStorage or use default
         try {
@@ -75,21 +78,29 @@ class Layers {
 
         // Create empty webgl layer as a placeholder
         this.map.map.on('load', () => {
+            if (!this.map?.map) {
+                return;
+            }
+
             // Add an empty GeoJSON source
-            this.map.map.addSource('empty-source', {
-                'type': 'geojson',
-                'data': {
-                    'type': 'FeatureCollection',
-                    'features': [] // Empty features array
-                }
-            });
+            if (!this.map.map.getSource('empty-source')) {
+                this.map.map.addSource('empty-source', {
+                    'type': 'geojson',
+                    'data': {
+                        'type': 'FeatureCollection',
+                        'features': [] // Empty features array
+                    }
+                });
+            }
 
             // Add a layer (e.g., a circle layer) using that source
-            this.map.map.addLayer({
-                'id': 'radar-webgl',
-                'type': 'circle',
-                'source': 'empty-source'
-            }, this.map.map.getLayer('road_area_pier') ? 'road_area_pier' : (this.map.map.getLayer('road_pier') ? 'road_pier' : undefined));
+            if (!this.map.map.getLayer('radar-webgl')) {
+                this.map.map.addLayer({
+                    'id': 'radar-webgl',
+                    'type': 'circle',
+                    'source': 'empty-source'
+                }, this.map.map.getLayer('road_area_pier') ? 'road_area_pier' : (this.map.map.getLayer('road_pier') ? 'road_pier' : undefined));
+            }
         });
 
         // Now load all layers
@@ -138,6 +149,10 @@ class Layers {
 
             if (settings.trafficCamerasEnabled) {
                 this.fetchTrafficCameras();
+            }
+
+            if (settings.weatherRadiosEnabled) {
+                this.fetchWeatherRadios();
             }
 
             if (settings.nwsTornadoReportsEnabled || settings.nwsWindReportsEnabled || settings.nwsHailReportsEnabled) {
@@ -292,7 +307,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.map?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered || this.trafficCameraHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered || this.trafficCameraHovered || this.weatherRadioHovered) {
                 return;
             }
             
@@ -340,7 +355,7 @@ class Layers {
             if (e.originalEvent.target !== this.map?.dualMap?.getCanvas()) return;
             
             // If hovering over storm center/spotter marker, don't open unified popup
-            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered || this.trafficCameraHovered) {
+            if (this.stormCenterHovered || this.spotterNetworkPositionHovered || this.spotterNetworkReportHovered || this.metarStationHovered || this.nwsStormReportHovered || this.wildfireHovered || this.trafficCameraHovered || this.weatherRadioHovered) {
                 return;
             }
             
@@ -593,6 +608,10 @@ class Layers {
 
     get trafficCameras() {
         return this.trafficCamerasLayer.getTrafficCameras();
+    }
+
+    get weatherRadios() {
+        return this.weatherRadiosLayer.getWeatherRadios();
     }
 
     /**
@@ -863,6 +882,13 @@ class Layers {
         }
     }
 
+    displayWeatherRadios() {
+        this.displayWeatherRadiosOnMap('main');
+        if (this.map?.isSplit()) {
+            this.displayWeatherRadiosOnMap('dual');
+        }
+    }
+
     displayAlertsOnMap(target = 'main') {
         this.alertLayer.displayAlertsOnMap(target);
     }
@@ -913,6 +939,10 @@ class Layers {
 
     displayTrafficCamerasOnMap(target = 'main') {
         this.trafficCamerasLayer.displayTrafficCamerasOnMap(target);
+    }
+
+    displayWeatherRadiosOnMap(target = 'main') {
+        this.weatherRadiosLayer.displayWeatherRadiosOnMap(target);
     }
 
     // Display on dual map methods
@@ -968,6 +998,10 @@ class Layers {
         this.displayTrafficCamerasOnMap('dual');
     }
 
+    displayWeatherRadiosOnDualMap() {
+        this.displayWeatherRadiosOnMap('dual');
+    }
+
     // Clear methods - delegate to layer classes
     clearAlerts(target = 'main') {
         this.alertLayer.clearAlerts(target);
@@ -1019,6 +1053,10 @@ class Layers {
 
     clearTrafficCameras(target = 'main') {
         this.trafficCamerasLayer.clearTrafficCameras(target);
+    }
+
+    clearWeatherRadios(target = 'main') {
+        this.weatherRadiosLayer.clearWeatherRadios(target);
     }
 
     // Outlook methods - delegate to OutlookLayer
@@ -1095,6 +1133,13 @@ class Layers {
         const result = await this.trafficCamerasLayer.fetchTrafficCameras();
         this._setLayerCache('trafficCameras', result);
         this.displayTrafficCameras();
+        return result;
+    }
+
+    async fetchWeatherRadios() {
+        const result = await this.weatherRadiosLayer.fetchWeatherRadios();
+        this._setLayerCache('weatherRadios', result);
+        this.displayWeatherRadios();
         return result;
     }
 

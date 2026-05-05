@@ -1,5 +1,35 @@
 const entries = [
     {
+        version : "1.8.0",
+        date: "ADD DATE HERE",
+        changes: [
+            {
+                text: "Storm motion vectors: Show the mot...loc information for alerts that support this information. Can be turned on and off in settings > alerts.",
+                type: "new"
+            },
+            {
+                text: "Alert thickness setting: Customize the thickness of alert polygons. Can be adjusted in settings > alerts.",
+                type: "new"
+            },
+            {
+                text: "Weather Radios: Listen to NOAA Weather Radio streams provided by GWES WeatherRadio. Turn them on in the layer menu.",
+                type: "new"
+            },
+            {
+                text: "Improved L2 ChunkLoader algorithm as well as application loading speed.",
+                type: "enhancement"
+            },
+            {
+                text: "Traffic cameras now available in Maryland, Virginia, and Oregon.",
+                type: "enhancement"
+            },
+            {
+                text: "New icons for radios, traffic cameras, and storm reports.",
+                type: "enhancement"
+            },
+        ]
+    },
+    {
         version : "1.7.0",
         date: "April 27, 2026",
         changes: [

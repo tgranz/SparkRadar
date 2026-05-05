@@ -1,6 +1,6 @@
 import Toast from "../../ui/toast";
 
-export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick, onMeasureClick, onStationsToggleClick) {
+export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLayerPickerClick, onDrawClick, onSplit3d, onInspectorClick, onFinderClick, onAnimationClick, onMeasureClick, onStormTrackClick, onStationsToggleClick) {
     // Create main toolbar
     const toolbar = document.createElement('div');
     toolbar.id = 'toolbar';
@@ -159,6 +159,22 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     measureLabel.textContent = 'Measure';
     measureDiv.appendChild(measureButton);
     measureDiv.appendChild(measureLabel);
+
+    const stormTrackDiv = document.createElement('div');
+    const stormTrackButton = document.createElement('button');
+    stormTrackButton.type = 'button';
+    stormTrackButton.id = 'storm-track-button';
+    stormTrackButton.innerHTML = '<i class="ti ti-wind"></i>';
+    stormTrackButton.title = 'Storm track';
+    stormTrackButton.addEventListener('click', () => {
+        if (typeof onStormTrackClick === 'function') {
+            onStormTrackClick();
+        }
+    });
+    const stormTrackLabel = document.createElement('span');
+    stormTrackLabel.textContent = 'Storm Track';
+    stormTrackDiv.appendChild(stormTrackButton);
+    stormTrackDiv.appendChild(stormTrackLabel);
 
     const inspectorDiv = document.createElement('div');
     const inspectorButton = document.createElement('button');
@@ -343,6 +359,7 @@ export function createToolbar(onSplitMap, onOpenMenu, onRadarStatusClick, onLaye
     toolbox.appendChild(inspectorDiv);
     toolbox.appendChild(drawDiv);
     toolbox.appendChild(measureDiv);
+    //toolbox.appendChild(stormTrackDiv);
     toolbox.appendChild(animationDiv);
     toolbox.appendChild(crossSectionDiv);
     document.body.appendChild(toolbox);

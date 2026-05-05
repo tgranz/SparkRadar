@@ -1066,8 +1066,85 @@ function generateAlertSettings(settingsInstance, container) {
 
     container.appendChild(flashTime);
 
+    const appearanceSubheader = document.createElement('h3');
+    appearanceSubheader.textContent = 'Appearance';
+    appearanceSubheader.classList.add('settings-subheader');
+    container.append(appearanceSubheader);
+
+    const motLocControl = document.createElement('div');
+    motLocControl.className = 'settings-control alert-setting-control';
+
+    const motLocHeader = document.createElement('div');
+    motLocHeader.className = 'settings-control-header';
+
+    const motLocLabel = document.createElement('label');
+    motLocLabel.htmlFor = 'alerts-motion-vectors';
+    motLocLabel.textContent = 'Motion vectors';
+
+    const motLocToggle = document.createElement('input');
+    motLocToggle.type = 'checkbox';
+    motLocToggle.id = 'alerts-motion-vectors';
+    motLocToggle.className = 'switch';
+    motLocToggle.checked = settingsInstance.getSetting('alertShowMotLoc') !== false;
+    motLocToggle.addEventListener('change', () => {
+        settingsInstance.setSetting('alertShowMotLoc', motLocToggle.checked);
+    });
+
+    motLocHeader.appendChild(motLocLabel);
+    motLocHeader.appendChild(motLocToggle);
+    motLocControl.appendChild(motLocHeader);
+
+    const motLocHelp = document.createElement('p');
+    motLocHelp.className = 'settings-control-help';
+    motLocHelp.textContent = 'Show the storm motion vector on alerts that support them.';
+    motLocControl.appendChild(motLocHelp);
+
+    container.appendChild(motLocControl);
+
+    const thicknessControl = document.createElement('div');
+    thicknessControl.className = 'settings-control alert-setting-control';
+    const thicknessHeader = document.createElement('div');
+    thicknessHeader.className = 'settings-control-header';
+    const thicknessLabel = document.createElement('label');
+    thicknessLabel.htmlFor = 'alerts-thickness';
+    thicknessLabel.textContent = 'Alert border thickness';
+
+    const formatThicknessValue = (value) => {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) {
+            return '2';
+        }
+        return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(1);
+    };
+
+    const thicknessValue = document.createElement('span');
+    thicknessValue.className = 'settings-control-value';
+    thicknessValue.setAttribute('data-for', 'alerts-thickness');
+
+    const thicknessInput = document.createElement('input');
+    thicknessInput.type = 'range';
+    thicknessInput.min = '0.5';
+    thicknessInput.max = '10';
+    thicknessInput.step = '0.5';
+    thicknessInput.id = 'alerts-thickness';
+    thicknessInput.value = String(settingsInstance.getSetting('alertThickess', 2));
+    thicknessValue.textContent = formatThicknessValue(thicknessInput.value);
+    thicknessInput.addEventListener('input', () => {
+        thicknessValue.textContent = formatThicknessValue(thicknessInput.value);
+        settingsInstance.setSetting('alertThickess', Number(thicknessInput.value));
+    });
+    thicknessHeader.appendChild(thicknessLabel);
+    thicknessHeader.appendChild(thicknessValue);
+    thicknessControl.appendChild(thicknessHeader);
+    thicknessControl.appendChild(thicknessInput);
+    const thicknessHelp = document.createElement('p');
+    thicknessHelp.className = 'settings-control-help';
+    thicknessHelp.textContent = 'Adjust the thickness of alert borders on the radar.';
+    thicknessControl.appendChild(thicknessHelp);
+    container.appendChild(thicknessControl);
+
     const colorSubheader = document.createElement('h3');
-    colorSubheader.textContent = 'Alert Colors';
+    colorSubheader.textContent = 'Colors and Notifications';
     colorSubheader.classList.add('settings-subheader');
     colorSubheader.style.marginBottom = '0px';
     container.append(colorSubheader);
@@ -1333,6 +1410,8 @@ export default class Settings {
             enableErrorNotifications: false,
             alertFlashNewlyIssued: true,
             alertFlashNewlyIssuedTime: 60,
+            alertShowMotLoc: false,
+            alertThickess: 2,
             shortcutToggleSplitView: 'm',
             shortcutToggleCrossSection: 'x',
             shortcutShowRadarStatus: 's',

@@ -7,6 +7,8 @@ export default class Window {
 
         this.isMinimized = false;
         this.isAnimating = false;
+        this.onClose = typeof options.onClose === 'function' ? options.onClose : null;
+        this._didCloseCallback = false;
 
         this.isViewportSmall = window.innerWidth < 800;
         if (this.isViewportSmall) {
@@ -408,6 +410,15 @@ export default class Window {
         // If the taskbar is now empty, remove it from the DOM
         if (taskbar && taskbar.children.length === 0) {
             taskbar.parentNode.removeChild(taskbar);
+        }
+
+        if (!this._didCloseCallback && typeof this.onClose === 'function') {
+            this._didCloseCallback = true;
+            try {
+                this.onClose();
+            } catch {
+                // Avoid propagating close-handler errors to window teardown.
+            }
         }
     }
 }

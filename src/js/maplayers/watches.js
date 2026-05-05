@@ -34,9 +34,23 @@ class WatchLayer {
             if (key === 'alert_tornado_watch' || key === 'alert_severe_thunderstorm_watch') {
                 console.log('[WatchLayer] Updating watch colors...');
                 this._updateWatchColorsOnMaps();
+            } else if (key === 'alertThickess') {
+                this._updateWatchStylesOnMaps();
             }
         };
         document.addEventListener('settingsChanged', this.settingsChangeListener);
+    }
+
+    _getAlertBorderThickness() {
+        const configured = Number(window.settingsInstance?.getSetting('alertThickess', 2));
+        if (!Number.isFinite(configured)) {
+            return 2;
+        }
+        return Math.max(0.5, Math.min(10, configured));
+    }
+
+    _getAlertOutlineOutlineThickness() {
+        return this._getAlertBorderThickness() + 2;
     }
 
     _getAlertDetailsSurface() {
@@ -131,6 +145,42 @@ class WatchLayer {
             const cached = cache.get(key);
             if (cached) {
                 cached.colorSignature = colorSignature;
+            }
+        }
+    }
+
+    _updateWatchStylesOnMaps() {
+        const mainMap = this.map?.map;
+        const dualMap = this.map?.dualMap;
+
+        if (mainMap) {
+            this._updateWatchStylesOnMap('main');
+        }
+        if (dualMap) {
+            this._updateWatchStylesOnMap('dual');
+        }
+    }
+
+    _updateWatchStylesOnMap(target) {
+        const mainMap = this.map?.map;
+        const dualMap = this.map?.dualMap;
+        const map = target === 'main' ? mainMap : dualMap;
+        if (!map) return;
+
+        const borderThickness = this._getAlertBorderThickness();
+        const outlineOutlineThickness = this._getAlertOutlineOutlineThickness();
+
+        const cache = target === 'main' ? this.watchCache.main : this.watchCache.dual;
+        for (const key of cache.keys()) {
+            const layerPrefix = target === 'main' ? `watch-${key}` : `watch-${key}-dual`;
+            const outlineLayerId = `${layerPrefix}-outline`;
+            const outlineOutlineLayerId = `${layerPrefix}-outline-outline`;
+
+            if (map.getLayer(outlineLayerId)) {
+                map.setPaintProperty(outlineLayerId, 'line-width', borderThickness);
+            }
+            if (map.getLayer(outlineOutlineLayerId)) {
+                map.setPaintProperty(outlineOutlineLayerId, 'line-width', outlineOutlineThickness);
             }
         }
     }
@@ -401,6 +451,8 @@ class WatchLayer {
         const nextKeys = new Set();
         const fillBeforeLayerId = getWeatherFillBeforeLayerId(map, target);
         const outlineBeforeLayerId = getWeatherOutlineBeforeLayerId(map, target);
+        const borderThickness = this._getAlertBorderThickness();
+        const outlineOutlineThickness = this._getAlertOutlineOutlineThickness();
 
         this.watches.forEach((watch, index) => {
             const key = this._getWatchKey(watch, index);
@@ -446,10 +498,12 @@ class WatchLayer {
                     source: sourceId,
                     paint: {
                         'line-color': colors.outline,
-                        'line-width': 2,
+                        'line-width': borderThickness,
                         'line-opacity': 1
                     }
                 }, outlineBeforeLayerId);
+            } else {
+                map.setPaintProperty(outlineLayerId, 'line-width', borderThickness);
             }
 
             if (!map.getLayer(outlineOutlineLayerId)) {
@@ -459,13 +513,14 @@ class WatchLayer {
                     source: sourceId,
                     paint: {
                         'line-color': '#000000',
-                        'line-width': 6,
+                        'line-width': outlineOutlineThickness,
                         'line-opacity': 1
                     }
                 }, outlineLayerId);
             } else if (map.getLayer(outlineLayerId)) {
                 // Keep black casing below the colored outline
                 map.moveLayer(outlineOutlineLayerId, outlineLayerId);
+                map.setPaintProperty(outlineOutlineLayerId, 'line-width', outlineOutlineThickness);
             }
 
             if (!cached || cached.colorSignature !== colorSignature) {

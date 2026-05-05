@@ -1,5 +1,8 @@
 import Popup from '../ui/popup.js';
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, getWeatherOutlineBeforeLayerId } from './layer_utils.js';
+import tornadoIconUrl from '../../../assets/tornado.png';
+import windIconUrl from '../../../assets/wind.png';
+import hailIconUrl from '../../../assets/hail.png';
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
@@ -16,19 +19,19 @@ const REPORT_TYPES = {
     tornado: {
         url: `https://www.spc.noaa.gov/climo/reports/${SPC_REPORT_DATE_TOKEN}_torn.csv`,
         iconId: 'nws-storm-report-tornado-icon',
-        color: '#ff2121',
+        iconUrl: tornadoIconUrl,
         title: 'NWS Tornado Report'
     },
     wind: {
         url: `https://www.spc.noaa.gov/climo/reports/${SPC_REPORT_DATE_TOKEN}_wind.csv`,
         iconId: 'nws-storm-report-wind-icon',
-        color: '#2a7fff',
+        iconUrl: windIconUrl,
         title: 'NWS Wind Report'
     },
     hail: {
         url: `https://www.spc.noaa.gov/climo/reports/${SPC_REPORT_DATE_TOKEN}_hail.csv`,
         iconId: 'nws-storm-report-hail-icon',
-        color: '#00af00',
+        iconUrl: hailIconUrl,
         title: 'NWS Hail Report'
     }
 };
@@ -161,7 +164,7 @@ function formatMagnitude(reportType, rawValue) {
     return null;
 }
 
-function createMarkerImageData(fillColor, size = 18) {
+async function loadImageData(url, size = 24) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -169,17 +172,15 @@ function createMarkerImageData(fillColor, size = 18) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    const center = size / 2;
-    const radius = Math.floor(size / 2) - 2;
+    const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load icon: ${url}`));
+        img.src = url;
+    });
 
     ctx.clearRect(0, 0, size, size);
-    ctx.beginPath();
-    ctx.arc(center, center, radius, 0, Math.PI * 2);
-    ctx.fillStyle = fillColor;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#ffffff';
-    ctx.stroke();
+    ctx.drawImage(image, 0, 0, size, size);
 
     return ctx.getImageData(0, 0, size, size);
 }
@@ -431,7 +432,7 @@ class NWSStormReportsLayer {
             for (const config of Object.values(REPORT_TYPES)) {
                 if (map.hasImage(config.iconId)) continue;
 
-                const imageData = createMarkerImageData(config.color);
+                const imageData = await loadImageData(config.iconUrl, 24);
                 if (!imageData) {
                     return false;
                 }
@@ -580,7 +581,7 @@ class NWSStormReportsLayer {
                 filter: this._getLayerFilter(),
                 layout: {
                     'icon-image': ['match', ['get', 'reportType'], 'tornado', REPORT_TYPES.tornado.iconId, 'wind', REPORT_TYPES.wind.iconId, 'hail', REPORT_TYPES.hail.iconId, REPORT_TYPES.wind.iconId],
-                    'icon-size': 0.7,
+                    'icon-size': 1,
                     'icon-anchor': 'center',
                     'icon-allow-overlap': false,
                     'icon-ignore-placement': false,

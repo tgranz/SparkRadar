@@ -136,7 +136,7 @@ export function initializeIntervalUpdates({
 
   window.addEventListener('sparkradar:l2-chunk-update', onL2ChunkUpdate);
 
-  const updateIntervalId = setInterval(async () => {
+  const update = async () => {
     if (!autoUpdateEnabled || updateInProgress) return;
     updateInProgress = true;
     updateTimes++;
@@ -156,23 +156,33 @@ export function initializeIntervalUpdates({
           const currentMainRadarKey = `${mainRadar.station}_${mainProduct}_${inferLevelFromProduct(mainProduct)}`;
           const lastMainRadarKey = lastCheckedRadar.main;
 
+          let shouldCheckMain = false;
           if (lastMainRadarKey === currentMainRadarKey) {
             baselineCheckCount.main++;
             if (baselineCheckCount.main >= BASELINE_CHECKS_REQUIRED) {
-              try {
-                const updateAvailable = await radar.isUpdateAvailable(mainRadar.station, mainProduct);
-                if (updateAvailable) {
-                  console.log(`[Main Map] Update available for ${currentMainRadarKey}`);
-                  await originalSetRadar(null, mainProduct, 'main', { gate_limit: -30 });
-                  baselineCheckCount.main = 0;
-                }
-              } catch (error) {
-                console.error('Error checking main map update:', error);
-              }
+              shouldCheckMain = true;
             }
           } else {
             lastCheckedRadar.main = currentMainRadarKey;
-            baselineCheckCount.main = 1;
+            if (lastMainRadarKey === null) {
+              // Initial page load — skip baseline wait and check immediately
+              baselineCheckCount.main = BASELINE_CHECKS_REQUIRED;
+              shouldCheckMain = true;
+            } else {
+              baselineCheckCount.main = 1;
+            }
+          }
+          if (shouldCheckMain) {
+            try {
+              const updateAvailable = await radar.isUpdateAvailable(mainRadar.station, mainProduct);
+              if (updateAvailable) {
+                console.log(`[Main Map] Update available for ${currentMainRadarKey}`);
+                await originalSetRadar(null, mainProduct, 'main', { gate_limit: -30 });
+                baselineCheckCount.main = 0;
+              }
+            } catch (error) {
+              console.error('Error checking main map update:', error);
+            }
           }
         }
       }
@@ -185,23 +195,33 @@ export function initializeIntervalUpdates({
           const currentSplitRadarKey = `${splitRadar.station}_${splitProduct}_${inferLevelFromProduct(splitProduct)}`;
           const lastSplitRadarKey = lastCheckedRadar.split;
 
+          let shouldCheckSplit = false;
           if (lastSplitRadarKey === currentSplitRadarKey) {
             baselineCheckCount.split++;
             if (baselineCheckCount.split >= BASELINE_CHECKS_REQUIRED) {
-              try {
-                const updateAvailable = await radar.isUpdateAvailable(splitRadar.station, splitProduct);
-                if (updateAvailable) {
-                  console.log(`[Split Map] Update available for ${currentSplitRadarKey}`);
-                  await originalSetRadar(null, splitProduct, 'split', { gate_limit: -30 });
-                  baselineCheckCount.split = 0;
-                }
-              } catch (error) {
-                console.error('Error checking split map update:', error);
-              }
+              shouldCheckSplit = true;
             }
           } else {
             lastCheckedRadar.split = currentSplitRadarKey;
-            baselineCheckCount.split = 1;
+            if (lastSplitRadarKey === null) {
+              // Initial page load — skip baseline wait and check immediately
+              baselineCheckCount.split = BASELINE_CHECKS_REQUIRED;
+              shouldCheckSplit = true;
+            } else {
+              baselineCheckCount.split = 1;
+            }
+          }
+          if (shouldCheckSplit) {
+            try {
+              const updateAvailable = await radar.isUpdateAvailable(splitRadar.station, splitProduct);
+              if (updateAvailable) {
+                console.log(`[Split Map] Update available for ${currentSplitRadarKey}`);
+                await originalSetRadar(null, splitProduct, 'split', { gate_limit: -30 });
+                baselineCheckCount.split = 0;
+              }
+            } catch (error) {
+              console.error('Error checking split map update:', error);
+            }
           }
         }
       }
@@ -244,6 +264,13 @@ export function initializeIntervalUpdates({
     } finally {
       updateInProgress = false;
     }
+  };
+
+  // Run immediately on init so layers don't wait for the first 10s tick
+  update();
+
+  const updateIntervalId = setInterval(async () => {
+    await update();
   }, 10 * 1000);
 
   const enableAutoUpdates = () => {
@@ -281,5 +308,12 @@ export function initializeIntervalUpdates({
     disableAutoUpdates,
     isAutoUpdateEnabled,
     cleanup,
+    forceUpdate: async () => {
+      if (!autoUpdateEnabled) {
+        console.warn('Cannot force update while auto-updates are disabled.');
+        return;
+      }
+      await update();
+    }
   };
 }

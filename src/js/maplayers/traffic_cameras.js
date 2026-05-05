@@ -1,6 +1,8 @@
 import AppWindow from '../ui/window.js';
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, getWeatherOutlineBeforeLayerId } from './layer_utils.js';
 import trafficCamerasByState from '../../data/traffic_cameras.json';
+import videoCameraIconUrl from '../../../assets/videocamera.png';
+import photoCameraIconUrl from '../../../assets/photocamera.png';
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
@@ -9,10 +11,14 @@ const EMPTY_FEATURE_COLLECTION = {
 
 const SYNC_PENDING_STALE_MS = 15000;
 const STATIC_IMAGE_REFRESH_INTERVAL_SEC = 5;
+const TRAFFIC_CAMERA_ICON_IDS = {
+    video: 'traffic-camera-video-icon',
+    photo: 'traffic-camera-photo-icon'
+};
 
 // Keep this list trimmed to the states you want displayed.
 // Empty array means all states present in traffic_cameras.json are allowed.
-export const TRAFFIC_CAMERA_STATE_WHITELIST = ['Kansas'];
+export const TRAFFIC_CAMERA_STATE_WHITELIST = ['Kansas', 'Maryland', 'Virginia', 'Oregon'];
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -37,6 +43,19 @@ function isLikelyHls(url) {
     return /\.m3u8(?:$|\?|#)/i.test(String(url || ''));
 }
 
+function isLikelyDirectVideo(url) {
+    return /\.(mp4|webm|ogg|ogv|mov|m4v)(?:$|\?|#)/i.test(String(url || ''));
+}
+
+function isLikelyMjpegFeed(url) {
+    const text = String(url || '');
+    return /mjpeg|mjpg/i.test(text);
+}
+
+function isLikelyHtmlPlayerPage(url) {
+    return /\/Video\/GetVideo\//i.test(String(url || ''));
+}
+
 function isLikelyImage(url) {
     return /\.(jpg|jpeg|png|gif|webp)(?:$|\?|#)/i.test(String(url || ''));
 }
@@ -44,6 +63,27 @@ function isLikelyImage(url) {
 function appendCacheBuster(url) {
     const sep = String(url).includes('?') ? '&' : '?';
     return `${url}${sep}cb=${Date.now()}`;
+}
+
+async function loadImageData(url, size = 24) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load icon: ${url}`));
+        img.src = url;
+    });
+
+    ctx.clearRect(0, 0, size, size);
+    ctx.drawImage(image, 0, 0, size, size);
+
+    return ctx.getImageData(0, 0, size, size);
 }
 
 class TrafficCamerasLayer {
@@ -122,8 +162,7 @@ class TrafficCamerasLayer {
                 streamVideo,
                 encoding,
                 format,
-                hasVideo: streamVideo ? 1 : 0,
-                markerColor: streamVideo ? '#a855f7' : '#3b82f6'
+                hasVideo: streamVideo ? 1 : 0
             }
         };
     }
@@ -162,14 +201,40 @@ class TrafficCamerasLayer {
 
         const mediaParts = [];
         if (videoUrl) {
-            if (isLikelyHls(videoUrl)) {
+            if (isLikelyHtmlPlayerPage(videoUrl)) {
+                mediaParts.push(`
+                    <iframe
+                        src="${escapeHtml(videoUrl)}"
+                        style="width: 100%; height: 450px; border: none; background: #000; border-radius: 8px;"
+                        allow="autoplay; fullscreen"
+                        allowfullscreen
+                        referrerpolicy="no-referrer"
+                    ></iframe>
+                    <p style="margin: 8px 0 0 0; font-size: 0.85em; color: lightgray;">Not working?</p>
+                `);
+            } else if (isLikelyMjpegFeed(videoUrl)) {
+                mediaParts.push(`
+                    <img
+                        src="${escapeHtml(videoUrl)}"
+                        alt="${name} live feed"
+                        style="width: 100%; max-height: 260px; object-fit: contain; background: #000; border-radius: 8px;"
+                    />
+                    <p style="margin: 8px 0 0 0; font-size: 0.85em; color: lightgray;">Live camera feed. If this feed does not load here, open it directly.</p>
+                `);
+            } else if (isLikelyHls(videoUrl) || isLikelyDirectVideo(videoUrl)) {
                 mediaParts.push(`
                     <video controls autoplay muted playsinline style="width: 100%; max-height: 260px; background: #000; border-radius: 8px;" src="${escapeHtml(videoUrl)}"></video>
-                    <p style="margin: 8px 0 0 0; font-size: 0.85em; color: lightgray;">HLS stream. If playback fails in-browser, open directly.</p>
+                    <p style="margin: 8px 0 0 0; font-size: 0.85em; color: lightgray;">Video stream. If playback fails in-browser, open directly.</p>
                 `);
             } else {
                 mediaParts.push(`
-                    <video controls autoplay muted playsinline style="width: 100%; max-height: 260px; background: #000; border-radius: 8px;" src="${escapeHtml(videoUrl)}"></video>
+                    <iframe
+                        src="${escapeHtml(videoUrl)}"
+                        style="width: 100%; height: 260px; border: none; background: #000; border-radius: 8px;"
+                        allow="autoplay; fullscreen"
+                        referrerpolicy="no-referrer"
+                    ></iframe>
+                    <p style="margin: 8px 0 0 0; font-size: 0.85em; color: lightgray;">This feed uses a non-standard stream format. If it fails to load, open it directly.</p>
                 `);
             }
         }
@@ -192,6 +257,12 @@ class TrafficCamerasLayer {
         }
 
         const links = [];
+        if (videoUrl) {
+            links.push(`<a href="${escapeHtml(videoUrl)}" target="_blank" rel="noopener noreferrer">Open video feed</a>`);
+        }
+        if (staticUrl) {
+            links.push(`<a href="${escapeHtml(staticUrl)}" target="_blank" rel="noopener noreferrer">Open static feed</a>`);
+        }
 
         return `
             <div style="padding: 10px; display: flex; flex-direction: column; gap: 12px; max-width: calc(100% - 20px);">
@@ -320,7 +391,28 @@ class TrafficCamerasLayer {
         });
     }
 
-    _syncToMap(target) {
+    async _ensureMarkerImages(map) {
+        try {
+            if (!map.hasImage(TRAFFIC_CAMERA_ICON_IDS.video)) {
+                const videoIconData = await loadImageData(videoCameraIconUrl, 24);
+                if (!videoIconData) return false;
+                map.addImage(TRAFFIC_CAMERA_ICON_IDS.video, videoIconData, { pixelRatio: 1 });
+            }
+
+            if (!map.hasImage(TRAFFIC_CAMERA_ICON_IDS.photo)) {
+                const photoIconData = await loadImageData(photoCameraIconUrl, 24);
+                if (!photoIconData) return false;
+                map.addImage(TRAFFIC_CAMERA_ICON_IDS.photo, photoIconData, { pixelRatio: 1 });
+            }
+
+            return true;
+        } catch (error) {
+            console.error('[TrafficCamerasLayer] Failed to load marker icons:', error);
+            return false;
+        }
+    }
+
+    async _syncToMap(target) {
         const map = this._getMap(target);
         if (!map) return;
 
@@ -329,6 +421,12 @@ class TrafficCamerasLayer {
 
         const featureCount = this.data?.features?.length || 0;
         if (!this._isEnabled() || featureCount === 0) {
+            this.clearTrafficCameras(target);
+            return;
+        }
+
+        const markerReady = await this._ensureMarkerImages(map);
+        if (!markerReady) {
             this.clearTrafficCameras(target);
             return;
         }
@@ -346,14 +444,15 @@ class TrafficCamerasLayer {
         if (!map.getLayer(layerId)) {
             map.addLayer({
                 id: layerId,
-                type: 'circle',
+                type: 'symbol',
                 source: sourceId,
-                paint: {
-                    'circle-radius': 4,
-                    'circle-color': ['get', 'markerColor'],
-                    'circle-stroke-color': '#ffffff',
-                    'circle-stroke-width': 1.4,
-                    'circle-opacity': 0.95
+                layout: {
+                    'icon-image': ['case', ['==', ['get', 'hasVideo'], 1], TRAFFIC_CAMERA_ICON_IDS.video, TRAFFIC_CAMERA_ICON_IDS.photo],
+                    'icon-size': 1,
+                    'icon-anchor': 'center',
+                    'icon-allow-overlap': false,
+                    'icon-ignore-placement': false,
+                    'icon-padding': 3
                 }
             }, beforeLayerId);
         }

@@ -224,6 +224,64 @@ export function renderAlert(alert) {
         }
     }
 
+    // TIME...MOT...LOC 1331Z 261DEG 49KT 3378 9817 <- example
+    const decodeMotLocCoordinate = (raw, isLongitude = false) => {
+        if (typeof raw !== 'string') return null;
+
+        const trimmed = raw.trim();
+        const hasSign = /^[-+]/.test(trimmed);
+        const numeric = Number(trimmed);
+        if (!Number.isFinite(numeric)) {
+            return null;
+        }
+
+        const scaled = numeric / 100;
+        if (hasSign) {
+            return scaled;
+        }
+
+        // NWS TIME...MOT...LOC values are typically unsigned; assume western hemisphere longitudes.
+        if (isLongitude) {
+            return -Math.abs(scaled);
+        }
+
+        return scaled;
+    };
+
+    const timeMotLocMatch = alertMessage.match(
+        /time\.\.\.mot\.\.\.loc\s+(\d{3,4})z?\s+(\d{1,3})deg\s+(\d{1,3})kt\s+([^\r\n]+)/i
+    );
+
+    let time = null;
+    let direction = null;
+    let speed = null;
+    let lat = null;
+    let lon = null;
+    let points = [];
+
+    if (timeMotLocMatch) {
+        time = String(timeMotLocMatch[1]);
+        direction = String(timeMotLocMatch[2]) - 180; // Convert from NWS compass to standard
+        speed = String(timeMotLocMatch[3]);
+
+        const rawCoordinateText = String(timeMotLocMatch[4] || '');
+        const coordinateTokens = rawCoordinateText.match(/[-+]?\d{3,6}/g) || [];
+
+        for (let i = 0; i + 1 < coordinateTokens.length; i += 2) {
+            const pointLat = decodeMotLocCoordinate(String(coordinateTokens[i]), false);
+            const pointLon = decodeMotLocCoordinate(String(coordinateTokens[i + 1]), true);
+            if (!Number.isFinite(pointLat) || !Number.isFinite(pointLon)) {
+                continue;
+            }
+            points.push({ lat: pointLat, lon: pointLon });
+        }
+
+        if (points.length > 0) {
+            lat = points[0].lat;
+            lon = points[0].lon;
+        }
+    }
+
     return {
         name: alert?.productName || "Unknown Alert",
         priority: alert?.priority || 0,
@@ -251,6 +309,14 @@ export function renderAlert(alert) {
             max_wind_gust: maxWindGust,
             is_test: is_test,
             is_new: is_new
+        },
+        timeMotLoc: {
+            time,
+            direction,
+            speed,
+            lat,
+            lon,
+            points
         }
     }
 }

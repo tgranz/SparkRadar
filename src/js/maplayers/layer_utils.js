@@ -202,6 +202,7 @@ export function isRadarRelatedLayerId(layerId = '') {
         || layerId.startsWith('spotter-network-report-')
         || layerId.startsWith('wildfire-')
         || layerId.startsWith('traffic-camera-')
+        || layerId.startsWith('weather-radio-')
         || layerId.startsWith('nws-storm-report-')
         || layerId.startsWith('metar-station-')
         || layerId.startsWith('outlook-layer')
@@ -403,13 +404,14 @@ export function pointInPolygon(point, rings) {
 // ─── Layer Ordering ──────────────────────────────────────────────────────────
 
 export const DEFAULT_LAYER_ORDER = [
-    'signatures', 'labels', 'metarStations', 'trafficCameras', 'nwsStormReports', 'spotterNetworkReports', 'wildfires', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
+    'signatures', 'labels', 'metarStations', 'trafficCameras', 'weatherRadios', 'nwsStormReports', 'spotterNetworkReports', 'wildfires', 'alertVectors', 'alerts', 'watches', 'mesoscaleDiscussions', 'roads', 'surfaceAnalysis', 'lightning', 'spotterNetworkPositions', 'radar', 'outlook'
 ];
 
 export const LAYER_ORDER_LABELS = {
     labels:                'Labels',
     signatures:            'TVS / Hail Signatures',
     alerts:                'Alerts',
+    alertVectors:          'Alert Motion Vectors',
     watches:               'Watches',
     mesoscaleDiscussions:  'Mesoscale Discussions',
     surfaceAnalysis:       'Surface Fronts',
@@ -418,6 +420,7 @@ export const LAYER_ORDER_LABELS = {
     spotterNetworkReports: 'Spotter Network Reports',
     wildfires:             'Wildfires',
     trafficCameras:        'Traffic Cameras',
+    weatherRadios:         'Weather Radios',
     nwsStormReports:       'NWS Storm Reports',
     metarStations:         'METAR Stations',
     outlook:               'SPC Outlook',
@@ -461,8 +464,11 @@ function _getGroupLayerIds(map, group, target) {
             case 'roads':               return !id.startsWith('tunnel') && /road|highway|railway|bridge/.test(id);
             case 'labels':              return /^label_/.test(id);
             case 'alerts':              return id.startsWith('alerts-combined')
+                                              && !id.includes('-motloc-')
                                               && !id.endsWith('-fill')
                                               && !id.endsWith('-fill-new');
+            case 'alertVectors':        return id.startsWith('alerts-combined')
+                                              && id.includes('-motloc-');
             case 'watches':             return id.startsWith('watch-');
             case 'mesoscaleDiscussions':return id.startsWith('md-');
             case 'surfaceAnalysis':     return id.startsWith('surface-analysis-');
@@ -471,6 +477,7 @@ function _getGroupLayerIds(map, group, target) {
             case 'spotterNetworkReports': return id.startsWith('spotter-network-report-');
             case 'wildfires':           return id.startsWith('wildfire-');
             case 'trafficCameras':      return id.startsWith('traffic-camera-');
+            case 'weatherRadios':       return id.startsWith('weather-radio-');
             case 'nwsStormReports':     return id.startsWith('nws-storm-report-');
             case 'metarStations':       return id.startsWith('metar-station-');
             case 'outlook':             return id.startsWith('outlook-layer');

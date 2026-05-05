@@ -361,6 +361,14 @@ class Radar {
         this.incrementalChunkState.renderedChunkNumbers.clear();
     }
 
+    _stopL2ChunkStream() {
+        if (this.level2ChunkStreamStarted) {
+            console.log(`[L2ChunkRender] Stopping chunk stream for station ${this.level2ChunkStation}`);
+            this.level2ChunkLoader.stopStream();
+            this.level2ChunkStreamStarted = false;
+        }
+    }
+
     _ensureL2ChunkStream(station) {
         if (!station) {
             throw new Error('Missing station for Level-II chunk stream.');
@@ -1137,6 +1145,7 @@ class Radar {
 
     async getRadarLayer(radarStation, layer, options = {}) {
         const isLevel3 = this._isLevel3Layer(layer);
+        if (isLevel3) this._stopL2ChunkStream();
         const hasRawData = options?.rawData != null;
         const nowEpochMs = () => performance.timeOrigin + performance.now();
         const timing = {

@@ -287,6 +287,9 @@ class OutlookLayer {
                 'line-opacity': 1
             }
         }, outlineBeforeId);
+
+        // Enforce configured layer ordering (including DEFAULT_LAYER_ORDER fallback).
+        this.map?.layers?.applyLayerOrder(target);
     }
 
     _ensureCigHatchPattern(map) {

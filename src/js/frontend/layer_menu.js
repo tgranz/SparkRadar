@@ -152,19 +152,35 @@ menu.innerHTML = `
         </div>
 
         <div class="layer-menu-section-header">
-            Miscellaneous
+            Media
         </div>
         <div class="layer-menu-section">
             <div class="layer-menu-item with-hint">
                 <div>
                     <h3>Traffic Cameras</h3>
-                    <p class="tag beta">BETA</p>
+                    <p class="tag new">NEW</p>
                 </div>
-                <p class="hint">Provided by the the corresponding state's DOT. Only states that have authorized redistribution of camera feeds will be shown.</p>
+                <p class="hint">Provided by the the corresponding state's DOT. Only states that have authorized redistribution of camera feeds will be shown. <a href="https://wiki.sparkradar.app/en/sparkradar/trafficcameras" target="_blank">Learn more</a>.</p>
             </div>
             <div class="layer-menu-item">
                 <input type="checkbox" id="toggle-cameras-layer" class="switch">
             </div>
+        </div>
+        <div class="layer-menu-section">
+            <div class="layer-menu-item with-hint">
+                <div>
+                    <h3>Weather Radios</h3>
+                    <p class="tag new">NEW</p>
+                </div>
+                <p class="hint">Streams provided by <a href="https://weatherradio.org" target="_blank">GWES WeatherRadio</a>.</p>
+            </div>
+            <div class="layer-menu-item">
+                <input type="checkbox" id="toggle-weather-radios-layer" class="switch">
+            </div>
+        </div>
+
+        <div class="layer-menu-section-header">
+            Miscellaneous
         </div>
         <div class="layer-menu-section">
             <div class="layer-menu-item">
@@ -380,6 +396,7 @@ function initializeLayerToggles(mapInstance) {
                 spotterNetworkPositionsEnabled: settings.spotterNetworkPositionsEnabled !== undefined ? settings.spotterNetworkPositionsEnabled : false,
                 spotterNetworkReportsEnabled: settings.spotterNetworkReportsEnabled !== undefined ? settings.spotterNetworkReportsEnabled : false,
                 trafficCamerasEnabled: settings.trafficCamerasEnabled !== undefined ? settings.trafficCamerasEnabled : false,
+                weatherRadiosEnabled: settings.weatherRadiosEnabled !== undefined ? settings.weatherRadiosEnabled : false,
                 metarStationsEnabled: settings.metarStationsEnabled !== undefined ? settings.metarStationsEnabled : false,
                 wildfiresEnabled: settings.wildfiresEnabled !== undefined ? settings.wildfiresEnabled : false,
                 outlookDay: settings.outlookDay || getFirstEnabledOutlookDay(outlookProducts) || null,
@@ -400,6 +417,7 @@ function initializeLayerToggles(mapInstance) {
                 spotterNetworkPositionsEnabled: false,
                 spotterNetworkReportsEnabled: false,
                 trafficCamerasEnabled: false,
+                weatherRadiosEnabled: false,
                 metarStationsEnabled: false,
                 wildfiresEnabled: false,
                 outlookDay: null,
@@ -409,6 +427,31 @@ function initializeLayerToggles(mapInstance) {
     };
 
     const settings = loadLayerSettings();
+
+    let forceRefreshTimerId = null;
+    const triggerForceRefresh = () => {
+        if (forceRefreshTimerId) {
+            clearTimeout(forceRefreshTimerId);
+        }
+
+        forceRefreshTimerId = setTimeout(() => {
+            forceRefreshTimerId = null;
+            if (typeof window.forceUpdate === 'function') {
+                window.forceUpdate();
+            }
+        }, 150);
+    };
+
+    // When any layer toggle is turned on, force an immediate refresh cycle
+    // so newly enabled layers appear right away instead of waiting for interval updates.
+    menu.addEventListener('change', (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement)) return;
+        if (!input.classList.contains('switch')) return;
+        if (!input.id.startsWith('toggle-') || !input.id.endsWith('-layer')) return;
+        if (!input.checked) return;
+        triggerForceRefresh();
+    });
 
     // Get UI elements
     const alertsCheckbox = document.getElementById('toggle-alerts-layer');
@@ -460,6 +503,7 @@ function initializeLayerToggles(mapInstance) {
     const spotterNetworkPositionsCheckbox = document.getElementById('toggle-spotter-network-positions-layer');
     const spotterNetworkReportsCheckbox = document.getElementById('toggle-spotter-network-reports-layer');
     const camerasCheckbox = document.getElementById('toggle-cameras-layer');
+    const weatherRadiosCheckbox = document.getElementById('toggle-weather-radios-layer');
     const metarsCheckbox = document.getElementById('toggle-metars-layer');
     const wildfiresCheckbox = document.getElementById('toggle-wildfires-layer');
     const connectionStatusElement = document.getElementById('alerts-connection-status');
@@ -520,6 +564,9 @@ function initializeLayerToggles(mapInstance) {
     }
     if (camerasCheckbox) {
         camerasCheckbox.checked = settings.trafficCamerasEnabled;
+    }
+    if (weatherRadiosCheckbox) {
+        weatherRadiosCheckbox.checked = settings.weatherRadiosEnabled;
     }
     if (metarsCheckbox) {
         metarsCheckbox.checked = settings.metarStationsEnabled;
@@ -920,6 +967,26 @@ function initializeLayerToggles(mapInstance) {
         });
     }
 
+    if (weatherRadiosCheckbox) {
+        weatherRadiosCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            try {
+                const settings = JSON.parse(localStorage.getItem('layerSettings') || '{}');
+                settings.weatherRadiosEnabled = isChecked;
+                localStorage.setItem('layerSettings', JSON.stringify(settings));
+            } catch (error) {
+                console.error('Error saving layer settings:', error);
+            }
+
+            if (isChecked) {
+                mapInstance.layers.displayWeatherRadios();
+                mapInstance.layers.fetchWeatherRadios();
+            } else {
+                mapInstance.layers.displayWeatherRadios();
+            }
+        });
+    }
+
     if (metarsCheckbox) {
         metarsCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
@@ -996,6 +1063,9 @@ function initializeLayerToggles(mapInstance) {
         if (camerasCheckbox && camerasCheckbox.checked) {
             mapInstance.layers.fetchTrafficCameras();
         }
+        if (weatherRadiosCheckbox && weatherRadiosCheckbox.checked) {
+            mapInstance.layers.fetchWeatherRadios();
+        }
         if (metarsCheckbox && metarsCheckbox.checked) {
             mapInstance.layers.fetchMetarStations();
         }
@@ -1014,6 +1084,7 @@ function renderOrderPanel(panel, mapInstance) {
 
     const iconMapping = {
         'alerts': { type: 'icon' , value: 'ti ti-alert-triangle' },
+        'alertVectors': { type: 'icon' , value: 'ti ti-navigation' },
         'roads': { type: 'icon' , value: 'ti ti-road' },
         'mesoscaleDiscussions': { type: 'icon' , value: 'ti ti-message' },
         'radar': { type: 'icon' , value: 'ti ti-radar-2' },
@@ -1022,9 +1093,10 @@ function renderOrderPanel(panel, mapInstance) {
         'lightning': { type: 'image' , value: 'https://i.ibb.co/jkfmTDbt/lightningmarker.png' },
         'signatures': { type: 'icon' , value: 'ti ti-cloud-storm' },
         'spotterNetworkPositions': { type: 'image' , value: 'https://i.ibb.co/Md3GvZm/IMG-1278.webp' },
-        'spotterNetworkReports': { type: 'icon' , value: 'ti ti-map-pin' },
-        'trafficCameras': { type: 'icon' , value: 'ti ti-camera' },
-        'nwsStormReports': { type: 'icon' , value: 'ti ti-map-pin' },
+        'spotterNetworkReports': { type: 'image' , value: 'https://i.ibb.co/N2BZqZ16/other.png' },
+        'trafficCameras': { type: 'image' , value: 'https://i.ibb.co/272YqqtL/videocamera.png' },
+        'weatherRadios': { type: 'image' , value: 'https://i.ibb.co/chwwBPTt/radio.png' },
+        'nwsStormReports': { type: 'image' , value: 'https://i.ibb.co/WvXTH7n6/tornado.png' },
         'metarStations': { type: 'icon' , value: 'ti ti-temperature' },
         'surfaceAnalysis': { type: 'icon' , value: 'ti ti-wind' },
         'outlook': { type: 'icon' , value: 'ti ti-calendar-event' },

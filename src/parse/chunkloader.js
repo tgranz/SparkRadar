@@ -27,6 +27,10 @@ export default class ChunkLoader {
         this.gapEnd = null;
         this.consecutiveEmptyProbes = 0;
         this.maxEmptyProbesBeforeGapSearch = 3;
+        this._loggedEmptyChunks = false;
+        this.recoveryInFlight = false;
+        this.lastRecoveryAtMs = 0;
+        this.recoveryCooldownMs = 5000;
     }
 
     startStream(station, interval=2000, onNewChunk=() => {}) {
@@ -47,6 +51,9 @@ export default class ChunkLoader {
         this.gapStart = null;
         this.gapEnd = null;
         this.consecutiveEmptyProbes = 0;
+        this._loggedEmptyChunks = false;
+        this.recoveryInFlight = false;
+        this.lastRecoveryAtMs = 0;
         this.startupReadyPromise = new Promise(resolve => {
             this.startupReadyResolver = resolve;
         });
@@ -126,7 +133,10 @@ export default class ChunkLoader {
         if (this.pollInFlight) return;
 
         // Make sure we have a latest volume ID to work with
-        if (this.latestVolumeId == null) return;
+        if (this.latestVolumeId == null) {
+            this._attemptRecovery('interpolate-no-latest-volume');
+            return;
+        }
 
         this.pollInFlight = true;
 
@@ -194,6 +204,9 @@ export default class ChunkLoader {
                 // Update our chunk URLs and index
                 // Keep previous chunk URLs so we can always have a full volume scan
                 if (newChunkURLs.length > 0 || this.chunkURLs.length > 0) {
+                    if (newChunkURLs.length > 0) {
+                        this._loggedEmptyChunks = false;
+                    }
                     if (oldChunkURLs.length > 0) {
                         // Promote old scan to fallback when it is complete,
                         // or when the stream advances to a different volume.
@@ -249,7 +262,11 @@ export default class ChunkLoader {
             this.consecutiveEmptyProbes = 0;
         } else {
             console.log(`[ChunkLoader] _handlePossibleGap: could not bridge gap at volumeId=${this.latestVolumeId}`);
+            if (this.chunkURLs.length === 0 && this.previousChunkURLs.length === 0) {
+                this._attemptRecovery('gap-bridge-failed-no-chunks');
+            }
         }
+
     }
 
     async _bootstrapLatestFromS3() {
@@ -305,10 +322,18 @@ export default class ChunkLoader {
         // If we hit a gap, try to find volumes beyond it
         if (hitGap && gapStartVolume) {
             console.log(`[ChunkLoader] bootstrap: attempting to probe across gap starting at volumeId=${gapStartVolume}`);
-            const gapJumpVolumeId = await this._findNextAvailableVolumeAfterGap(gapStartVolume);
+            const minTimestampKey = this._getReferenceChunkTimestampKey();
+            const gapJumpVolumeId = await this._findNextAvailableVolumeAfterGap(
+                gapStartVolume,
+                this.activeDayToken ? [this.activeDayToken] : null,
+                minTimestampKey,
+            );
             if (gapJumpVolumeId) {
                 console.log(`[ChunkLoader] bootstrap: found volume beyond gap: volumeId=${gapJumpVolumeId}`);
-                const gapJumpChunkURLs = await this._loadChunkURLsForVolume(gapJumpVolumeId);
+                const gapJumpChunkURLs = await this._loadChunkURLsForVolume(
+                    gapJumpVolumeId,
+                    this.activeDayToken ? [this.activeDayToken] : null,
+                );
                 if (gapJumpChunkURLs.length > 0) {
                     console.log(`[ChunkLoader] bootstrap: successfully loaded chunks from beyond gap (volumeId=${gapJumpVolumeId}, ${gapJumpChunkURLs.length} chunks)`);
                     newestVolumeId = gapJumpVolumeId;
@@ -350,12 +375,16 @@ export default class ChunkLoader {
         }
 
         // Always run a fresh discovery to avoid locking onto stale localStorage IDs.
-        const discoveredVolumeId = await this._discoverLatestVolumeIdFromS3();
-        if (discoveredVolumeId) {
+        const discoveryResult = await this._discoverLatestVolumeIdFromS3();
+        if (discoveryResult) {
+            const { volumeId: discoveredVolumeId, dateToken: discoveredDateToken } = discoveryResult;
             if (this.latestVolumeId && this.latestVolumeId !== discoveredVolumeId) {
                 console.log(`[ChunkLoader] startup: overriding restored latestVolumeId=${this.latestVolumeId} with discovered latestVolumeId=${discoveredVolumeId}`);
             }
             this.latestVolumeId = discoveredVolumeId;
+            // Set activeDayToken from discovery so ongoing polling uses the correct date.
+            this.activeDayToken = discoveredDateToken;
+            console.log(`[ChunkLoader] startup: activeDayToken=${discoveredDateToken} from discovery`);
         }
 
         if (this.latestVolumeId == null) {
@@ -373,7 +402,10 @@ export default class ChunkLoader {
         this._persistLatestVolumeId(this.latestVolumeId);
 
         // Prime startup with at least one complete volume when possible.
-        const seedChunkURLs = await this._loadChunkURLsForVolume(this.latestVolumeId);
+        const seedChunkURLs = await this._loadChunkURLsForVolume(
+            this.latestVolumeId,
+            this.activeDayToken ? [this.activeDayToken] : null,
+        );
         if (Array.isArray(seedChunkURLs) && seedChunkURLs.length > 0) {
             this.chunkURLs = seedChunkURLs;
             const last = seedChunkURLs[seedChunkURLs.length - 1];
@@ -390,13 +422,15 @@ export default class ChunkLoader {
     }
 
     async _discoverLatestVolumeIdFromS3() {
-        const dateTokens = this._getDateTokensToProbe();
+        const now = new Date();
+        const todayToken = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const yesterdayToken = new Date(now.getTime() - 86400000).toISOString().slice(0, 10).replace(/-/g, '');
 
-        for (const dateToken of dateTokens) {
+        for (const dateToken of [todayToken, yesterdayToken]) {
             const discovered = await this._findLatestVolumeBeforeGap(dateToken);
             if (discovered) {
                 console.log(`[ChunkLoader] startup: discovered latest volumeId=${discovered} for date ${dateToken}`);
-                return discovered;
+                return { volumeId: discovered, dateToken };
             }
         }
 
@@ -410,20 +444,29 @@ export default class ChunkLoader {
             if (numericId < 1 || numericId > 999) {
                 return false;
             }
-            const urls = await this._loadChunkURLsForVolume(formatVolumeId(numericId), [dateToken]);
+            // setDayToken: false — discovery probes must not contaminate activeDayToken.
+            const urls = await this._loadChunkURLsForVolume(formatVolumeId(numericId), [dateToken], { setDayToken: false });
             return urls.length > 0;
         };
 
         let lowerHit = null;
         let upperMiss = null;
+        let seenCoarseHit = false;
 
         // Coarse pass: probe every 100 IDs to quickly bracket the gap.
+        // Important: misses before the first hit do not mean "no data".
         for (let probe = 100; probe <= 900; probe += 100) {
             const found = await hasChunksAtVolume(probe);
             console.log(`[ChunkLoader] startup: coarse +100 probe volumeId=${formatVolumeId(probe)} => ${found ? 'hit' : 'miss'}`);
 
             if (found) {
                 lowerHit = probe;
+                seenCoarseHit = true;
+                continue;
+            }
+
+            // Only bracket upper bound after we have seen at least one hit.
+            if (!seenCoarseHit) {
                 continue;
             }
 
@@ -431,17 +474,22 @@ export default class ChunkLoader {
             break;
         }
 
-        // If 100 was already missing, discover whether anything exists in 001-099.
+        // If coarse pass found nothing, probe the low range in wider steps.
+        // Some stations can begin the day at an offset volume rather than 001.
         if (lowerHit === null) {
-            const hasFirstVolume = await hasChunksAtVolume(1);
-            if (!hasFirstVolume) {
-                console.log(`[ChunkLoader] startup: no chunks available for date ${dateToken}`);
-                return null;
+            for (let probe = 1; probe <= 99; probe += 1) {
+                const found = await hasChunksAtVolume(probe);
+                if (found || probe % 10 === 1) {
+                    console.log(`[ChunkLoader] startup: low-range probe volumeId=${formatVolumeId(probe)} => ${found ? 'hit' : 'miss'}`);
+                }
+                if (found) {
+                    lowerHit = probe;
+                }
             }
 
-            lowerHit = 1;
-            if (upperMiss === null) {
-                upperMiss = 100;
+            if (lowerHit === null) {
+                console.log(`[ChunkLoader] startup: no chunks available for date ${dateToken}`);
+                return null;
             }
         }
 
@@ -598,7 +646,60 @@ export default class ChunkLoader {
         return null;
     }
 
-    async _loadChunkURLsForVolume(volumeId, dateTokens = null) {
+    _attemptRecovery(reason = 'unspecified') {
+        if (!this.isStreaming) {
+            return;
+        }
+
+        if (this.recoveryInFlight) {
+            return;
+        }
+
+        const now = Date.now();
+        if ((now - this.lastRecoveryAtMs) < this.recoveryCooldownMs) {
+            return;
+        }
+
+        this.recoveryInFlight = true;
+        this.lastRecoveryAtMs = now;
+
+        this._discoverLatestVolumeIdFromS3()
+            .then(async (discoveryResult) => {
+                if (!this.isStreaming || !discoveryResult) {
+                    return;
+                }
+
+                const { volumeId: discoveredVolumeId, dateToken: discoveredDateToken } = discoveryResult;
+                const changed = this.latestVolumeId !== discoveredVolumeId || this.activeDayToken !== discoveredDateToken;
+
+                this.latestVolumeId = discoveredVolumeId;
+                this.activeDayToken = discoveredDateToken;
+                this._persistLatestVolumeId(this.latestVolumeId);
+
+                if (!changed) {
+                    return;
+                }
+
+                console.log(`[ChunkLoader] recovery: reason=${reason}, adopted volumeId=${discoveredVolumeId}, day=${discoveredDateToken}`);
+                const seedChunkURLs = await this._loadChunkURLsForVolume(discoveredVolumeId, [discoveredDateToken]);
+                if (Array.isArray(seedChunkURLs) && seedChunkURLs.length > 0) {
+                    this.chunkURLs = seedChunkURLs;
+                    this._loggedEmptyChunks = false;
+                    this._updateLatestKeyFromChunkUrl(seedChunkURLs[seedChunkURLs.length - 1]);
+                    if (seedChunkURLs[seedChunkURLs.length - 1].endsWith('E')) {
+                        this.previousChunkURLs = [...seedChunkURLs];
+                    }
+                }
+            })
+            .catch((error) => {
+                console.error(`[ChunkLoader] recovery failed (${reason}):`, error);
+            })
+            .finally(() => {
+                this.recoveryInFlight = false;
+            });
+    }
+
+    async _loadChunkURLsForVolume(volumeId, dateTokens = null, { setDayToken = true } = {}) {
         if (volumeId == null) {
             return [];
         }
@@ -625,7 +726,7 @@ export default class ChunkLoader {
                         .filter(Boolean);
 
                     if (keys.length > 0) {
-                        if (!this.activeDayToken) {
+                        if (setDayToken && !this.activeDayToken) {
                             this.activeDayToken = dayToken;
                             console.log(`[ChunkLoader] _loadChunkURLsForVolume: active day token set to ${dayToken}`);
                         }
@@ -645,7 +746,6 @@ export default class ChunkLoader {
         const yesterday = new Date(now.getTime() - (24 * 60 * 60 * 1000));
         return [
             now.toISOString().slice(0, 10).replace(/-/g, ''),
-            yesterday.toISOString().slice(0, 10).replace(/-/g, ''),
         ];
     }
 
@@ -808,7 +908,10 @@ export default class ChunkLoader {
 
         // If no current chunks, use previous
         if (this.chunkURLs.length === 0) {
-            console.log(`[ChunkLoader] getChunkURLs: no current chunks, using previous scan (${this.previousChunkURLs.length} chunks, volumeId=${previousVolumeId})`);
+            if (!this._loggedEmptyChunks) {
+                this._loggedEmptyChunks = true;
+                console.log(`[ChunkLoader] getChunkURLs: no current chunks, using previous scan (${this.previousChunkURLs.length} chunks, volumeId=${previousVolumeId})`);
+            }
             return [...this.previousChunkURLs];
         }
 

@@ -839,6 +839,11 @@ class Map {
                 this.displayOutlookOnDualMap();
             }
 
+            // Display weather radios on dual map if they exist
+            if ((this.layers.weatherRadios?.features?.length || 0) > 0) {
+                this.layers.displayWeatherRadiosOnDualMap();
+            }
+
             // Add radar stations to the split map
             this.updateRadarStations();
 

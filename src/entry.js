@@ -14,6 +14,7 @@ import Draw from "./js/frontend/draw.js";
 import ArchiveBrowser from "./js/frontend/archive_browser.js";
 import Inspector from "./js/ui/inspector.js";
 import Measure from "./js/frontend/measure.js";
+import StormTrack from './js/frontend/storm_track.js';
 import Palettes from './js/backend/palettes.js';
 import Finder from './js/frontend/finder.js';
 import { checkVersion, buildLatestChangeElement } from './js/frontend/changelog.js';
@@ -72,12 +73,33 @@ function startMeasure() {
     Draw.instance.close();
   }
 
+  if (StormTrack.instance) {
+    StormTrack.instance.close();
+  }
+
   if (Measure.instance) {
     Measure.instance.close();
     return;
   }
 
   new Measure(map);
+}
+
+function startStormTrack() {
+  if (Draw.instance) {
+    Draw.instance.close();
+  }
+
+  if (Measure.instance) {
+    Measure.instance.close();
+  }
+
+  if (StormTrack.instance) {
+    StormTrack.instance.close();
+    return;
+  }
+
+  new StormTrack(map);
 }
 
 
@@ -708,6 +730,7 @@ const toolbar = createToolbar(
     );
   },
   () => { startMeasure(); },
+  () => { startStormTrack(); },
   () => map.toggleRadarStationsVisible()
 );
 
@@ -824,6 +847,10 @@ window.disableAutoUpdates = function() {
 
 window.isAutoUpdateEnabled = function() {
   return intervalUpdates?.isAutoUpdateEnabled() ?? false;
+};
+
+window.forceUpdate = function() {
+  intervalUpdates?.forceUpdate();
 };
 
 // Show welcome dialog if first time

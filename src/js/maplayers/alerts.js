@@ -50,12 +50,25 @@ class AlertLayer {
 
         document.addEventListener('settingsChanged', (event) => {
             const key = event?.detail?.key;
-            if (key !== 'alertFlashNewlyIssued' && key !== 'alertFlashNewlyIssuedTime') {
+            if (
+                key !== 'all'
+                && key !== 'alertFlashNewlyIssued'
+                && key !== 'alertFlashNewlyIssuedTime'
+                && key !== 'alertShowMotLoc'
+                && key !== 'alertThickess'
+            ) {
                 return;
             }
 
-            this._stopFlashAnimation('main');
-            this._stopFlashAnimation('dual');
+            if (key === 'alertFlashNewlyIssued' || key === 'alertFlashNewlyIssuedTime') {
+                this._stopFlashAnimation('main');
+                this._stopFlashAnimation('dual');
+            }
+
+            if (key === 'alertShowMotLoc' || key === 'all') {
+                this._setMotionVectorLayerVisibility('main');
+                this._setMotionVectorLayerVisibility('dual');
+            }
             this.displayAlerts();
         });
     }
@@ -113,6 +126,179 @@ class AlertLayer {
 
     _isAlertFlashEnabled() {
         return window.settingsInstance?.getSetting('alertFlashNewlyIssued') !== false;
+    }
+
+    _isMotionVectorEnabled() {
+        return window.settingsInstance?.getSetting('alertShowMotLoc') !== false;
+    }
+
+    _setMotionVectorLayerVisibility(target) {
+        const mainMap = this.map?.map;
+        const dualMap = this.map?.dualMap;
+        const map = target === 'main' ? mainMap : dualMap;
+        if (!map) return;
+
+        const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
+        const vectorSourceId = `${sourceId}-motloc`;
+        const visibility = this._isMotionVectorEnabled() ? 'visible' : 'none';
+
+        const vectorLayerIds = [
+            `${vectorSourceId}-line-casing`,
+            `${vectorSourceId}-line`,
+            `${vectorSourceId}-start`,
+            `${vectorSourceId}-arrow`
+        ];
+
+        for (const layerId of vectorLayerIds) {
+            if (!map.getLayer(layerId)) continue;
+            try {
+                map.setLayoutProperty(layerId, 'visibility', visibility);
+            } catch {}
+        }
+    }
+
+    _getAlertBorderThickness() {
+        const configured = Number(window.settingsInstance?.getSetting('alertThickess', 2));
+        if (!Number.isFinite(configured)) {
+            return 2;
+        }
+        return Math.max(0.5, Math.min(10, configured));
+    }
+
+    _destinationFromBearing(startLat, startLon, bearingDeg, distanceNm) {
+        const earthRadiusNm = 3440.065;
+        const angularDistance = distanceNm / earthRadiusNm;
+
+        const lat1 = (startLat * Math.PI) / 180;
+        const lon1 = (startLon * Math.PI) / 180;
+        const bearing = (bearingDeg * Math.PI) / 180;
+
+        const sinLat1 = Math.sin(lat1);
+        const cosLat1 = Math.cos(lat1);
+        const sinAd = Math.sin(angularDistance);
+        const cosAd = Math.cos(angularDistance);
+
+        const lat2 = Math.asin(
+            sinLat1 * cosAd + cosLat1 * sinAd * Math.cos(bearing)
+        );
+
+        const lon2 = lon1 + Math.atan2(
+            Math.sin(bearing) * sinAd * cosLat1,
+            cosAd - sinLat1 * Math.sin(lat2)
+        );
+
+        let normalizedLon = ((lon2 * 180) / Math.PI + 540) % 360 - 180;
+        if (!Number.isFinite(normalizedLon)) {
+            normalizedLon = startLon;
+        }
+
+        return [normalizedLon, (lat2 * 180) / Math.PI];
+    }
+
+    _buildMotionVectorFeatures(alert, index) {
+        const rendered = renderAlert(alert);
+        const motLoc = rendered?.timeMotLoc;
+        if (!motLoc) {
+            return [];
+        }
+
+        const direction = Number(motLoc.direction);
+        const speedKt = Number(motLoc.speed);
+
+        if (!Number.isFinite(direction) || !Number.isFinite(speedKt)) {
+            return [];
+        }
+
+        const distanceNm = Math.max(0, speedKt * 0.25);
+        if (distanceNm <= 0) {
+            return [];
+        }
+
+        const startPoints = Array.isArray(motLoc.points) && motLoc.points.length > 0
+            ? motLoc.points.map((point) => ({
+                lat: Number(point?.lat),
+                lon: Number(point?.lon)
+            })).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon))
+            : [{ lat: Number(motLoc.lat), lon: Number(motLoc.lon) }].filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lon));
+
+        if (startPoints.length === 0) {
+            return [];
+        }
+
+        const colors = this._getAlertColor(alert);
+        const priority = this._getAlertPriority(alert);
+        const key = this._getAlertKey(alert, index);
+
+        const features = [];
+
+        startPoints.forEach((point, pointIndex) => {
+            const lat = point.lat;
+            const lon = point.lon;
+            const [endLon, endLat] = this._destinationFromBearing(lat, lon, direction, distanceNm);
+            if (!Number.isFinite(endLon) || !Number.isFinite(endLat)) {
+                return;
+            }
+
+            const suffix = `${pointIndex}`;
+
+            features.push(
+                {
+                    type: 'Feature',
+                    properties: {
+                        kind: 'start',
+                        color: colors.outline,
+                        priority
+                    },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [lon, lat]
+                    },
+                    id: `${key}-motloc-start-${suffix}`
+                },
+                {
+                    type: 'Feature',
+                    properties: {
+                        kind: 'line-casing',
+                        color: colors.outline,
+                        priority
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [[lon, lat], [endLon, endLat]]
+                    },
+                    id: `${key}-motloc-line-casing-${suffix}`
+                },
+                {
+                    type: 'Feature',
+                    properties: {
+                        kind: 'line',
+                        color: colors.outline,
+                        priority
+                    },
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: [[lon, lat], [endLon, endLat]]
+                    },
+                    id: `${key}-motloc-line-${suffix}`
+                },
+                {
+                    type: 'Feature',
+                    properties: {
+                        kind: 'arrow',
+                        color: colors.outline,
+                        priority,
+                        bearing: direction
+                    },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [endLon, endLat]
+                    },
+                    id: `${key}-motloc-arrow-${suffix}`
+                }
+            );
+        });
+
+        return features;
     }
 
     _refreshAlertNewStatus(target) {
@@ -648,11 +834,16 @@ class AlertLayer {
 
         // Use a single GeoJSON source for ALL alerts - much better performance
         const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
+        const vectorSourceId = `${sourceId}-motloc`;
         const fillBeforeLayerId = getWeatherFillBeforeLayerId(map, target);
         const outlineBeforeLayerId = getWeatherOutlineBeforeLayerId(map, target);
+        const borderThickness = this._getAlertBorderThickness();
+        const outlineOutlineThickness = borderThickness + 2;
+        const showMotionVectors = this._isMotionVectorEnabled();
         
         // Build a FeatureCollection with all enabled alerts
         const features = [];
+        const motionVectorFeatures = [];
         this.alerts.forEach((alert, index) => {
             const alertName = this._getAlertName(alert);
             const alertSettings = renderAlert(alert);
@@ -675,11 +866,20 @@ class AlertLayer {
             geojson.properties.priority = priority;
             
             features.push(geojson);
+
+            if (showMotionVectors) {
+                motionVectorFeatures.push(...this._buildMotionVectorFeatures(alert, index));
+            }
         });
 
         const featureCollection = {
             type: 'FeatureCollection',
             features: features
+        };
+
+        const motionVectorCollection = {
+            type: 'FeatureCollection',
+            features: motionVectorFeatures
         };
 
         // Create or update the source
@@ -690,6 +890,15 @@ class AlertLayer {
             });
         } else {
             map.getSource(sourceId).setData(featureCollection);
+        }
+
+        if (!map.getSource(vectorSourceId)) {
+            map.addSource(vectorSourceId, {
+                type: 'geojson',
+                data: motionVectorCollection
+            });
+        } else {
+            map.getSource(vectorSourceId).setData(motionVectorCollection);
         }
 
         // Create the three layers if they don't exist
@@ -707,10 +916,12 @@ class AlertLayer {
                 },
                 paint: {
                     'line-color': '#000000',
-                    'line-width': 6,
+                    'line-width': outlineOutlineThickness,
                     'line-opacity': 1
                 }
             }, outlineBeforeLayerId);
+        } else {
+            map.setPaintProperty(outlineOutlineLayerId, 'line-width', outlineOutlineThickness);
         }
 
         if (!map.getLayer(outlineLayerId)) {
@@ -723,10 +934,12 @@ class AlertLayer {
                 },
                 paint: {
                     'line-color': ['get', 'outlineColor'],
-                    'line-width': 2,
+                    'line-width': borderThickness,
                     'line-opacity': 1
                 }
             }, outlineBeforeLayerId);
+        } else {
+            map.setPaintProperty(outlineLayerId, 'line-width', borderThickness);
         }
 
         if (!map.getLayer(fillLayerId)) {
@@ -763,12 +976,13 @@ class AlertLayer {
                 },
                 paint: {
                     'line-color': '#000000',
-                    'line-width': 6,
+                    'line-width': outlineOutlineThickness,
                     'line-opacity': 1
                 }
             }, outlineBeforeLayerId);
         } else {
             map.setFilter(newOutlineOutlineLayerId, ['==', ['get', 'isNew'], 1]);
+            map.setPaintProperty(newOutlineOutlineLayerId, 'line-width', outlineOutlineThickness);
         }
 
         if (!map.getLayer(newOutlineLayerId)) {
@@ -782,12 +996,13 @@ class AlertLayer {
                 },
                 paint: {
                     'line-color': ['get', 'outlineColor'],
-                    'line-width': 2,
+                    'line-width': borderThickness,
                     'line-opacity': 1
                 }
             }, outlineBeforeLayerId);
         } else {
             map.setFilter(newOutlineLayerId, ['==', ['get', 'isNew'], 1]);
+            map.setPaintProperty(newOutlineLayerId, 'line-width', borderThickness);
         }
 
         if (!map.getLayer(newFillLayerId)) {
@@ -807,6 +1022,104 @@ class AlertLayer {
         } else {
             map.setFilter(newFillLayerId, ['==', ['get', 'isNew'], 1]);
         }
+
+        const motionVectorLineLayerId = `${vectorSourceId}-line`;
+        const motionVectorLineCasingLayerId = `${vectorSourceId}-line-casing`;
+        const motionVectorArrowLayerId = `${vectorSourceId}-arrow`;
+        const motionVectorStartLayerId = `${vectorSourceId}-start`;
+        const arrowHaloWidth = 1.5;
+        const vectorLineWidth = Math.max(1, borderThickness);
+        const vectorLineCasingWidth = vectorLineWidth + (arrowHaloWidth * 2);
+        const vectorStartRadius = Math.max(3, borderThickness + 1);
+
+        if (!map.getLayer(motionVectorLineCasingLayerId)) {
+            map.addLayer({
+                id: motionVectorLineCasingLayerId,
+                type: 'line',
+                source: vectorSourceId,
+                filter: ['==', ['get', 'kind'], 'line-casing'],
+                layout: {
+                    'line-sort-key': ['get', 'priority']
+                },
+                paint: {
+                    'line-color': '#000000',
+                    'line-width': vectorLineCasingWidth,
+                    'line-opacity': 1
+                }
+            }, outlineBeforeLayerId);
+        } else {
+            map.setPaintProperty(motionVectorLineCasingLayerId, 'line-width', vectorLineCasingWidth);
+        }
+
+        if (!map.getLayer(motionVectorLineLayerId)) {
+            map.addLayer({
+                id: motionVectorLineLayerId,
+                type: 'line',
+                source: vectorSourceId,
+                filter: ['==', ['get', 'kind'], 'line'],
+                layout: {
+                    'line-sort-key': ['get', 'priority']
+                },
+                paint: {
+                    'line-color': ['get', 'color'],
+                    'line-width': vectorLineWidth,
+                    'line-opacity': 1
+                }
+            }, outlineBeforeLayerId);
+        } else {
+            map.setPaintProperty(motionVectorLineLayerId, 'line-width', vectorLineWidth);
+        }
+
+        if (!map.getLayer(motionVectorStartLayerId)) {
+            map.addLayer({
+                id: motionVectorStartLayerId,
+                type: 'circle',
+                source: vectorSourceId,
+                filter: ['==', ['get', 'kind'], 'start'],
+                layout: {
+                    'circle-sort-key': ['get', 'priority']
+                },
+                paint: {
+                    'circle-color': ['get', 'color'],
+                    'circle-radius': vectorStartRadius,
+                    'circle-opacity': 1,
+                    'circle-stroke-color': '#000000',
+                    'circle-stroke-width': arrowHaloWidth
+                }
+            }, outlineBeforeLayerId);
+        } else {
+            map.setPaintProperty(motionVectorStartLayerId, 'circle-radius', vectorStartRadius);
+            map.setPaintProperty(motionVectorStartLayerId, 'circle-stroke-width', arrowHaloWidth);
+        }
+
+        if (!map.getLayer(motionVectorArrowLayerId)) {
+            map.addLayer({
+                id: motionVectorArrowLayerId,
+                type: 'symbol',
+                source: vectorSourceId,
+                filter: ['==', ['get', 'kind'], 'arrow'],
+                layout: {
+                    'symbol-sort-key': ['get', 'priority'],
+                    'text-field': '▲',
+                    'text-size': 14,
+                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                    'text-rotate': ['get', 'bearing'],
+                    'text-rotation-alignment': 'map',
+                    'text-allow-overlap': true,
+                    'text-ignore-placement': true
+                },
+                paint: {
+                    'text-color': ['get', 'color'],
+                    'text-halo-color': '#000000',
+                    'text-halo-width': arrowHaloWidth,
+                    'text-halo-blur': 0.2
+                }
+            }, outlineBeforeLayerId);
+        } else {
+            map.setPaintProperty(motionVectorArrowLayerId, 'text-halo-width', arrowHaloWidth);
+        }
+
+        this._setMotionVectorLayerVisibility(target);
 
         // Start flash animation for new alerts
         this._startFlashAnimation(target);
@@ -862,6 +1175,7 @@ class AlertLayer {
 
         // Remove the combined alert layers and source
         const sourceId = target === 'main' ? 'alerts-combined' : 'alerts-combined-dual';
+        const vectorSourceId = `${sourceId}-motloc`;
         const fillLayerId = `${sourceId}-fill`;
         const outlineLayerId = `${sourceId}-outline`;
         const outlineOutlineLayerId = `${sourceId}-outline-outline`;
@@ -871,6 +1185,10 @@ class AlertLayer {
 
         if (map.getSource(sourceId)) {
             map.getSource(sourceId).setData(EMPTY_FEATURE_COLLECTION);
+        }
+
+        if (map.getSource(vectorSourceId)) {
+            map.getSource(vectorSourceId).setData(EMPTY_FEATURE_COLLECTION);
         }
 
         this._clearAlertPopup(target);

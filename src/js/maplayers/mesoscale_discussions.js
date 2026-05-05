@@ -34,9 +34,23 @@ class MesoscaleDiscussionLayer {
             if (key === 'alert_mesoscale_discussion') {
                 console.log('[MesoscaleDiscussionLayer] Updating MD colors...');
                 this._updateMDColorsOnMaps();
+            } else if (key === 'alertThickess') {
+                this._updateMDStylesOnMaps();
             }
         };
         document.addEventListener('settingsChanged', this.settingsChangeListener);
+    }
+
+    _getAlertBorderThickness() {
+        const configured = Number(window.settingsInstance?.getSetting('alertThickess', 2));
+        if (!Number.isFinite(configured)) {
+            return 2;
+        }
+        return Math.max(0.5, Math.min(10, configured));
+    }
+
+    _getAlertOutlineOutlineThickness() {
+        return this._getAlertBorderThickness() + 2;
     }
 
     _getAlertDetailsSurface() {
@@ -110,6 +124,42 @@ class MesoscaleDiscussionLayer {
                 }
             } else {
                 console.log(`[MesoscaleDiscussionLayer] Layer not found: ${outlineLayerId}`);
+            }
+        }
+    }
+
+    _updateMDStylesOnMaps() {
+        const mainMap = this.map?.map;
+        const dualMap = this.map?.dualMap;
+
+        if (mainMap) {
+            this._updateMDStylesOnMap('main');
+        }
+        if (dualMap) {
+            this._updateMDStylesOnMap('dual');
+        }
+    }
+
+    _updateMDStylesOnMap(target) {
+        const mainMap = this.map?.map;
+        const dualMap = this.map?.dualMap;
+        const map = target === 'main' ? mainMap : dualMap;
+        if (!map) return;
+
+        const borderThickness = this._getAlertBorderThickness();
+        const outlineOutlineThickness = this._getAlertOutlineOutlineThickness();
+        const cache = target === 'main' ? this.mdCache.main : this.mdCache.dual;
+
+        for (const key of cache.keys()) {
+            const layerPrefix = target === 'main' ? `md-${key}` : `md-${key}-dual`;
+            const outlineLayerId = `${layerPrefix}-outline`;
+            const outlineOutlineLayerId = `${layerPrefix}-outline-outline`;
+
+            if (map.getLayer(outlineLayerId)) {
+                map.setPaintProperty(outlineLayerId, 'line-width', borderThickness);
+            }
+            if (map.getLayer(outlineOutlineLayerId)) {
+                map.setPaintProperty(outlineOutlineLayerId, 'line-width', outlineOutlineThickness);
             }
         }
     }
@@ -333,6 +383,8 @@ class MesoscaleDiscussionLayer {
         const cache = target === 'main' ? this.mdCache.main : this.mdCache.dual;
         const nextKeys = new Set();
         const insertBeforeId = getWeatherOutlineBeforeLayerId(map, target);
+        const borderThickness = this._getAlertBorderThickness();
+        const outlineOutlineThickness = this._getAlertOutlineOutlineThickness();
 
         const settings = window.settingsInstance;
         const mdColor = settings?.getSetting('alert_mesoscale_discussion')?.color || '#fbbf24';
@@ -363,10 +415,12 @@ class MesoscaleDiscussionLayer {
                     source: sourceId,
                     paint: {
                         'line-color': mdColor,
-                        'line-width': 3,
+                        'line-width': borderThickness,
                         'line-opacity': 1
                     }
                 }, insertBeforeId);
+            } else {
+                map.setPaintProperty(`${layerPrefix}-outline`, 'line-width', borderThickness);
             }
 
             if (!map.getLayer(`${layerPrefix}-outline-outline`)) {
@@ -375,11 +429,13 @@ class MesoscaleDiscussionLayer {
                     type: 'line',
                     source: sourceId,
                     paint: {
-                        'line-color': '#ffffff',
-                        'line-width': 5,
+                        'line-color': '#000000',
+                        'line-width': outlineOutlineThickness,
                         'line-opacity': 1
                     }
                 }, `${layerPrefix}-outline`);
+            } else {
+                map.setPaintProperty(`${layerPrefix}-outline-outline`, 'line-width', outlineOutlineThickness);
             }
 
             cache.set(key, { signature });

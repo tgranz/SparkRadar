@@ -1,5 +1,9 @@
 import Popup from '../ui/popup.js';
 import { hasUsableMapStyle, waitForMapStyleReady, waitForRadarLayer, getWeatherOutlineBeforeLayerId } from './layer_utils.js';
+import tornadoIconUrl from '../../../assets/tornado.png';
+import windIconUrl from '../../../assets/wind.png';
+import hailIconUrl from '../../../assets/hail.png';
+import otherIconUrl from '../../../assets/other.png';
 
 const EMPTY_FEATURE_COLLECTION = {
     type: 'FeatureCollection',
@@ -13,27 +17,26 @@ const SPOTTER_NETWORK_REPORTS_FETCH_TIMEOUT_MS = 15000;
 const SPOTTER_NETWORK_REPORTS_FETCH_RETRIES = 2;
 const SPOTTER_NETWORK_REPORTS_RETRY_DELAY_MS = 500;
 const SPOTTER_NETWORK_REPORTS_CACHE_KEY = 'spotterNetworkReportsCache';
-const MARKER_OUTLINE_COLOR = '#aaaaaa';
 
 const REPORT_TYPES = {
     tornado: {
         iconId: 'spotter-network-report-tornado-icon',
-        color: '#ff2121',
+        iconUrl: tornadoIconUrl,
         title: 'SN Tornado Report'
     },
     wind: {
         iconId: 'spotter-network-report-wind-icon',
-        color: '#2a7fff',
+        iconUrl: windIconUrl,
         title: 'SN Wind Report'
     },
     hail: {
         iconId: 'spotter-network-report-hail-icon',
-        color: '#00af00',
+        iconUrl: hailIconUrl,
         title: 'SN Hail Report'
     },
     other: {
         iconId: 'spotter-network-report-other-icon',
-        color: '#f2c94c',
+        iconUrl: otherIconUrl,
         title: 'SN Report'
     }
 };
@@ -56,7 +59,7 @@ function toFiniteNumber(value) {
     return Number.isFinite(num) ? num : null;
 }
 
-function createMarkerImageData(fillColor, outlineColor = MARKER_OUTLINE_COLOR, size = 18) {
+async function loadImageData(url, size = 24) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
     canvas.height = size;
@@ -64,17 +67,15 @@ function createMarkerImageData(fillColor, outlineColor = MARKER_OUTLINE_COLOR, s
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    const center = size / 2;
-    const radius = Math.floor(size / 2) - 2;
+    const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error(`Failed to load icon: ${url}`));
+        img.src = url;
+    });
 
     ctx.clearRect(0, 0, size, size);
-    ctx.beginPath();
-    ctx.arc(center, center, radius, 0, Math.PI * 2);
-    ctx.fillStyle = fillColor;
-    ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = outlineColor;
-    ctx.stroke();
+    ctx.drawImage(image, 0, 0, size, size);
 
     return ctx.getImageData(0, 0, size, size);
 }
@@ -114,7 +115,7 @@ function getFirstChildText(element, localName) {
 function inferReportType(title) {
     const normalizedTitle = String(title || '').toLowerCase();
 
-    if (/tornado|funnel/.test(normalizedTitle)) return 'tornado';
+    if (/tornado|funnel|wall\s*cloud/.test(normalizedTitle)) return 'tornado';
     if (/hail/.test(normalizedTitle)) return 'hail';
     if (/wind|damage|tree/.test(normalizedTitle)) return 'wind';
     return 'other';
@@ -389,7 +390,7 @@ class SpotterNetworkReportsLayer {
             for (const config of Object.values(REPORT_TYPES)) {
                 if (map.hasImage(config.iconId)) continue;
 
-                const imageData = createMarkerImageData(config.color);
+                const imageData = await loadImageData(config.iconUrl, 24);
                 if (!imageData) {
                     return false;
                 }
@@ -519,7 +520,7 @@ class SpotterNetworkReportsLayer {
                 source: sourceId,
                 layout: {
                     'icon-image': ['match', ['get', 'reportType'], 'tornado', REPORT_TYPES.tornado.iconId, 'wind', REPORT_TYPES.wind.iconId, 'hail', REPORT_TYPES.hail.iconId, REPORT_TYPES.other.iconId],
-                    'icon-size': 0.7,
+                    'icon-size': 1,
                     'icon-anchor': 'center',
                     'icon-allow-overlap': false,
                     'icon-ignore-placement': false,

@@ -355,6 +355,124 @@ select:hover {
   align-items: center;
 }
 
+.storm-track-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  pointer-events: auto;
+  cursor: crosshair;
+}
+
+.storm-track-hint {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.86rem;
+  color: white;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.storm-track-window {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: white;
+  height: calc(100% - 8px);
+}
+
+.storm-track-controls {
+  display: grid;
+  grid-template-columns: 1fr 140px auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.storm-track-controls label {
+  font-size: 0.84rem;
+  opacity: 0.85;
+}
+
+.storm-track-controls input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
+  color: white;
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.storm-track-controls button {
+  background: rgba(255, 122, 24, 0.2);
+  border: 1px solid rgba(255, 179, 71, 0.7);
+  color: #ffd39b;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.storm-track-controls button:hover {
+  background: rgba(255, 122, 24, 0.3);
+}
+
+.storm-track-status {
+  margin: 0;
+  font-size: 0.84rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.storm-track-summary {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffe2bc;
+}
+
+.storm-track-results-wrapper {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.storm-track-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+
+.storm-track-results-table thead th {
+  position: sticky;
+  top: 0;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.9);
+  padding: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.storm-track-results-table tbody td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.storm-track-empty {
+  text-align: center;
+  opacity: 0.75;
+  padding: 14px;
+}
+
+@media (max-width: 680px) {
+  .storm-track-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
 #anim-container .anim-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -427,6 +545,7 @@ select:hover {
   font-weight: 700;
   margin-top: 40px;
   margin-bottom: 4px;
+  margin-left: 10px;
   color: var(--primary-color);
 }
 

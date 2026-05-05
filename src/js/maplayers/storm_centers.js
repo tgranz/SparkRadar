@@ -486,6 +486,9 @@ class StormCentersLayer {
                 cache.delete(key);
             }
         }
+
+        // Enforce configured layer ordering (including DEFAULT_LAYER_ORDER fallback).
+        this.map?.layers?.applyLayerOrder(target);
     }
 
     _areStormCentersEnabled() {
