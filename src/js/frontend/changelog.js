@@ -1,7 +1,7 @@
 const entries = [
     {
         version : "1.8.0",
-        date: "ADD DATE HERE",
+        date: "May 5, 2026",
         changes: [
             {
                 text: "Storm motion vectors: Show the mot...loc information for alerts that support this information. Can be turned on and off in settings > alerts.",
