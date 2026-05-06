@@ -20,7 +20,7 @@ const entries = [
                 type: "enhancement"
             },
             {
-                text: "Traffic cameras now available in Maryland, Virginia, and Oregon.",
+                text: "Traffic cameras now available in Maryland and Oregon.",
                 type: "enhancement"
             },
             {
