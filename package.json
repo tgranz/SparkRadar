@@ -9,6 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "check:cameras": "node scripts/check_cameras.js",
+    "add:iowa-cameras": "node scripts/add_iowa_traffic_cameras.js",
+    "add:illinois-cameras": "node scripts/add_illinois_traffic_cameras.js",
     "reassign:camera-states": "node scripts/reassign_camera_states_from_geojson.js",
     "build:cities-db": "node scripts/build_cities_database.js"
   },

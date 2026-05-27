@@ -7,6 +7,8 @@ This module handles alert data fetching, SSE subscriptions, and notifications.
 See LICENSE for more.
 */
 
+let firstForbiddenError = true;
+
 import Notification from "../ui/notification.js";
 import { getTornadoStatus, renderAlert } from "./alert_utils.js";
 
@@ -271,8 +273,21 @@ class AlertService {
                 signal: controller.signal,
                 mode: 'cors',
                 cache: 'no-cache'
+            }).catch((error) => {
+                if (window.location.hostname === 'localhost' || window.location.hostname === '192.168.') {
+                    if (firstForbiddenError) {
+                        firstForbiddenError = false;
+
+                        new Notification(
+                            "Alerts Unavailable",
+                            `You cannot use the production SparkAlerts API on development servers. You will need to <a href="https://github.com/tgranz/sparkalerts">run your own instance</a>.`,
+                            'forbid',
+                            '#ffcc00',
+                        );
+                    }
+                }
             });
-            
+
             clearTimeout(timeoutId);
                         
             if (!response.ok) {

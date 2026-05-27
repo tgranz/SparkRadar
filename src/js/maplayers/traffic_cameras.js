@@ -18,7 +18,9 @@ const TRAFFIC_CAMERA_ICON_IDS = {
 
 // Keep this list trimmed to the states you want displayed.
 // Empty array means all states present in traffic_cameras.json are allowed.
-export const TRAFFIC_CAMERA_STATE_WHITELIST = ['Kansas', 'Maryland', 'Oregon'];
+// This is fine to run personally/privately but individual states govern cameras differently and
+// may warrant legal action if you reshow these anywhere. You have been warned.
+export const TRAFFIC_CAMERA_STATE_WHITELIST = ['Kansas', 'Maryland', 'Oregon', 'Kentucky', 'Iowa', "South Dakota"];
 
 function escapeHtml(value) {
     return String(value ?? '')

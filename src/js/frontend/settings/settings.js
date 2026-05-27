@@ -404,6 +404,25 @@ function bindSectionControls(settingsInstance, content) {
                 input.value = currentValue;
             }
 
+            if (key === 'syncPassphrase') {
+                let lastApplied = input.value;
+
+                const tryApply = () => {
+                    const val = input.value;
+                    if (val === lastApplied) return;
+                    lastApplied = val;
+                    settingsInstance.applyPassphrase(val);
+                };
+
+                input.addEventListener('blur', tryApply);
+                input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        input.blur();
+                    }
+                });
+                return;
+            }
+
             const normalizeShortcut = (value) => {
                 if (typeof value !== 'string') return '';
                 return value.trim().slice(0, 1).toLowerCase();
@@ -1426,6 +1445,7 @@ export default class Settings {
             shortcutProductCorrelationCoefficient: '3',
             shortcutProductHydrometeorClassification: '4',
             shortcutProductSpecificDifferentialPhase: '5',
+            syncPassphrase: '',
             ...alertDefaults
         };
 
@@ -1495,11 +1515,80 @@ export default class Settings {
         localStorage.setItem('settings', JSON.stringify(this.settings));
     }
 
-    setSetting(key, value) {
+    async initSync() {
+        const passphrase = this.settings.syncPassphrase;
+        if (!passphrase || typeof passphrase !== 'string' || !passphrase.trim()) return;
+
+        try {
+            const res = await fetch(`https://api.sparkradar.app/settings/${encodeURIComponent(passphrase.trim())}`);
+            if (!res.ok) return;
+
+            const remote = await res.json();
+            if (!remote || typeof remote !== 'object' || Array.isArray(remote)) return;
+
+            this.settings = { ...this.defaults, ...remote };
+            this._normalizeSettings();
+            this.saveSettings();
+            this.applyThemeColors();
+            document.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key: 'all', value: this.settings } }));
+        } catch (_) {
+            // Network error - use local settings
+        }
+    }
+
+    async applyPassphrase(passphrase) {
+        if (typeof passphrase !== 'string') return;
+        const trimmed = passphrase.trim();
+
+        if (!trimmed) {
+            this.setSetting('syncPassphrase', '', { skipSync: true });
+            return;
+        }
+
+        try {
+            const res = await fetch(`https://api.sparkradar.app/settings/${encodeURIComponent(trimmed)}`);
+            if (res.ok) {
+                // Remote settings exist - save passphrase then reload to pull them down
+                this.setSetting('syncPassphrase', trimmed, { skipSync: true });
+                window.location.reload();
+            } else if (res.status === 404) {
+                // No remote settings yet - push current settings under this passphrase
+                this.setSetting('syncPassphrase', trimmed, { skipSync: true });
+                await this.pushSync(trimmed);
+                new Toast('Settings saved to passphrase.').show();
+            } else {
+                new Toast('Sync server returned an error. Try again later.').show();
+            }
+        } catch (_) {
+            new Toast('Failed to connect to sync server.').show();
+        }
+    }
+
+    async pushSync(passphrase) {
+        if (!passphrase) return;
+        try {
+            await fetch(`https://api.sparkradar.app/settings/${encodeURIComponent(passphrase)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(this.settings)
+            });
+        } catch (_) {
+            // Ignore network errors during push
+        }
+    }
+
+    setSetting(key, value, options = {}) {
         this.settings[key] = value;
         this.saveSettings();
         this.applyThemeColors();
         document.dispatchEvent(new CustomEvent('settingsChanged', { detail: { key, value } }));
+
+        if (key !== 'syncPassphrase' && !options.skipSync) {
+            const passphrase = this.settings.syncPassphrase;
+            if (typeof passphrase === 'string' && passphrase.trim()) {
+                void this.pushSync(passphrase.trim());
+            }
+        }
 
         // Some settings may show a toast notification when changed
         if (key === 'enableSplitCursorMarker') {

@@ -363,3 +363,13 @@
   overflow-y: auto;
 }
 
+#sync-passphrase {
+  color: #27beff;
+  border: 1px solid var(--border-color);
+  font-size: 1em;
+  font-weight: bold;
+  text-align: right;
+  background: rgba(20, 20, 20, 0.5);
+  padding: 10px;
+  border-radius: var(--roundness);
+}

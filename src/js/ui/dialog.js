@@ -19,8 +19,8 @@ class Dialog {
         this.dialog.style.boxSizing = 'border-box';
         this.dialog.style.width = 'calc(100% - 20px)';
         this.dialog.style.height = 'calc(100% - 90px)';
-        this.dialog.classList.add('menu'); // Use menu styling
-        this.dialog.classList.add('menu-hidden'); // Use same transition as menu
+        this.dialog.classList.add('dialog');
+        this.dialog.classList.add('dialog-hidden');
 
         // Create dialog header with close button
         const header = document.createElement('div');
@@ -66,8 +66,8 @@ class Dialog {
 
         document.body.appendChild(this.dialog);
 
-        // Trigger animation by removing menu-hidden on next frame
-        setTimeout(() => this.dialog.classList.remove('menu-hidden'), 10);
+        // Trigger animation by removing dialog-hidden on next frame
+        setTimeout(() => this.dialog.classList.remove('dialog-hidden'), 10);
 
         // Remove the dialog if esc is pressed
         this.escListener = (event) => {
@@ -83,7 +83,7 @@ class Dialog {
     }
 
     close() {
-        this.dialog.classList.add('menu-hidden');
+        this.dialog.classList.add('dialog-hidden');
         document.removeEventListener('keydown', this.escListener);
         
         // Remove the dialog from DOM after animation completes
@@ -95,7 +95,7 @@ class Dialog {
     }
 
     toggle() {
-        this.dialog.classList.toggle('menu-hidden');
+        this.dialog.classList.toggle('dialog-hidden');
     }
 }
 

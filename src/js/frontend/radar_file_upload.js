@@ -21,7 +21,7 @@ const inferStationFromUploadedFileName = (fileName, fallbackStation = 'KTLX') =>
 const createUploadDialogHtml = () => `
   <div style="display:flex;flex-direction:column;gap:12px;">
     <div style="display: flex; flex-direction: row; gap: 10px;">
-      <button id="l2select" style="width: 100%; font-size: 1em;" class="selected">Level II Archive/Chunk</button>
+      <button id="l2select" style="width: 100%; font-size: 1em;" class="active">Level II Archive/Chunk</button>
       <button id="l3select" style="width: 100%; font-size: 1em;">Level III File</button>
     </div>
     <input id="radar-file-input" type="file" style="padding:6px 0;" />
@@ -53,13 +53,13 @@ export const openRadarFileUploadDialog = ({
   };
 
   document.getElementById('l2select')?.addEventListener('click', () => {
-    document.getElementById('l2select').classList.add('selected');
-    document.getElementById('l3select').classList.remove('selected');
+    document.getElementById('l2select').classList.add('active');
+    document.getElementById('l3select').classList.remove('active');
   });
 
   document.getElementById('l3select')?.addEventListener('click', () => {
-    document.getElementById('l3select').classList.add('selected');
-    document.getElementById('l2select').classList.remove('selected');
+    document.getElementById('l3select').classList.add('active');
+    document.getElementById('l2select').classList.remove('active');
   });
 
   fileInput?.addEventListener('change', () => {
@@ -79,7 +79,7 @@ export const openRadarFileUploadDialog = ({
       renderButton.textContent = 'Rendering...';
 
       const l2select = document.getElementById('l2select');
-      const selectedLevel = l2select.classList.contains('selected') ? 'L2' : 'L3';
+      const selectedLevel = l2select.classList.contains('active') ? 'L2' : 'L3';
       const product = selectedLevel === 'L3' ? 'N0B' : 'REF';
       const rawData = Buffer.from(await selectedFile.arrayBuffer());
       const localFile = {

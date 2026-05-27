@@ -81,6 +81,13 @@
       <h3 class="settings-subheader">Settings management</h3>
       <div class="settings-control">
         <div class="settings-control-header">
+          <label for="sync-passphrase">Settings Sync (BETA)</label>
+            <input type="text" id="sync-passphrase" name="sync-passphrase" value="" data-setting="syncPassphrase">
+        </div>
+        <p class="settings-control-help">Enter an existing or new passphrase. Enter the same passphrase on other devices to sync your settings. Anyone with your passphrase can update your settings. This will not sync your Spotter Network login or color palettes. Stored settings will be deleted from the server after 2 months of inactivity.</p>
+      </div>
+      <div class="settings-control">
+        <div class="settings-control-header">
           <label for="general-export">Export Settings</label>
             <input type="button" id="general-export" class="settings-btn" name="general-export" value="Export" data-setting="generalExport">
         </div>

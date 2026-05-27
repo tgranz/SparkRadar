@@ -1381,3 +1381,38 @@ p.code {
   width: auto;
   color: var(--primary-color);
 }
+
+.dialog {
+  position: fixed;
+  width: calc(100% - 62px);
+  max-width: 500px;
+  height: calc(100% - 132px);
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(20px);
+  border-radius: var(--roundness);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 20px;
+  z-index: 10000;
+  overflow-y: hidden;
+  overflow-x: hidden;
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out, visibility 0.2s ease-out;
+}
+
+.dialog.dialog-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(20px);
+  visibility: hidden;
+}
+
+.dialog:not(.dialog-hidden) {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+  visibility: visible;
+}

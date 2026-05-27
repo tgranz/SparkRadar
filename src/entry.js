@@ -47,6 +47,7 @@ import {
 
 // Start instances
 window.settingsInstance = new Settings();
+window.settingsInstance.initSync();
 const locationServices = new LocationServices({
   enabled: window.settingsInstance.getSetting('enableLocation', true) !== false,
 });

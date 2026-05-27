@@ -1,5 +1,23 @@
 const entries = [
     {
+        version : "1.8.1",
+        date: "May 27, 2026",
+        changes: [
+            {
+                text: "Settings Sync: Sync your settings across devices with a custom passphrase. Enter the same passphrase on each device to sync settings.",
+                type: "new"
+            },
+            {
+                text: "Traffic cameras now available in Kentucky, Iowa, and South Dakota.",
+                type: "enhancement"
+            },
+            {
+                text: "Various visual consistency updates and improvements.",
+                type: "enhancement"
+            },
+        ]
+    },
+    {
         version : "1.8.0",
         date: "May 5, 2026",
         changes: [
@@ -274,7 +292,6 @@ const styling = `
     }
 
     .changelog-entry ul {
-        margin-left: 20px;
         list-style: disc;
     }
 
